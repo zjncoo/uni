@@ -45,4 +45,10 @@
       <image:caption>Esperienza di installazione macOS: trascina l'icona di uni nella cartella Applicazioni</image:caption>
     </image:image>
   </url>
+  <url>
+    <loc>https://zjncoo.github.io/uni/privacy.html</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
 </urlset>
