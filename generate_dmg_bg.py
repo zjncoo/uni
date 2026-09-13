@@ -1,85 +1,204 @@
 #!/usr/bin/env python3
 import subprocess
+import os
+import base64
 
-# Finder DMG Window: 660 x 440 pt
-# Left icon (uni.app): centered at x = 185, y = 205
-# Right icon (Applications): centered at x = 475, y = 205
-# Canvas center: x = 330, y = 205
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-dmg_bg_svg = """<svg xmlns="http://www.w3.org/2000/svg" width="660" height="440" viewBox="0 0 660 440">
+# 1. Extract macOS ApplicationsFolderIcon
+apps_icon_path = "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/ApplicationsFolderIcon.icns"
+temp_apps_png = os.path.join(PROJECT_DIR, "temp_apps_icon.png")
+subprocess.run(["sips", "-s", "format", "png", "-z", "512", "512", apps_icon_path, "--out", temp_apps_png], check=True)
+
+with open(temp_apps_png, "rb") as f:
+    apps_b64 = base64.b64encode(f.read()).decode("ascii")
+if os.path.exists(temp_apps_png):
+    os.remove(temp_apps_png)
+
+# 2. Read App Icon
+app_icon_path = os.path.join(PROJECT_DIR, "docs/assets/icon.png")
+with open(app_icon_path, "rb") as f:
+    app_b64 = base64.b64encode(f.read()).decode("ascii")
+
+# ==============================================================================
+# BASE SVG: 1320 x 880 (Retina 2x for 660 x 440 pt Finder window)
+# Finder Icon coordinates:
+# 1x coords: Left={185, 205}, Right={475, 205}
+# 2x coords: Left={370, 410}, Right={950, 410}
+# ==============================================================================
+
+def get_svg_content(include_icons=False):
+    icons_layer = ""
+    if include_icons:
+        icons_layer = f"""
+    <!-- uni.app Icon on Left Pedestal (centered at x=370, y=390) -->
+    <g transform="translate(370, 390)">
+      <rect x="-80" y="-80" width="160" height="160" rx="36" fill="#000000" opacity="0.12" filter="url(#iconShadow)" />
+      <image href="data:image/png;base64,{app_b64}" x="-80" y="-80" width="160" height="160" />
+      <text x="0" y="112" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="20" font-weight="500" fill="#1D1D1F" text-anchor="middle" letter-spacing="-0.2">uni</text>
+    </g>
+
+    <!-- Applications Folder Icon on Right Pedestal (centered at x=950, y=390) -->
+    <g transform="translate(950, 390)">
+      <ellipse cx="0" cy="72" rx="74" ry="16" fill="#000000" opacity="0.10" filter="url(#softShadow)" />
+      <image href="data:image/png;base64,{apps_b64}" x="-84" y="-84" width="168" height="168" />
+      <text x="0" y="112" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="20" font-weight="500" fill="#1D1D1F" text-anchor="middle" letter-spacing="-0.2">Applicazioni</text>
+    </g>
+        """
+
+    card_labels = ""
+    if not include_icons:
+        card_labels = """
+    <!-- Subtle labels on pedestals when real icons are placed by Finder -->
+    <text x="370" y="525" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="middle" letter-spacing="1.5">APP</text>
+    <text x="950" y="525" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="middle" letter-spacing="1.5">APPLICAZIONI</text>
+        """
+
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="880" viewBox="0 0 1320 880">
   <defs>
-    <!-- Refined Apple canvas gradient -->
+    <!-- Background Apple Canvas Gradient -->
     <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#FCFCFD" />
-      <stop offset="100%" stop-color="#EDEDF2" />
+      <stop offset="45%" stop-color="#F6F7F9" />
+      <stop offset="100%" stop-color="#EBEEF3" />
     </linearGradient>
 
-    <!-- Arrow gradient -->
-    <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="rgba(0,0,0,0.15)" />
-      <stop offset="100%" stop-color="rgba(0,0,0,0.55)" />
+    <!-- Curved Arrow Gradient -->
+    <linearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#60A5FA" stop-opacity="0.3" />
+      <stop offset="50%" stop-color="#3B82F6" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#2563EB" stop-opacity="1.0" />
     </linearGradient>
-    
-    <filter id="softCardShadow" x="-15%" y="-15%" width="130%" height="135%">
-      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.04" />
+
+    <linearGradient id="pedestalBorder" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#CBD5E1" stop-opacity="0.4" />
+    </linearGradient>
+
+    <linearGradient id="pillGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F8FAFC" />
+    </linearGradient>
+
+    <!-- Multi-level Soft Drop Shadows -->
+    <filter id="pedestalShadow" x="-20%" y="-20%" width="140%" height="145%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#0F172A" flood-opacity="0.06" />
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.04" />
       <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000000" flood-opacity="0.02" />
+    </filter>
+
+    <filter id="pillShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#0F172A" flood-opacity="0.08" />
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+
+    <filter id="iconShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.18" />
+    </filter>
+
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" />
     </filter>
   </defs>
 
   <!-- Canvas Background -->
-  <rect width="660" height="440" fill="url(#bgGrad)" />
+  <rect width="1320" height="880" fill="url(#bgGrad)" />
 
-  <!-- Top Header Branding (Centered at x=330, y=52) -->
-  <g transform="translate(330, 52)" text-anchor="middle">
-    <text x="-26" y="0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="20" font-weight="300" fill="#111113" letter-spacing="-1.5">///</text>
-    <text x="8" y="-1" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="18" font-weight="400" fill="#111113" letter-spacing="-0.3">uni</text>
-    <rect x="28" y="-14" width="44" height="17" rx="4" ry="4" fill="#111113" />
-    <text x="50" y="-2" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="8.5" font-weight="500" fill="#FFFFFF" letter-spacing="0.4">macOS</text>
+  <!-- Subtle Ambient Glow under the center install gesture -->
+  <ellipse cx="660" cy="400" rx="380" ry="130" fill="#3B82F6" opacity="0.04" filter="url(#softShadow)" />
+
+  <!-- Top Header Branding (Centered at x=660, y=96) -->
+  <g transform="translate(660, 96)" text-anchor="middle">
+    <text x="-56" y="0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="38" font-weight="300" fill="#18181B" letter-spacing="-3">///</text>
+    <text x="14" y="-2" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="34" font-weight="600" fill="#18181B" letter-spacing="-0.6">uni</text>
+    <rect x="56" y="-26" width="84" height="32" rx="7" ry="7" fill="#18181B" />
+    <text x="98" y="-4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="16" font-weight="600" fill="#FFFFFF" letter-spacing="0.8">macOS</text>
   </g>
 
-  <!-- Left Pedestal Card for uni.app (Centered at x=185, y=205, width=144, height=144) -->
-  <rect x="113" y="133" width="144" height="144" rx="22" fill="#FFFFFF" filter="url(#softCardShadow)" />
-  <rect x="113" y="133" width="144" height="144" rx="22" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1" />
+  <!-- Left Pedestal Card for uni.app (Centered at x=370, y=410, width=288, height=288) -->
+  <g>
+    <rect x="226" y="266" width="288" height="288" rx="44" fill="#FFFFFF" filter="url(#pedestalShadow)" />
+    <rect x="226" y="266" width="288" height="288" rx="44" fill="none" stroke="url(#pedestalBorder)" stroke-width="2" />
+    <!-- Inset guide dash -->
+    <rect x="242" y="282" width="256" height="256" rx="34" fill="none" stroke="#E2E8F0" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.8" />
+  </g>
 
-  <!-- Right Pedestal Card for Applications (Centered at x=475, y=205, width=144, height=144) -->
-  <rect x="403" y="133" width="144" height="144" rx="22" fill="#FFFFFF" filter="url(#softCardShadow)" />
-  <rect x="403" y="133" width="144" height="144" rx="22" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1" />
+  <!-- Right Pedestal Card for Applications (Centered at x=950, y=410, width=288, height=288) -->
+  <g>
+    <rect x="806" y="266" width="288" height="288" rx="44" fill="#FFFFFF" filter="url(#pedestalShadow)" />
+    <rect x="806" y="266" width="288" height="288" rx="44" fill="none" stroke="url(#pedestalBorder)" stroke-width="2" />
+    <!-- Inset guide dash -->
+    <rect x="822" y="282" width="256" height="256" rx="34" fill="none" stroke="#E2E8F0" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.8" />
+  </g>
 
-  <!-- Subtle hint labels on cards -->
-  <text x="185" y="263" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="9" font-weight="500" fill="#A1A1AA" text-anchor="middle" letter-spacing="0.3">APP</text>
-  <text x="475" y="263" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="9" font-weight="500" fill="#A1A1AA" text-anchor="middle" letter-spacing="0.3">APPLICAZIONI</text>
+  {card_labels}
 
-  <!-- Center Gesture Arrow & Badge -->
+  <!-- Center Gesture: High-Visibility Dynamic Arc & Pill -->
   <g id="transfer-gesture">
-    <!-- Dashed connecting arrow line -->
-    <path d="M 270 205 L 388 205" fill="none" stroke="url(#arrowGrad)" stroke-width="2" stroke-dasharray="5,4" stroke-linecap="round" />
-    
-    <!-- Arrow Head Pointing to Applications -->
-    <path d="M 382 198 L 396 205 L 382 212" fill="none" stroke="rgba(0,0,0,0.65)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Graceful curved trajectory arc from left pedestal to right pedestal -->
+    <path d="M 500 350 C 570 280, 750 280, 818 340" fill="none" stroke="url(#arcGrad)" stroke-width="4" stroke-dasharray="10,7" stroke-linecap="round" />
 
-    <!-- Center Floating Pill -->
-    <g transform="translate(330, 205)">
-      <rect x="-65" y="-14" width="130" height="28" rx="14" ry="14" fill="#FFFFFF" filter="url(#softCardShadow)" />
-      <rect x="-65" y="-14" width="130" height="28" rx="14" ry="14" fill="none" stroke="rgba(0,0,0,0.07)" stroke-width="1" />
-      <text x="0" y="4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="10" font-weight="450" fill="#18181B" text-anchor="middle" letter-spacing="-0.1">
+    <!-- Crisp Illuminated Arrow Head pointing directly to Applications -->
+    <path d="M 798 334 L 826 348 L 814 318" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Floating Pill Badge (Centered at x=660, y=420) -->
+    <g transform="translate(660, 420)">
+      <rect x="-140" y="-27" width="280" height="54" rx="27" ry="27" fill="url(#pillGrad)" filter="url(#pillShadow)" />
+      <rect x="-140" y="-27" width="280" height="54" rx="27" ry="27" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1.5" />
+      
+      <!-- Gesture Icon: Small stylized hand or arrow icon -->
+      <circle cx="-100" cy="0" r="14" fill="#EFF6FF" />
+      <path d="M -104 -5 L -96 0 L -104 5" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+      <text x="14" y="6" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="18" font-weight="500" fill="#18181B" text-anchor="middle" letter-spacing="-0.2">
         Trascina per installare
       </text>
     </g>
   </g>
 
+  {icons_layer}
+
   <!-- Bottom Instructions -->
-  <g transform="translate(330, 350)" text-anchor="middle">
-    <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="13" font-weight="450" fill="#18181B" letter-spacing="-0.2">
+  <g transform="translate(660, 715)" text-anchor="middle">
+    <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="28" font-weight="600" fill="#18181B" letter-spacing="-0.4">
       Trascina uni nella cartella Applicazioni
     </text>
-    <text x="0" y="22" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="10.5" font-weight="300" fill="#71717A" letter-spacing="-0.1">
+    <text x="0" y="36" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="19" font-weight="400" fill="#64748B" letter-spacing="-0.2">
       Trascina l'icona dell'app nel riquadro Applicazioni per completare l'installazione su Mac
     </text>
   </g>
 </svg>"""
 
-with open("dmg_background.svg", "w") as f:
-    f.write(dmg_bg_svg)
+if __name__ == "__main__":
+    # Write and generate DMG Background (without baked icons for Finder)
+    bg_svg_path = os.path.join(PROJECT_DIR, "dmg_background.svg")
+    with open(bg_svg_path, "w") as f:
+        f.write(get_svg_content(include_icons=False))
 
-subprocess.run(["sips", "-s", "format", "png", "dmg_background.svg", "--out", "dmg_background.png"])
-print("dmg_background.png generated successfully with 660x440 dimensions")
+    bg_png_path = os.path.join(PROJECT_DIR, "dmg_background.png")
+    bg_png_2x_path = os.path.join(PROJECT_DIR, "dmg_background@2x.png")
+
+    # Render 1320x880 with 144 DPI
+    subprocess.run(["sips", "-s", "format", "png", bg_svg_path, "--out", bg_png_path], check=True)
+    subprocess.run(["sips", "-s", "dpiHeight", "144.0", "-s", "dpiWidth", "144.0", bg_png_path], check=True)
+    subprocess.run(["cp", bg_png_path, bg_png_2x_path], check=True)
+
+    # Also generate 1x version 660x440 with 72 DPI for legacy 1x displays
+    bg_png_1x_path = os.path.join(PROJECT_DIR, "dmg_background_1x.png")
+    subprocess.run(["sips", "-s", "format", "png", "-z", "440", "660", "-s", "dpiHeight", "72.0", "-s", "dpiWidth", "72.0", bg_svg_path, "--out", bg_png_1x_path], check=True)
+
+    # Write and generate Website Showcase (with baked high-res icons)
+    showcase_svg_path = os.path.join(PROJECT_DIR, "docs/assets/dmg_showcase.svg")
+    with open(showcase_svg_path, "w") as f:
+        f.write(get_svg_content(include_icons=True))
+
+    showcase_png_path = os.path.join(PROJECT_DIR, "docs/assets/dmg_showcase.png")
+    subprocess.run(["sips", "-s", "format", "png", showcase_svg_path, "--out", showcase_png_path], check=True)
+    subprocess.run(["sips", "-s", "dpiHeight", "144.0", "-s", "dpiWidth", "144.0", showcase_png_path], check=True)
+
+    # Copy high-res background to docs/assets/dmg_background.png as well
+    subprocess.run(["cp", bg_png_path, os.path.join(PROJECT_DIR, "docs/assets/dmg_background.png")], check=True)
+
+    print("✅ High-Resolution Retina DMG Background & Website Showcase generated successfully!")
+    print(f"  - DMG Background: {bg_png_path} (1320x880 @ 144 DPI)")
+    print(f"  - Website Showcase: {showcase_png_path} (1320x880 @ 144 DPI)")

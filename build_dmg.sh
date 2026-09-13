@@ -56,6 +56,7 @@ cp "$PROJECT_DIR/dmg_background.png" "$PROJECT_DIR/docs/assets/uni-macos/docs/as
 
 mkdir -p "$STAGING_DIR/.background"
 cp "$PROJECT_DIR/dmg_background.png" "$STAGING_DIR/.background/background.png"
+cp "$PROJECT_DIR/dmg_background@2x.png" "$STAGING_DIR/.background/background@2x.png"
 
 # Add Volume Icon
 cp "$PROJECT_DIR/AppIcon.icns" "$STAGING_DIR/.VolumeIcon.icns"
