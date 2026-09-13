@@ -462,8 +462,6 @@ const GITHUB_REPO = "zjncoo/uni";
 const GITHUB_LATEST_RELEASE_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 const CANONICAL_DMG_URL = `https://github.com/${GITHUB_REPO}/releases/latest/download/uni.dmg`;
 const CANONICAL_ZIP_URL = `https://github.com/${GITHUB_REPO}/releases/latest/download/uni-macos.zip`;
-const LOCAL_DMG_PATH = "assets/uni-macos.dmg";
-const LOCAL_ZIP_PATH = "assets/uni-macos.zip";
 
 async function fetchLatestGitHubRelease() {
   const heroBtn = document.getElementById('heroDownloadBtn');
@@ -502,19 +500,17 @@ async function fetchLatestGitHubRelease() {
         if (zipMeta) zipMeta.textContent = `${tagName} • ${mb} MB`;
       }
     } else {
-      // If release doesn't exist yet on GitHub (404), fall back smoothly to local assets
-      // so visitors can download immediately without encountering a 404
-      console.info("GitHub Release not yet published or rate-limited. Serving local release assets.");
-      if (heroBtn) heroBtn.href = LOCAL_DMG_PATH;
-      if (mainBtn) mainBtn.href = LOCAL_DMG_PATH;
-      if (zipBtn) zipBtn.href = LOCAL_ZIP_PATH;
+      // Fall back directly to the canonical GitHub Release download URL
+      console.info("Using canonical GitHub Release URLs.");
+      if (heroBtn) heroBtn.href = CANONICAL_DMG_URL;
+      if (mainBtn) mainBtn.href = CANONICAL_DMG_URL;
+      if (zipBtn) zipBtn.href = CANONICAL_ZIP_URL;
     }
   } catch (err) {
-    // Network offline or error - use local copies
-    console.warn("Unable to reach GitHub API; defaulting to local assets:", err);
-    if (heroBtn) heroBtn.href = LOCAL_DMG_PATH;
-    if (mainBtn) mainBtn.href = LOCAL_DMG_PATH;
-    if (zipBtn) zipBtn.href = LOCAL_ZIP_PATH;
+    console.warn("Unable to reach GitHub API; defaulting to canonical release URLs:", err);
+    if (heroBtn) heroBtn.href = CANONICAL_DMG_URL;
+    if (mainBtn) mainBtn.href = CANONICAL_DMG_URL;
+    if (zipBtn) zipBtn.href = CANONICAL_ZIP_URL;
   }
 }
 
