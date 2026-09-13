@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+
+# Xcode
+build/
+DerivedData/
+.derivedData/
+build_artifacts/
+.tmp/
+*.moved-builder
+*.hmap
+*.xccheckout
+*.xcscmblueprint
+
+# Xcode User Data (important: keeps personal username and window states private)
+xcuserdata/
+*.xcuserdatad
+*.xcuserstate
+
+# Swift Package Manager
+.build/
+Packages/
+.swiftpm/
+
+# Fastlane / CI
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Local Release Artifacts (DMG and ZIP stay local in release/ and are uploaded to GitHub Releases)
+release/
+*.dmg
+*.zip

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="440" viewBox="0 0 660 440">
+  <defs>
+    <!-- Refined Apple canvas gradient -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FCFCFD" />
+      <stop offset="100%" stop-color="#EDEDF2" />
+    </linearGradient>
+
+    <!-- Arrow gradient -->
+    <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="rgba(0,0,0,0.15)" />
+      <stop offset="100%" stop-color="rgba(0,0,0,0.55)" />
+    </linearGradient>
+    
+    <filter id="softCardShadow" x="-15%" y="-15%" width="130%" height="135%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.04" />
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000000" flood-opacity="0.02" />
+    </filter>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="660" height="440" fill="url(#bgGrad)" />
+
+  <!-- Top Header Branding (Centered at x=330, y=52) -->
+  <g transform="translate(330, 52)" text-anchor="middle">
+    <text x="-26" y="0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="20" font-weight="300" fill="#111113" letter-spacing="-1.5">///</text>
+    <text x="8" y="-1" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="18" font-weight="400" fill="#111113" letter-spacing="-0.3">uni</text>
+    <rect x="28" y="-14" width="44" height="17" rx="4" ry="4" fill="#111113" />
+    <text x="50" y="-2" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="8.5" font-weight="500" fill="#FFFFFF" letter-spacing="0.4">macOS</text>
+  </g>
+
+  <!-- Left Pedestal Card for uni.app (Centered at x=185, y=205, width=144, height=144) -->
+  <rect x="113" y="133" width="144" height="144" rx="22" fill="#FFFFFF" filter="url(#softCardShadow)" />
+  <rect x="113" y="133" width="144" height="144" rx="22" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1" />
+
+  <!-- Right Pedestal Card for Applications (Centered at x=475, y=205, width=144, height=144) -->
+  <rect x="403" y="133" width="144" height="144" rx="22" fill="#FFFFFF" filter="url(#softCardShadow)" />
+  <rect x="403" y="133" width="144" height="144" rx="22" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1" />
+
+  <!-- Subtle hint labels on cards -->
+  <text x="185" y="263" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="9" font-weight="500" fill="#A1A1AA" text-anchor="middle" letter-spacing="0.3">APP</text>
+  <text x="475" y="263" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="9" font-weight="500" fill="#A1A1AA" text-anchor="middle" letter-spacing="0.3">APPLICAZIONI</text>
+
+  <!-- Center Gesture Arrow & Badge -->
+  <g id="transfer-gesture">
+    <!-- Dashed connecting arrow line -->
+    <path d="M 270 205 L 388 205" fill="none" stroke="url(#arrowGrad)" stroke-width="2" stroke-dasharray="5,4" stroke-linecap="round" />
+    
+    <!-- Arrow Head Pointing to Applications -->
+    <path d="M 382 198 L 396 205 L 382 212" fill="none" stroke="rgba(0,0,0,0.65)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Center Floating Pill -->
+    <g transform="translate(330, 205)">
+      <rect x="-65" y="-14" width="130" height="28" rx="14" ry="14" fill="#FFFFFF" filter="url(#softCardShadow)" />
+      <rect x="-65" y="-14" width="130" height="28" rx="14" ry="14" fill="none" stroke="rgba(0,0,0,0.07)" stroke-width="1" />
+      <text x="0" y="4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="10" font-weight="450" fill="#18181B" text-anchor="middle" letter-spacing="-0.1">
+        Trascina per installare
+      </text>
+    </g>
+  </g>
+
+  <!-- Bottom Instructions -->
+  <g transform="translate(330, 350)" text-anchor="middle">
+    <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="13" font-weight="450" fill="#18181B" letter-spacing="-0.2">
+      Trascina uni nella cartella Applicazioni
+    </text>
+    <text x="0" y="22" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="10.5" font-weight="300" fill="#71717A" letter-spacing="-0.1">
+      Trascina l'icona dell'app nel riquadro Applicazioni per completare l'installazione su Mac
+    </text>
+  </g>
+</svg>
