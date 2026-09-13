@@ -316,104 +316,82 @@
       </div>
 
       <div class="bento-grid">
-        <!-- Bento 1: iCal Smart Sync -->
+        <!-- Bento 1: Dashboard & NEXT (Wide) -->
         <div class="bento-card bento-wide">
           <div class="bento-header">
-            <span class="bento-tag">Sincronizzazione iCal</span>
-            <h3 data-i18n="bento1_title">Importazione Automatica dell'Orario Universitario</h3>
-            <p data-i18n="bento1_desc">Incolla l'indirizzo webcal del tuo ateneo (Esse3, Cineca, EasyAcademy) o carica un file .ics. uni legge i corsi, ripulisce sigle e canali, identifica docenti e aule e imposta l'orario 24h esatto.</p>
+            <span class="bento-tag" data-i18n="bento1_tag">Panoramica &amp; NEXT</span>
+            <h3 data-i18n="bento1_title">Panoramica Istantanea &amp; Sezione NEXT</h3>
+            <p data-i18n="bento1_desc">A colpo d'occhio trovi la prossima lezione in aula, la scadenza più urgente e il prossimo appello d'esame. Clicca sui riquadri per accedere direttamente alla sezione desiderata.</p>
           </div>
-          <div class="bento-visual">
-            <div class="cal-sync-pill-demo">
-              <div class="cal-sync-row">
-                <span class="sync-icon">⚡️</span>
-                <div>
-                  <strong>Lezione di Architetture Software [Canale A]</strong>
-                  <small>Riconosciuto: "Architetture Software" • Prof. Rossi • Aula Magna</small>
-                </div>
-                <span class="sync-status-badge">Estratto</span>
-              </div>
+          <div class="bento-screenshot-wrapper" data-screenshot="assets/screenshots/dashboard.png" data-caption="uni — Dashboard &amp; Sezione NEXT">
+            <img src="assets/screenshots/dashboard.png" alt="Dashboard di uni con sezione NEXT" class="bento-img" loading="lazy">
+            <div class="screenshot-hover-overlay">
+              <span class="zoom-icon">🔍</span>
+              <span class="zoom-text" data-i18n="zoom_screenshot">Clicca per ingrandire</span>
             </div>
           </div>
         </div>
 
-        <!-- Bento 2: Outlook Integration -->
+        <!-- Bento 2: Orario Lezioni & Calendario -->
         <div class="bento-card">
           <div class="bento-header">
-            <span class="bento-tag">Microsoft Outlook</span>
-            <h3 data-i18n="bento2_title">Comunicazioni "LATEST"</h3>
-            <p data-i18n="bento2_desc">Interroga direttamente l'app Outlook sul tuo Mac tramite AppleScript. Mostra in tempo reale le comunicazioni dei docenti senza passare per server terzi o cloud esterni.</p>
+            <span class="bento-tag" data-i18n="bento2_tag">Calendario &amp; Orario</span>
+            <h3 data-i18n="bento2_title">Orario Settimanale 24h</h3>
+            <p data-i18n="bento2_desc">Sincronizzazione iCal/webcal con l'ateneo o configurazione manuale. Aule, docenti e orari sempre sotto controllo.</p>
           </div>
-          <div class="bento-visual">
-            <div class="mail-badge-preview">
-              <span class="mail-check-icon">✓</span>
-              <span data-i18n="bento2_badge">100% locale sul tuo Mac</span>
+          <div class="bento-screenshot-wrapper" data-screenshot="assets/screenshots/calendar.png" data-caption="uni — Orario Settimanale &amp; Calendario Lezioni">
+            <img src="assets/screenshots/calendar.png" alt="Orario settimanale e calendario di uni" class="bento-img" loading="lazy">
+            <div class="screenshot-hover-overlay">
+              <span class="zoom-icon">🔍</span>
+              <span class="zoom-text" data-i18n="zoom_screenshot">Clicca per ingrandire</span>
             </div>
           </div>
         </div>
 
-        <!-- Bento 3: Zero Copy Files -->
+        <!-- Bento 3: Scadenze & Consegne -->
         <div class="bento-card">
           <div class="bento-header">
-            <span class="bento-tag">Finder Nativo</span>
-            <h3 data-i18n="bento3_title">File Collegati (Zero-Copy)</h3>
-            <p data-i18n="bento3_desc">Trascina slide, PDF o dispense nelle materie. I file non vengono duplicati: restano nella loro cartella originale e si aprono con un click nel Finder.</p>
+            <span class="bento-tag" data-i18n="bento3_tag">Scadenze &amp; Task</span>
+            <h3 data-i18n="bento3_title">Scadenze con Priorità</h3>
+            <p data-i18n="bento3_desc">Countdown automatico al minuto, badge di urgenza, allegati locali zero-copy e filtri per materia.</p>
           </div>
-          <div class="bento-visual">
-            <div class="file-drop-box">
-              <div class="file-drop-icon">📂</div>
-              <strong data-i18n="bento3_drop">Mostra nel Finder</strong>
-              <small>Zero copie, zero spazio sprecato</small>
+          <div class="bento-screenshot-wrapper" data-screenshot="assets/screenshots/deadlines.png" data-caption="uni — Scadenze &amp; Consegne Programmate">
+            <img src="assets/screenshots/deadlines.png" alt="Elenco scadenze e compiti in uni" class="bento-img" loading="lazy">
+            <div class="screenshot-hover-overlay">
+              <span class="zoom-icon">🔍</span>
+              <span class="zoom-text" data-i18n="zoom_screenshot">Clicca per ingrandire</span>
             </div>
           </div>
         </div>
 
-        <!-- Bento 4: GPA & Exam Stats (Concrete Academic Value) -->
+        <!-- Bento 4: Esami & Media Ponderata -->
         <div class="bento-card">
           <div class="bento-header">
-            <span class="bento-tag">Carriera & Esami</span>
-            <h3 data-i18n="bento4_title">Media Ponderata & Proiezione Laurea</h3>
-            <p data-i18n="bento4_desc">Registra voti, crediti e lodi. uni calcola in tempo reale la tua media aritmetica, la media ponderata e la proiezione esatta della base di partenza per la laurea.</p>
+            <span class="bento-tag" data-i18n="bento4_tag">Carriera &amp; Esami</span>
+            <h3 data-i18n="bento4_title">Media Ponderata &amp; Voto Laurea</h3>
+            <p data-i18n="bento4_desc">Calcolo automatico della media ponderata, CFU registrati e simulazione della base di partenza per la laurea.</p>
           </div>
-          <div class="bento-visual">
-            <div class="gpa-card-preview">
-              <div class="gpa-preview-item">
-                <span class="gpa-tag">Media</span>
-                <strong>28.84</strong>
-              </div>
-              <div class="gpa-preview-item">
-                <span class="gpa-tag">CFU</span>
-                <strong>138 / 180</strong>
-              </div>
-              <div class="gpa-preview-item highlight">
-                <span class="gpa-tag">Base Laurea</span>
-                <strong>~105.7</strong>
-              </div>
+          <div class="bento-screenshot-wrapper" data-screenshot="assets/screenshots/exams.png" data-caption="uni — Esami, Statistiche &amp; Media Ponderata">
+            <img src="assets/screenshots/exams.png" alt="Esami e statistiche media in uni" class="bento-img" loading="lazy">
+            <div class="screenshot-hover-overlay">
+              <span class="zoom-icon">🔍</span>
+              <span class="zoom-text" data-i18n="zoom_screenshot">Clicca per ingrandire</span>
             </div>
           </div>
         </div>
 
-        <!-- Bento 5: ⌘F Spotlight Search & Pomodoro -->
+        <!-- Bento 5: Ricerca Globale Spotlight (Wide) -->
         <div class="bento-card bento-wide">
           <div class="bento-header">
-            <span class="bento-tag">Scorciatoie da Tastiera</span>
-            <h3 data-i18n="bento5_title">Ricerca Globale ⌘F & Focus Timer Pomodoro</h3>
-            <p data-i18n="bento5_desc">Premi Command+F in qualunque schermata per richiamare la ricerca immediata: trova al volo slide, aule, appelli o avvia una sessione di studio da 25 o 50 minuti per mantenere la concentrazione.</p>
+            <span class="bento-tag" data-i18n="bento5_tag">Ricerca Rapida</span>
+            <h3 data-i18n="bento5_title">Palette di Ricerca Globale ⌘K / ⌘F</h3>
+            <p data-i18n="bento5_desc">Richiama in qualunque momento la ricerca stile Spotlight di macOS: trova istantaneamente corsi, dispense PDF, appelli d'esame e lezioni con filtri a pillola.</p>
           </div>
-          <div class="bento-visual">
-            <div class="shortcuts-row">
-              <div class="shortcut-box">
-                <kbd>⌘F</kbd>
-                <span data-i18n="bento5_s1">Ricerca Corsi & File</span>
-              </div>
-              <div class="shortcut-box">
-                <kbd>⌘T</kbd>
-                <span data-i18n="bento5_s2">Focus Timer Pomodoro</span>
-              </div>
-              <div class="shortcut-box">
-                <kbd>⌘N</kbd>
-                <span data-i18n="bento5_s3">Nuova Scadenza Rapida</span>
-              </div>
+          <div class="bento-screenshot-wrapper" data-screenshot="assets/screenshots/search.png" data-caption="uni — Ricerca Globale Spotlight ⌘K">
+            <img src="assets/screenshots/search.png" alt="Ricerca globale rapida Spotlight in uni" class="bento-img" loading="lazy">
+            <div class="screenshot-hover-overlay">
+              <span class="zoom-icon">🔍</span>
+              <span class="zoom-text" data-i18n="zoom_screenshot">Clicca per ingrandire</span>
             </div>
           </div>
         </div>
@@ -525,6 +503,18 @@
       </div>
     </div>
   </footer>
+
+  <!-- Screenshot Fullscreen Lightbox Modal -->
+  <div class="screenshot-lightbox" id="screenshotLightbox" aria-hidden="true">
+    <div class="lightbox-backdrop" id="lightboxBackdrop"></div>
+    <div class="lightbox-dialog">
+      <button class="lightbox-close-btn" id="lightboxCloseBtn" aria-label="Chiudi finestra">✕</button>
+      <div class="lightbox-img-wrapper">
+        <img src="" alt="" id="lightboxImg" class="lightbox-image">
+      </div>
+      <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

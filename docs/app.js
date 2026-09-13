@@ -61,25 +61,27 @@ const i18n = {
     feat_title: "Tutto ciò che serve per studiare.<br>Senza fronzoli.",
     feat_subtitle: "Disegnata per dialogare in modo naturale con il Finder, con i calendari universitari e con le email dei docenti.",
 
-    bento1_title: "Importazione Automatica dell'Orario Universitario",
-    bento1_desc: "Incolla l'indirizzo webcal del tuo ateneo (Esse3, Cineca, EasyAcademy) o carica un file .ics. uni legge i corsi, ripulisce sigle e canali, identifica docenti e aule e imposta l'orario 24h esatto.",
+    bento1_tag: "Panoramica & NEXT",
+    bento1_title: "Panoramica Istantanea & Sezione NEXT",
+    bento1_desc: "A colpo d'occhio trovi la prossima lezione in aula, la scadenza più urgente e il prossimo appello d'esame. Clicca sui riquadri per accedere direttamente alla sezione desiderata.",
 
-    bento2_title: "Comunicazioni \"LATEST\"",
-    bento2_desc: "Interroga direttamente l'app Outlook sul tuo Mac tramite AppleScript. Mostra in tempo reale le comunicazioni dei docenti senza passare per server terzi o cloud esterni.",
-    bento2_badge: "100% locale sul tuo Mac",
+    bento2_tag: "Calendario & Orario",
+    bento2_title: "Orario Settimanale 24h",
+    bento2_desc: "Sincronizzazione iCal/webcal con l'ateneo o configurazione manuale. Aule, docenti e orari sempre sotto controllo.",
 
-    bento3_title: "File Collegati (Zero-Copy)",
-    bento3_desc: "Trascina slide, PDF o dispense nelle materie. I file non vengono duplicati: restano nella loro cartella originale e si aprono con un click nel Finder.",
-    bento3_drop: "Mostra nel Finder",
+    bento3_tag: "Scadenze & Task",
+    bento3_title: "Scadenze con Priorità",
+    bento3_desc: "Countdown automatico al minuto, badge di urgenza, allegati locali zero-copy e filtri per materia.",
 
-    bento4_title: "Media Ponderata & Proiezione Laurea",
-    bento4_desc: "Registra voti, crediti e lodi. uni calcola in tempo reale la tua media aritmetica, la media ponderata e la proiezione esatta della base di partenza per la laurea.",
+    bento4_tag: "Carriera & Esami",
+    bento4_title: "Media Ponderata & Voto Laurea",
+    bento4_desc: "Calcolo automatico della media ponderata, CFU registrati e simulazione della base di partenza per la laurea.",
 
-    bento5_title: "Ricerca Globale ⌘F & Focus Timer Pomodoro",
-    bento5_desc: "Premi Command+F in qualunque schermata per richiamare la ricerca immediata: trova al volo slide, aule, appelli o avvia una sessione di studio da 25 o 50 minuti per mantenere la concentrazione.",
-    bento5_s1: "Ricerca Corsi & File",
-    bento5_s2: "Focus Timer Pomodoro",
-    bento5_s3: "Nuova Scadenza Rapida",
+    bento5_tag: "Ricerca Rapida",
+    bento5_title: "Palette di Ricerca Globale ⌘K / ⌘F",
+    bento5_desc: "Richiama in qualunque momento la ricerca stile Spotlight di macOS: trova istantaneamente corsi, dispense PDF, appelli d'esame e lezioni con filtri a pillola.",
+
+    zoom_screenshot: "Clicca per ingrandire",
 
     dl_title: "Scarica uni per il tuo Mac.",
     dl_desc: "Compatibile con macOS (Apple Silicon & Intel). Scarica l'immagine disco .dmg oppure compila l'app direttamente dal codice sorgente su GitHub.",
@@ -147,25 +149,27 @@ const i18n = {
     feat_title: "Everything you need for your studies.<br>Zero clutter.",
     feat_subtitle: "Designed to feel right at home with Finder, your campus calendar, and faculty emails.",
 
-    bento1_title: "Automatic University Calendar Sync",
-    bento1_desc: "Paste your university calendar feed URL (Esse3, Cineca, EasyAcademy) or import an .ics file. uni reads courses, cleans section tags, identifies professors, rooms, and sets the exact 24h schedule.",
+    bento1_tag: "Overview & NEXT",
+    bento1_title: "Instant Overview & NEXT Widget",
+    bento1_desc: "Get an immediate view of your next scheduled lecture and classroom, top-priority deadline, and upcoming exam session. Click any card to jump straight into that section.",
 
-    bento2_title: "\"LATEST\" Communications",
-    bento2_desc: "Reads your Outlook Mac inbox directly via native AppleScript. Displays faculty emails in real-time without sending data to third-party servers.",
-    bento2_badge: "100% local on your Mac",
+    bento2_tag: "Calendar & Timetable",
+    bento2_title: "24h Weekly Timetable",
+    bento2_desc: "Sync your university iCal/webcal calendar or configure classes manually. Rooms, professors, and class hours always at your fingertips.",
 
-    bento3_title: "Linked Files (Zero-Copy)",
-    bento3_desc: "Drag slides, PDFs, or handouts into courses. Files are never cloned: they stay in their original folders and reveal in Finder with a single click.",
-    bento3_drop: "Reveal in Finder",
+    bento3_tag: "Deadlines & Tasks",
+    bento3_title: "Prioritized Academic Deadlines",
+    bento3_desc: "Minute-by-minute countdown, priority urgency tags, zero-copy linked study files, and course-specific filters.",
 
+    bento4_tag: "Career & Exams",
     bento4_title: "Weighted GPA & Degree Projection",
-    bento4_desc: "Track exam grades, credits, and honors. uni calculates in real time your arithmetic GPA, weighted GPA, and exact degree starting score.",
+    bento4_desc: "Automatic weighted average calculation, recorded credits (CFU/ECTS), and real-time degree starting score projection.",
 
-    bento5_title: "Global ⌘F Search & Pomodoro Focus Timer",
-    bento5_desc: "Press Command+F anywhere to summon immediate search: jump to courses, slides, exam sessions, or launch 25/50-minute deep work intervals to stay in the flow.",
-    bento5_s1: "Search Courses & Files",
-    bento5_s2: "Pomodoro Focus Timer",
-    bento5_s3: "Quick Deadline Creation",
+    bento5_tag: "Quick Search",
+    bento5_title: "Spotlight-Style Global Search ⌘K / ⌘F",
+    bento5_desc: "Summon the macOS-native search palette at any time: instantly locate courses, PDF slides, exam dates, and lectures with interactive pill filters.",
+
+    zoom_screenshot: "Click to zoom",
 
     dl_title: "Download uni for your Mac.",
     dl_desc: "Compatible with macOS (Apple Silicon & Intel). Download the .dmg disk image or build directly from the source on GitHub.",
@@ -532,7 +536,55 @@ function initDownloadButtons() {
 }
 
 // ===================================================================
-// 7. Initialize Application
+// 7. Screenshot Lightbox Modal
+// ===================================================================
+function initScreenshotLightbox() {
+  const lightbox = document.getElementById('screenshotLightbox');
+  const lightboxImg = document.getElementById('lightboxImg');
+  const lightboxCaption = document.getElementById('lightboxCaption');
+  const closeBtn = document.getElementById('lightboxCloseBtn');
+  const backdrop = document.getElementById('lightboxBackdrop');
+
+  if (!lightbox || !lightboxImg) return;
+
+  function openLightbox(src, caption) {
+    lightboxImg.src = src;
+    if (lightboxCaption) lightboxCaption.textContent = caption || '';
+    lightbox.classList.add('active');
+    lightbox.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    playWebSound('pop');
+  }
+
+  function closeLightbox() {
+    lightbox.classList.remove('active');
+    lightbox.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    playWebSound('remove');
+  }
+
+  document.querySelectorAll('.bento-screenshot-wrapper').forEach(wrapper => {
+    wrapper.addEventListener('click', () => {
+      const src = wrapper.getAttribute('data-screenshot');
+      const caption = wrapper.getAttribute('data-caption');
+      if (src) {
+        openLightbox(src, caption);
+      }
+    });
+  });
+
+  if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+  if (backdrop) backdrop.addEventListener('click', closeLightbox);
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && lightbox.classList.contains('active')) {
+      closeLightbox();
+    }
+  });
+}
+
+// ===================================================================
+// 8. Initialize Application
 // ===================================================================
 document.addEventListener('DOMContentLoaded', () => {
   const initialLang = detectInitialLanguage();
@@ -540,4 +592,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initLanguageSwitcher();
   initPillHUDDemo();
   initDownloadButtons();
+  initScreenshotLightbox();
 });
+
