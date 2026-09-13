@@ -38,6 +38,13 @@ cp "$PROJECT_DIR/docs/assets/icon.png" "$APP_BUNDLE/Contents/Resources/AppIcon.p
 cp "$PROJECT_DIR/uni_updater.sh" "$APP_BUNDLE/Contents/Resources/uni_updater.sh" || true
 chmod +x "$APP_BUNDLE/Contents/Resources/uni_updater.sh" || true
 
+RELEASE_DIR="$PROJECT_DIR/release"
+mkdir -p "$RELEASE_DIR"
+
+echo "=== Packaging uni-macos.zip ==="
+rm -f "$RELEASE_DIR/uni-macos.zip"
+ditto -c -k --sequesterRsrc --keepParent "$APP_BUNDLE" "$RELEASE_DIR/uni-macos.zip"
+
 echo "=== 2. Preparing Staging Directory for DMG ==="
 STAGING_DIR="/tmp/uni_dmg_staging"
 rm -rf "$STAGING_DIR"
@@ -63,8 +70,6 @@ cp "$PROJECT_DIR/AppIcon.icns" "$STAGING_DIR/.VolumeIcon.icns"
 
 echo "=== 3. Creating Temporary RW Disk Image ==="
 TEMP_DMG="/tmp/temp_uni.dmg"
-RELEASE_DIR="$PROJECT_DIR/release"
-mkdir -p "$RELEASE_DIR"
 FINAL_DMG="$RELEASE_DIR/uni.dmg"
 rm -f "$TEMP_DMG" "$FINAL_DMG"
 
