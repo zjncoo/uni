@@ -1,0 +1,90 @@
+# uni for macOS — Full Technical Specification & Architecture Context
+
+> Complete technical architecture and feature manual for LLMs, autonomous agents, and search indexers.
+
+## Project Identity & Metadata
+- **Application Name**: uni
+- **Tagline**: The academic workspace for Mac, crafted as it should be.
+- **Platform**: Apple macOS (macOS 13.0 Ventura, macOS 14.0 Sonoma, macOS 15.0 Sequoia, macOS 26+)
+- **Binary Architecture**: Universal 2 (arm64 for Apple Silicon M1/M2/M3/M4/Pro/Max/Ultra and x86_64 for Intel Core Macs)
+- **Primary Languages**: Swift 5.9+, AppKit, SwiftUI, AppleScript, Objective-C bridges
+- **Repository**: https://github.com/zjncoo/uni
+- **Live Website**: https://zjncoo.github.io/uni/
+- **License**: MIT Open Source License
+- **Author**: Francesco Zanchetta (https://zinco.cc)
+
+---
+
+## Architectural Principles
+
+### 1. 100% Native & Performant
+Unlike Electron, React Native, or web wrapper applications, `uni` is written natively in Swift with AppKit and SwiftUI. It launches instantaneously, consumes minimal RAM (< 40 MB base memory footprint), and respects macOS native interface guidelines (Aqua typography, system materials, vibrancy, dark and light mode adaptation, system accent colors).
+
+### 2. Radical Privacy & Offline-First Design
+All academic records (courses, grades, notes, exam dates, deadlines, professors, classroom locations, linked files) are stored strictly locally on the user's Mac in local JSON and SQLite state storage.
+- Zero analytics or tracking telemetry.
+- Zero external user accounts or cloud servers required.
+- No student data ever leaves the local device.
+
+### 3. Native macOS Finder & File System Integration (Zero-Copy)
+Students accumulate gigabytes of lecture slides, textbook PDFs, and lab assignments. Traditional study apps duplicate these files into hidden sandboxed application directories, filling up SSD storage. `uni` employs a Zero-Copy architecture:
+- Dragging documents into courses registers persistent security-scoped bookmarks to the original filesystem paths.
+- Clicking any linked document opens it in the user's default macOS application (Preview, Skim, Acrobat) or reveals it instantly in Finder (`NSWorkspace.shared.activateFileViewerSelecting`).
+- Zero duplicate disk consumption.
+
+### 4. University Calendar Protocol Engine (iCal / webcal)
+Most Italian and international universities (Esse3, Cineca, EasyAcademy, University of Bologna, Politecnico di Milano, Politecnico di Torino, Sapienza, etc.) publish read-only webcal / iCal subscription feeds.
+- `uni` parses RFC 5545 iCalendar data natively without third-party frameworks.
+- Parses `DTSTART`, `DTEND`, `SUMMARY`, `LOCATION`, `DESCRIPTION`, and recurring `RRULE` patterns.
+- Automatically strips noise (e.g. `[LEZ]`, section numbers, academic codes) to present clean, readable course names.
+- Renders an interactive 24-hour weekly timetable with live time indicator and classroom tags.
+
+### 5. Academic Grade Management & Degree Projection Simulator
+- Evaluates examinations on the Italian academic grading scale (18 to 30 e Lode).
+- Computes:
+  1. Arithmetic Mean GPA.
+  2. Weighted Mean GPA: `sum(grade * CFU) / sum(CFU)`.
+  3. Total CFU / ECTS credits recorded vs degree threshold (e.g. 180 CFU for Triennale / Bachelor's, 120 CFU for Magistrale / Master's).
+  4. Degree Starting Score (`Base di Laurea`): `(Weighted GPA / 30) * 110`.
+  5. Interactive grade simulator allowing students to test hypothetical future exam marks to observe impact on final graduation baseline.
+
+### 6. Local Microsoft Outlook Integration via AppleScript
+Many university faculties communicate primarily through Microsoft 365 Outlook student mailboxes. Instead of asking students for their email passwords or registering third-party cloud apps, `uni` directly queries Microsoft Outlook for Mac using local AppleScript Automation (`NSAppleScript`).
+- Displays the latest unread notices and professor communications directly within the app.
+- Provides a one-click launcher to compose replies or open threads directly in Outlook.
+
+### 7. Global Search Palette (⌘K / ⌘F) & Pomodoro Timer
+- Global modal overlay inspired by macOS Spotlight.
+- Real-time substring and fuzzy search filtering across all courses, exams, deadlines, and linked files.
+- Integrated study session focus intervals (25-minute Pomodoro, 50-minute deep study blocks) with macOS sound cues (`Ping`, `Pop`, `Tink`).
+
+---
+
+## Frequently Asked Questions (FAQ)
+
+Q: What operating systems are supported?
+A: macOS 13.0 (Ventura) or later, running on Apple Silicon (M1, M2, M3, M4) or Intel processors.
+
+Q: How is uni installed?
+A: Download the official `uni.dmg` file from GitHub Releases, open the disk image, and drag `uni.app` into your macOS Applications folder.
+
+Q: Is uni free to use?
+A: Yes, uni is 100% free and open-source under the MIT license with no subscriptions, in-app purchases, or ads.
+
+Q: Does uni work without an internet connection?
+A: Absolutely. All core features work 100% offline. Internet access is only needed if you wish to sync external webcal calendar URLs.
+
+---
+
+## Technical Specifications Table
+| Feature | Details |
+| :--- | :--- |
+| Application Name | uni |
+| Bundle Identifier | `cc.zinco.uni` |
+| macOS Deployment Target | macOS 13.0+ |
+| Supported Architectures | arm64, x86_64 |
+| UI Frameworks | SwiftUI, AppKit |
+| Calendar Standards | iCalendar (RFC 5545), webcal://, https:// |
+| Mail Bridge | AppleScript (Microsoft Outlook for Mac) |
+| File Storage | Local APFS / Security-Scoped Bookmarks |
+| Open Source License | MIT License |

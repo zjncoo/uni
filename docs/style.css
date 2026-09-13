@@ -1719,6 +1719,98 @@ h1, h2, h3, h4 {
 }
 
 /* ===================================================================
+   FAQ Section (Schema & SEO Optimized)
+   =================================================================== */
+.faq-section {
+  padding: 80px 0 100px;
+  background: var(--bg-canvas);
+}
+
+.faq-accordion-container {
+  max-width: 780px;
+  margin: 40px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.faq-item {
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.faq-item:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+}
+
+.faq-item[open] {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  font-size: 0.96rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  transition: color var(--transition-fast);
+}
+
+.faq-question::-webkit-details-marker {
+  display: none;
+}
+
+.faq-question:focus-visible {
+  outline: 2px solid #6366F1;
+  outline-offset: -2px;
+}
+
+.faq-icon {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6366F1;
+  background: rgba(99, 102, 241, 0.08);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.faq-item[open] .faq-icon {
+  transform: rotate(180deg);
+  background: rgba(99, 102, 241, 0.16);
+}
+
+.faq-answer {
+  padding: 0 22px 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.faq-answer p {
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  font-weight: 350;
+  margin: 14px 0 0;
+}
+
+/* ===================================================================
    Responsive Breakpoints
    =================================================================== */
 @media (max-width: 900px) {

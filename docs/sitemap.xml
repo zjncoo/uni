@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://zjncoo.github.io/uni/</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    
+    <!-- Multilingual Alternates -->
+    <xhtml:link rel="alternate" hreflang="it" href="https://zjncoo.github.io/uni/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://zjncoo.github.io/uni/?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://zjncoo.github.io/uni/" />
+
+    <!-- Google Image Sitemap entries -->
+    <image:image>
+      <image:loc>https://zjncoo.github.io/uni/assets/screenshots/dashboard.png</image:loc>
+      <image:title>uni for macOS — Dashboard &amp; NEXT Widget</image:title>
+      <image:caption>Dashboard con widget NEXT, orario lezioni, scadenze e appelli d'esame in uni per Mac</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://zjncoo.github.io/uni/assets/screenshots/calendar.png</image:loc>
+      <image:title>uni for macOS — Orario Settimanale 24h &amp; Calendario</image:title>
+      <image:caption>Visualizzazione orario lezioni settimanale sincronizzato da calendari universitari iCal</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://zjncoo.github.io/uni/assets/screenshots/deadlines.png</image:loc>
+      <image:title>uni for macOS — Gestione Scadenze &amp; Priorità</image:title>
+      <image:caption>Scadenze accademiche con badge di priorità colorati e countdown in tempo reale</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://zjncoo.github.io/uni/assets/screenshots/exams.png</image:loc>
+      <image:title>uni for macOS — Carriera, Esami &amp; Media Ponderata</image:title>
+      <image:caption>Calcolo automatico della media ponderata, CFU e proiezione del voto di partenza di laurea</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://zjncoo.github.io/uni/assets/screenshots/search.png</image:loc>
+      <image:title>uni for macOS — Ricerca Globale Spotlight ⌘K / ⌘F</image:title>
+      <image:caption>Palette di ricerca istantanea in stile Spotlight macOS per corsi, slide e appelli</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://zjncoo.github.io/uni/assets/dmg_showcase.png</image:loc>
+      <image:title>uni for macOS — Installazione DMG Semplificata</image:title>
+      <image:caption>Esperienza di installazione macOS: trascina l'icona di uni nella cartella Applicazioni</image:caption>
+    </image:image>
+  </url>
+</urlset>

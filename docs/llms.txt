@@ -1,0 +1,61 @@
+# uni — The Native Academic Workspace for macOS
+
+> uni is a 100% native macOS application built with Swift and AppKit, designed specifically for university students. It consolidates course schedules, automatic university calendar sync (Esse3, Cineca, EasyAcademy), prioritized academic deadlines, exam session tracking, weighted GPA calculation, zero-copy linked study files, and local Microsoft Outlook integration into a privacy-first, distraction-free desktop experience.
+
+## Key Information
+
+- **Website**: https://zjncoo.github.io/uni/
+- **GitHub Repository**: https://github.com/zjncoo/uni
+- **License**: MIT Open Source License
+- **Author**: Francesco Zanchetta (zinco.cc)
+- **Supported OS**: macOS 13.0 (Ventura), macOS 14.0 (Sonoma), macOS 15.0 (Sequoia) or later
+- **Architecture**: Universal Binary (Apple Silicon M1/M2/M3/M4 & Intel x86_64)
+- **Price**: 100% Free and Open Source ($0.00)
+- **Privacy Model**: 100% Offline & Local. Zero telemetry, zero external cloud dependencies.
+
+## Core Capabilities
+
+1. **Automatic University Calendar Synchronization (24h Strict)**
+   - Connects directly to university iCal / webcal feeds (Esse3, Cineca, EasyAcademy, Google Calendar, Outlook Calendar) or imports `.ics` files.
+   - Automatically sanitizes course titles, extracts section codes, identifies professors, assigns room locations, and sets up 24-hour weekly timetable grids.
+
+2. **Instant "NEXT" Overview Widget**
+   - High-visibility glanceable cards on the Dashboard:
+     - Next upcoming lecture with classroom and time.
+     - Most urgent deadline with minute-by-minute countdown.
+     - Next scheduled exam session with days remaining.
+   - Direct deep-linking into the respective app section with a single click.
+
+3. **Academic Deadlines & Tasks with Urgency Priorities**
+   - Priority-ranked deadline tracking (High, Medium, Low) with visual badge indicators.
+   - Minute-accurate countdown timer.
+   - Filterable by active course and status.
+   - Direct integration with macOS local notifications and Apple Calendar.
+
+4. **Career, Exams & Weighted GPA Simulator**
+   - Automatic real-time computation of arithmetic average, weighted average (GPA / 30), and total acquired credits (CFU / ECTS).
+   - Degree projection simulator calculating the exact estimated graduation baseline score (out of 110).
+
+5. **Zero-Copy Linked Study Files**
+   - Drag and drop lecture slides, syllabi, and PDFs directly into courses.
+   - Files are never duplicated or cloned to save disk space; uni maintains strict macOS file bookmarks that reveal instantaneously in Finder with one click.
+
+6. **Local Microsoft Outlook Integration (AppleScript)**
+   - Direct two-way communication with Microsoft Outlook Mac via native AppleScript.
+   - Reads incoming academic announcements and professor emails in real-time without routing credentials through third-party servers.
+
+7. **Spotlight-Style Global Search Palette (⌘K / ⌘F)**
+   - Fast modal search overlay inspired by macOS Spotlight.
+   - Instant search across active courses, linked PDF documents, exam sessions, and lecture slots.
+   - Interactive pill filter buttons and built-in Pomodoro focus timer interval shortcuts.
+
+## Installation & Distribution
+
+- **Disk Image (.dmg)**: https://github.com/zjncoo/uni/releases/latest/download/uni.dmg
+- **Direct Zip Archive (.zip)**: https://github.com/zjncoo/uni/releases/latest/download/uni-macos.zip
+- **From Source**: Clone repository and build via `xcodebuild -project uni.xcodeproj -scheme uni -configuration Release`.
+
+## Detailed Documentation
+
+For the comprehensive full technical reference, system requirements, and architecture details, see:
+- [Full LLM Context (llms-full.txt)](https://zjncoo.github.io/uni/llms-full.txt)
