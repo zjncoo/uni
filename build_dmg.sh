@@ -32,9 +32,11 @@ fi
 
 echo "=== uni.app successfully built at $APP_BUNDLE ==="
 
-# Ensure AppIcon.icns is in the app bundle resources
+# Ensure AppIcon.icns and uni_updater.sh are in the app bundle resources
 cp "$PROJECT_DIR/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns" || true
 cp "$PROJECT_DIR/docs/assets/icon.png" "$APP_BUNDLE/Contents/Resources/AppIcon.png" || true
+cp "$PROJECT_DIR/uni_updater.sh" "$APP_BUNDLE/Contents/Resources/uni_updater.sh" || true
+chmod +x "$APP_BUNDLE/Contents/Resources/uni_updater.sh" || true
 
 echo "=== 2. Preparing Staging Directory for DMG ==="
 STAGING_DIR="/tmp/uni_dmg_staging"

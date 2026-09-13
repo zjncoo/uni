@@ -133,20 +133,55 @@ class UpdateManager: ObservableObject {
     func installUpdate() async {
         guard let release = availableRelease else { return }
 
-        // 1. Copy the updater script from app bundle to /tmp (outside sandbox)
-        guard let scriptURL = Bundle.main.url(forResource: "uni_updater", withExtension: "sh") else {
-            updateState = .error("Updater script not found in bundle")
-            return
-        }
-
+        // 1. Prepare the updater script in /tmp (outside sandbox)
         let tmpScript = URL(fileURLWithPath: "/tmp/uni_updater_\(Int(Date().timeIntervalSince1970)).sh")
-        do {
-            try FileManager.default.copyItem(at: scriptURL, to: tmpScript)
-            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tmpScript.path)
-        } catch {
-            updateState = .error("Cannot copy updater script: \(error.localizedDescription)")
-            return
+        if let scriptURL = Bundle.main.url(forResource: "uni_updater", withExtension: "sh") {
+            try? FileManager.default.copyItem(at: scriptURL, to: tmpScript)
         }
+        
+        if !FileManager.default.fileExists(atPath: tmpScript.path) {
+            let embeddedScript = """
+            #!/bin/bash
+            set -euo pipefail
+            DMG_URL="${1:-https://github.com/zjncoo/uni/releases/latest/download/uni.dmg}"
+            OLD_PID="${2:-}"
+            APP_DEST="/Applications/uni.app"
+            TMP_DMG="/tmp/uni_update_$(date +%s).dmg"
+            MOUNT_POINT="/Volumes/uni_update"
+            echo "[uni-updater] Downloading uni.dmg from $DMG_URL..."
+            curl -L --progress-bar -o "$TMP_DMG" "$DMG_URL"
+            hdiutil detach "$MOUNT_POINT" -force 2>/dev/null || true
+            hdiutil attach "$TMP_DMG" -nobrowse -readonly -mountpoint "$MOUNT_POINT" -quiet
+            sleep 1
+            if [ ! -d "$MOUNT_POINT/uni.app" ]; then
+                hdiutil detach "$MOUNT_POINT" -force 2>/dev/null || true
+                rm -f "$TMP_DMG"
+                exit 1
+            fi
+            if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+                kill -TERM "$OLD_PID" 2>/dev/null || true
+                sleep 2
+                kill -KILL "$OLD_PID" 2>/dev/null || true
+            fi
+            pkill -x "uni" 2>/dev/null || true
+            sleep 1
+            rm -rf "$APP_DEST"
+            cp -R "$MOUNT_POINT/uni.app" "$APP_DEST"
+            xattr -rc "$APP_DEST" 2>/dev/null || true
+            hdiutil detach "$MOUNT_POINT" -force -quiet 2>/dev/null || true
+            rm -f "$TMP_DMG"
+            sleep 0.5
+            open -n "$APP_DEST"
+            """
+            do {
+                try embeddedScript.write(to: tmpScript, atomically: true, encoding: .utf8)
+            } catch {
+                updateState = .error("Cannot write updater script: \(error.localizedDescription)")
+                return
+            }
+        }
+        
+        try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tmpScript.path)
 
         let pid = String(ProcessInfo.processInfo.processIdentifier)
         let dmgURL = release.dmgDownloadURL
