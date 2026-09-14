@@ -2,7 +2,7 @@
 //  ThemeManager.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -33,12 +33,42 @@ public enum AppThemeMode: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - App Font Design
+public enum AppFontDesign: String, CaseIterable, Identifiable {
+    case modern = "modern"          // Sans-serif geometrico sottile
+    case serif = "serif"            // Serif editoriale raffinato
+    case monospaced = "monospaced"  // Monospace tecnico
+    case rounded = "rounded"        // Arrotondato minimal
+    
+    public var id: String { rawValue }
+    
+    public var displayName: String {
+        switch self {
+        case .modern: return "Geometrico Sottile"
+        case .serif: return "Serif Editoriale"
+        case .monospaced: return "Monospazio Tecnico"
+        case .rounded: return "Arrotondato"
+        }
+    }
+    
+    public var swiftUIDesign: Font.Design {
+        switch self {
+        case .modern: return .default
+        case .serif: return .serif
+        case .monospaced: return .monospaced
+        case .rounded: return .rounded
+        }
+    }
+}
+
 // MARK: - Theme Manager
 public class ThemeManager: ObservableObject {
     public static let shared = ThemeManager()
     
     private static let storageKey = "uni_accent_color_hex"
     private static let themeModeStorageKey = "uni_theme_mode"
+    private static let fontDesignStorageKey = "uni_font_design"
+    private static let customFontStorageKey = "uni_custom_font_family"
     
     @Published public var accentColorHex: String {
         didSet {
@@ -53,10 +83,27 @@ public class ThemeManager: ObservableObject {
         }
     }
     
+    @Published public var fontDesign: AppFontDesign {
+        didSet {
+            UserDefaults.standard.set(fontDesign.rawValue, forKey: Self.fontDesignStorageKey)
+        }
+    }
+    
+    @Published public var customFontFamily: String {
+        didSet {
+            UserDefaults.standard.set(customFontFamily, forKey: Self.customFontStorageKey)
+        }
+    }
+    
     public init() {
         self.accentColorHex = UserDefaults.standard.string(forKey: Self.storageKey) ?? "#0D5BFF"
         let savedMode = UserDefaults.standard.string(forKey: Self.themeModeStorageKey) ?? AppThemeMode.system.rawValue
         self.themeMode = AppThemeMode(rawValue: savedMode) ?? .system
+        
+        let savedFontDesign = UserDefaults.standard.string(forKey: Self.fontDesignStorageKey) ?? AppFontDesign.modern.rawValue
+        self.fontDesign = AppFontDesign(rawValue: savedFontDesign) ?? .modern
+        self.customFontFamily = UserDefaults.standard.string(forKey: Self.customFontStorageKey) ?? ""
+        
         applyAppearance()
     }
     
@@ -75,12 +122,13 @@ public class ThemeManager: ObservableObject {
         #endif
     }
     
-    // Preset di colori d'accento in stile Apple / Modern
+    // Preset di colori d'accento personalizzabili dall'utente
     public static let presets: [(name: String, hex: String)] = [
-        ("Blu Apple", "#0D5BFF"),
+        ("Arancio", "#FF5500"),
+        ("Blu Cobalto", "#0D5BFF"),
         ("Smeraldo", "#10B981"),
         ("Viola Elettrico", "#8B5CF6"),
-        ("Arancio", "#F59E0B"),
+        ("Arancio Caldo", "#F59E0B"),
         ("Rosso", "#EF4444"),
         ("Grafite", "#4B5563"),
         ("Ciano", "#06B6D4"),
@@ -192,45 +240,104 @@ extension Color {
     }
 }
 
-// MARK: - Apple Style Typography (SF Pro)
+// MARK: - Scandinavian / Geometric Modern Typography (Sottile & Personalizzabile)
 public struct UniFont {
+    private static var activeDesign: Font.Design {
+        ThemeManager.shared.fontDesign.swiftUIDesign
+    }
+    
+    private static var customFamily: String {
+        ThemeManager.shared.customFontFamily.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private static func font(size: CGFloat, weight: Font.Weight, design: Font.Design? = nil) -> Font {
+        let custom = customFamily
+        if !custom.isEmpty {
+            return .custom(custom, size: size)
+        }
+        return .system(size: size, weight: weight, design: design ?? activeDesign)
+    }
+    
+    /// Numero o lettera display gigante per statistiche d'impatto - leggero e raffinato
+    public static func displayGigantic() -> Font {
+        font(size: 40, weight: .light)
+    }
+    
+    /// Valore numerico metrico per statistiche primarie (es. CFU, Media, Percentuali)
+    public static func displayMetric() -> Font {
+        font(size: 26, weight: .light)
+    }
+    
+    /// Font display parametrico per dimensioni personalizzate
+    public static func display(_ size: CGFloat, weight: Font.Weight = .light) -> Font {
+        font(size: size, weight: weight)
+    }
+    
+    /// Micro-etichetta con tracking largo architettonico
+    public static func sectionLabel() -> Font {
+        font(size: 10, weight: .medium)
+    }
+    
     public static func largeTitle() -> Font {
-        .system(size: 26, weight: .semibold, design: .default)
+        font(size: 22, weight: .regular)
     }
     
     public static func title() -> Font {
-        .system(size: 19, weight: .regular, design: .default)
+        font(size: 16.5, weight: .regular)
     }
     
     public static func headline() -> Font {
-        .system(size: 14, weight: .medium, design: .default)
+        font(size: 13.5, weight: .medium)
     }
     
     public static func body() -> Font {
-        .system(size: 13, weight: .light, design: .default)
+        font(size: 13, weight: .light)
     }
     
     public static func subheadline() -> Font {
-        .system(size: 12, weight: .light, design: .default)
+        font(size: 12, weight: .light)
     }
     
     public static func caption() -> Font {
-        .system(size: 11, weight: .regular, design: .default)
+        font(size: 11, weight: .light)
     }
     
     public static func mono() -> Font {
-        .system(size: 12, weight: .light, design: .monospaced)
+        let custom = customFamily
+        if !custom.isEmpty {
+            return .custom(custom, size: 12)
+        }
+        return .system(size: 12, weight: .light, design: .monospaced)
     }
 }
 
-// MARK: - Polished Apple-Style UI Components
+// MARK: - Card Style
+public enum UniCardStyle {
+    case surface       // Superficie piana antracite scura / bianco puro con bordo micro-fine
+    case accentHero    // Sfondo solido nel colore d'accento ad alto contrasto
+    case secondary     // Grigio secondario pulito
+    case outline       // Solo contorno geometrico
+}
+
+// MARK: - Polished Minimalist Bento Card (Riquadri con Spigoli Vivi)
 public struct UniCard<Content: View>: View {
     let content: Content
     var padding: CGFloat = 16
-    @Environment(\.colorScheme) private var colorScheme
+    var cornerRadius: CGFloat = 0 // Spigoli geometrici netti a 90°
+    var style: UniCardStyle = .surface
     
-    public init(padding: CGFloat = 16, @ViewBuilder content: () -> Content) {
+    @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var themeManager: ThemeManager
+    
+    public init(
+        padding: CGFloat = 16,
+        cornerRadius: CGFloat = 0,
+        style: UniCardStyle = .surface,
+        @ViewBuilder content: () -> Content
+    ) {
         self.padding = padding
+        self.cornerRadius = cornerRadius
+        self.style = style
         self.content = content()
     }
     
@@ -238,30 +345,157 @@ public struct UniCard<Content: View>: View {
         content
             .padding(padding)
             .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(cardBackground)
+                RoundedRectangle(cornerRadius: max(0, cornerRadius), style: .continuous)
+                    .fill(backgroundFill)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(borderColor, lineWidth: 1)
+                RoundedRectangle(cornerRadius: max(0, cornerRadius), style: .continuous)
+                    .strokeBorder(strokeBorderColor, lineWidth: 1)
             )
-            .shadow(color: colorScheme == .dark ? Color.black.opacity(0.24) : Color.black.opacity(0.035), radius: 3, x: 0, y: 1.5)
+            .clipShape(
+                RoundedRectangle(cornerRadius: max(0, cornerRadius), style: .continuous)
+            )
     }
     
-    private var cardBackground: Color {
-        #if canImport(AppKit)
-        if colorScheme == .dark {
-            return Color(nsColor: .controlBackgroundColor).opacity(0.85)
-        } else {
-            return Color.white
+    private var backgroundFill: Color {
+        switch style {
+        case .accentHero:
+            return themeManager.accentColor
+        case .surface:
+            return colorScheme == .dark ? Color(hex: "#141414")! : Color.white
+        case .secondary:
+            return colorScheme == .dark ? Color(hex: "#1C1C1E")! : Color(hex: "#F2F3F5")!
+        case .outline:
+            return Color.clear
         }
-        #else
-        return colorScheme == .dark ? Color(white: 0.15) : Color.white
-        #endif
     }
     
-    private var borderColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.11) : Color.black.opacity(0.065)
+    private var strokeBorderColor: Color {
+        switch style {
+        case .accentHero:
+            return Color.clear
+        case .surface:
+            return colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06)
+        case .secondary:
+            return colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.04)
+        case .outline:
+            return colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.10)
+        }
+    }
+}
+
+// MARK: - Minimalist Block Progress Gauge (Indicatore Geometrico a Blocchi)
+public struct UniBlockProgress: View {
+    var value: Double       // 0.0 ... 1.0
+    var height: CGFloat = 10
+    var cornerRadius: CGFloat = 0 // Spigoli geometrici netti
+    var activeColor: Color? = nil
+    
+    @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var themeManager: ThemeManager
+    
+    public init(value: Double, height: CGFloat = 10, cornerRadius: CGFloat = 0, activeColor: Color? = nil) {
+        self.value = max(0, min(1.0, value))
+        self.height = height
+        self.cornerRadius = cornerRadius
+        self.activeColor = activeColor
+    }
+    
+    public var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                // Sfondo barra neutro scuro
+                Rectangle()
+                    .fill(colorScheme == .dark ? Color(hex: "#2C2C2E")! : Color(hex: "#E5E5EA")!)
+                
+                // Blocco riempito pieno
+                Rectangle()
+                    .fill(activeColor ?? themeManager.accentColor)
+                    .frame(width: max(0, geo.size.width * CGFloat(value)))
+            }
+        }
+        .frame(height: height)
+    }
+}
+
+// MARK: - Minimalist Bento Tile (Modular Grid Tile con Spigoli Netti)
+public struct UniBentoTile<TopTrailing: View, BottomContent: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    var isHero: Bool = false
+    var cornerRadius: CGFloat = 0
+    var topTrailing: TopTrailing
+    var bottomContent: BottomContent
+    
+    @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var themeManager: ThemeManager
+    
+    public init(
+        title: String,
+        subtitle: String? = nil,
+        isHero: Bool = false,
+        cornerRadius: CGFloat = 0,
+        @ViewBuilder topTrailing: () -> TopTrailing,
+        @ViewBuilder bottomContent: () -> BottomContent
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.isHero = isHero
+        self.cornerRadius = cornerRadius
+        self.topTrailing = topTrailing()
+        self.bottomContent = bottomContent()
+    }
+    
+    public var body: some View {
+        UniCard(padding: 16, cornerRadius: cornerRadius, style: isHero ? .accentHero : .surface) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Riga superiore: Titolo e azione / menu
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(UniFont.headline())
+                            .foregroundStyle(isHero ? themeManager.accentTextColor : .primary)
+                            .lineLimit(2)
+                        
+                        if let subtitle = subtitle {
+                            Text(subtitle)
+                                .font(UniFont.caption())
+                                .foregroundStyle(isHero ? themeManager.accentTextColor.opacity(0.85) : .secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    topTrailing
+                }
+                
+                Spacer(minLength: 20)
+                
+                // Sezione inferiore: icona al tratto o metrica
+                bottomContent
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+extension UniBentoTile where TopTrailing == EmptyView {
+    public init(
+        title: String,
+        subtitle: String? = nil,
+        isHero: Bool = false,
+        cornerRadius: CGFloat = 0,
+        @ViewBuilder bottomContent: () -> BottomContent
+    ) {
+        self.init(
+            title: title,
+            subtitle: subtitle,
+            isHero: isHero,
+            cornerRadius: cornerRadius,
+            topTrailing: { EmptyView() },
+            bottomContent: bottomContent
+        )
     }
 }
 
@@ -278,28 +512,27 @@ public struct UniBadge: View {
     }
     
     public var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
             if let icon = icon {
                 Image(systemName: icon)
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 9, weight: .bold))
             } else {
                 Circle()
                     .fill(color)
                     .frame(width: 5, height: 5)
             }
-            Text(text)
-                .font(UniFont.caption())
-                .fontWeight(.semibold)
+            Text(text.uppercased())
+                .font(.system(size: 9.5, weight: .bold))
+                .tracking(0.6)
         }
         .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .background(color.opacity(colorScheme == .dark ? 0.18 : 0.10))
+        .padding(.vertical, 3.5)
+        .background(color.opacity(colorScheme == .dark ? 0.16 : 0.09))
         .foregroundStyle(textColor)
-        .clipShape(Capsule())
+        .clipShape(Rectangle())
     }
     
     private var textColor: Color {
-        // Se il badge ha colore secondario o chiaro in light mode, garantiamo contrasto
         if colorScheme == .dark {
             return color
         } else {
@@ -370,7 +603,7 @@ public struct UniEmptyStateView: View {
                     .padding(.vertical, 6)
                     .background(themeManager.accentColor)
                     .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .clipShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 4)
@@ -380,7 +613,7 @@ public struct UniEmptyStateView: View {
         .padding(.vertical, 32)
         .padding(.horizontal, 18)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            Rectangle()
                 .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                 .foregroundStyle(Color.primary.opacity(0.08))
         )
@@ -404,12 +637,12 @@ public struct UniHeader: View {
     
     public var body: some View {
         HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 if let subtitle = subtitle {
                     Text(subtitle.uppercased())
-                        .font(UniFont.caption())
+                        .font(UniFont.sectionLabel())
                         .foregroundStyle(.secondary)
-                        .tracking(0.8)
+                        .tracking(1.4)
                 }
                 Text(title)
                     .font(UniFont.largeTitle())
@@ -421,7 +654,7 @@ public struct UniHeader: View {
             
             if let actionTitle = actionTitle, let action = action {
                 Button(action: action) {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 6) {
                         Image(systemName: "plus")
                             .font(.system(size: 10, weight: .bold))
                         Text(actionTitle)
@@ -431,7 +664,8 @@ public struct UniHeader: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(Color.primary.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                    .clipShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }

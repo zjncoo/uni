@@ -11,7 +11,7 @@
 - **Repository**: https://github.com/zjncoo/uni
 - **Live Website**: https://zjncoo.github.io/uni/
 - **License**: MIT Open Source License
-- **Author**: Francesco Zanchetta (https://zinco.cc)
+- **Author**: zinco.cc (https://zinco.cc)
 
 ---
 

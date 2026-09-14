@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -40,7 +40,8 @@ struct ContentView: View {
                                 .resizable()
                                 .interpolation(.high)
                                 .frame(width: 22, height: 22)
-                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                                .clipShape(Rectangle())
+                                .overlay(Rectangle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
                         }
                         #endif
                         
@@ -67,11 +68,12 @@ struct ContentView: View {
                             .padding(.horizontal, 7)
                             .padding(.vertical, 4)
                             .background(Color.primary.opacity(0.06))
-                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            .overlay(Rectangle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
+                            .clipShape(Rectangle())
                             .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
-                        .help("Cerca rapidamente in tutto uni (⌘F)")
+                        .help(localizationManager.text(it: "Cerca rapidamente in tutto uni (⌘F)", en: "Quick search throughout uni (⌘F)"))
                     }
                     .padding(.horizontal, 18)
                     .padding(.top, 18)
@@ -114,10 +116,10 @@ struct ContentView: View {
                             }
                             .buttonStyle(.plain)
                         } header: {
-                            Text(localizationManager.t(.navGeneral))
-                                .font(UniFont.caption())
+                            Text(localizationManager.t(.navGeneral).uppercased())
+                                .font(UniFont.sectionLabel())
                                 .foregroundStyle(.secondary)
-                                .tracking(1.0)
+                                .tracking(1.4)
                         }
                         
                         // Sezione Materie / Didattica
@@ -135,10 +137,10 @@ struct ContentView: View {
                                 }
                             }
                         } header: {
-                            Text(localizationManager.t(.navCoursesSection))
-                                .font(UniFont.caption())
+                            Text(localizationManager.t(.navCoursesSection).uppercased())
+                                .font(UniFont.sectionLabel())
                                 .foregroundStyle(.secondary)
-                                .tracking(1.0)
+                                .tracking(1.4)
                         }
                         
                         // Sezione Scadenze, Esami & Assignments
@@ -151,12 +153,13 @@ struct ContentView: View {
                                     let count = dataManager.deadlines.filter { !$0.isCompleted }.count
                                     if count > 0 {
                                         Text("\(count)")
-                                            .font(UniFont.caption())
+                                            .font(.system(size: 9.5, weight: .bold))
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 2)
-                                            .background(themeManager.accentColor.opacity(0.15))
+                                            .background(themeManager.accentColor.opacity(0.18))
                                             .foregroundStyle(themeManager.accentColor)
-                                            .clipShape(Capsule())
+                                            .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
+                                            .clipShape(Rectangle())
                                     }
                                 }
                             }
@@ -189,10 +192,10 @@ struct ContentView: View {
                                 }
                             }
                         } header: {
-                            Text(localizationManager.t(.navActivitiesSection))
-                                .font(UniFont.caption())
+                            Text(localizationManager.t(.navActivitiesSection).uppercased())
+                                .font(UniFont.sectionLabel())
                                 .foregroundStyle(.secondary)
-                                .tracking(1.0)
+                                .tracking(1.4)
                         }
                         
                         Section {
@@ -201,40 +204,45 @@ struct ContentView: View {
                                     .font(UniFont.body())
                             }
                         } header: {
-                            Text(localizationManager.currentLanguage == .italian ? "SISTEMA" : "SYSTEM")
-                                .font(UniFont.caption())
+                            Text((localizationManager.currentLanguage == .italian ? "SISTEMA" : "SYSTEM").uppercased())
+                                .font(UniFont.sectionLabel())
                                 .foregroundStyle(.secondary)
-                                .tracking(1.0)
+                                .tracking(1.4)
                         }
                     }
                     .listStyle(.sidebar)
                     
-                    // Footer Statistiche Rapide
+                    // Footer Statistiche Architettonico (con indicatore di avanzamento a blocco)
                     if dataManager.weightedAverage > 0 || dataManager.totalCfuTarget > 0 {
-                        VStack(spacing: 4) {
+                        VStack(spacing: 8) {
                             Divider()
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(localizationManager.t(.currentGPA))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                    Text(dataManager.weightedAverage > 0 ? String(format: "%.2f", dataManager.weightedAverage) : "--")
-                                        .font(UniFont.headline())
-                                        .foregroundStyle(themeManager.accentColor)
-                                }
-                                
-                                Spacer()
-                                
-                                VStack(alignment: .trailing, spacing: 2) {
-                                    Text(localizationManager.t(.totalCredits))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                    Text("\(dataManager.totalCfuAcquired) / \(dataManager.totalCfuTarget)")
-                                        .font(UniFont.headline())
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(localizationManager.t(.currentGPA).uppercased())
+                                            .font(UniFont.sectionLabel())
+                                            .foregroundStyle(.secondary)
+                                            .tracking(1.0)
+                                        Text(dataManager.weightedAverage > 0 ? String(format: "%.2f", dataManager.weightedAverage) : "--")
+                                            .font(UniFont.headline())
+                                            .foregroundStyle(themeManager.accentColor)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        Text(localizationManager.t(.totalCredits).uppercased())
+                                            .font(UniFont.sectionLabel())
+                                            .foregroundStyle(.secondary)
+                                            .tracking(1.0)
+                                        Text("\(dataManager.totalCfuAcquired) / \(dataManager.totalCfuTarget)")
+                                            .font(UniFont.headline())
+                                            .foregroundStyle(.primary)
+                                    }
                                 }
                             }
                             .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, 8)
                         }
                     }
                     
@@ -250,7 +258,8 @@ struct ContentView: View {
                                     .foregroundStyle(themeManager.accentColor)
                                     .frame(width: 28, height: 28)
                                     .background(themeManager.accentColor.opacity(0.12))
-                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
+                                    .clipShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .help(localizationManager.text(it: "Apri Microsoft Outlook / Posta", en: "Open Microsoft Outlook / Mail"))

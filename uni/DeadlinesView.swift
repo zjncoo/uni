@@ -2,7 +2,7 @@
 //  DeadlinesView.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -86,7 +86,8 @@ struct DeadlinesView: View {
                                         .padding(.vertical, 5)
                                         .background(filterMode == filter ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
                                         .foregroundStyle(filterMode == filter ? themeManager.accentColor : .primary)
-                                        .clipShape(Capsule())
+                                        .overlay(Rectangle().stroke(filterMode == filter ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1))
+                                        .clipShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -116,9 +117,9 @@ struct DeadlinesView: View {
                             }
                         }
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
                         .background(Color.primary.opacity(0.04))
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                        .clipShape(Rectangle())
                     }
                 }
                 
@@ -181,11 +182,11 @@ struct DeadlinesView: View {
                                     
                                     Spacer()
                                     
-                                    UniBadge(deadline.priority.rawValue, color: deadline.priority.color)
+                                    UniBadge(deadline.priority.localizedName, color: deadline.priority.color)
                                     
                                     Menu {
-                                        Button("Modifica") { deadlineToEdit = deadline }
-                                        Button("Elimina", role: .destructive) { deleteDeadline(deadline) }
+                                        Button(localizationManager.text(it: "Modifica", en: "Edit")) { deadlineToEdit = deadline }
+                                        Button(localizationManager.text(it: "Elimina", en: "Delete"), role: .destructive) { deleteDeadline(deadline) }
                                     } label: {
                                         Image(systemName: "ellipsis")
                                             .font(.system(size: 13))
@@ -333,9 +334,10 @@ struct DeadlineEditorSheet: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .fill(themeManager.accentColor.opacity(0.12))
                         .frame(width: 36, height: 36)
+                        .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
                     Image(systemName: "clock")
                         .font(.system(size: 16))
                         .foregroundStyle(themeManager.accentColor)

@@ -333,7 +333,7 @@ struct UpdateBannerView: View {
                                 .padding(.vertical, 5)
                                 .background(Color.orange)
                                 .foregroundStyle(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .clipShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .disabled(isInstalling)
@@ -350,7 +350,8 @@ struct UpdateBannerView: View {
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 5)
                                     .background(Color.primary.opacity(0.06))
-                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                                    .clipShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }

@@ -2,7 +2,7 @@
 //  ColorPickerBoxView.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -63,9 +63,9 @@ public struct ColorPickerBoxView: View {
                         .frame(width: 14, height: 14)
                         .position(x: min(max(posX, 7), w - 7), y: min(max(posY, 7), h - 7))
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(Rectangle())
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .stroke(Color.primary.opacity(0.12), lineWidth: 1)
                 )
                 .contentShape(Rectangle())
@@ -101,9 +101,9 @@ public struct ColorPickerBoxView: View {
                         endPoint: .bottom
                     )
                     .frame(width: barWidth, height: barH)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .clipShape(Rectangle())
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        Rectangle()
                             .stroke(Color.primary.opacity(0.12), lineWidth: 1)
                     )
                     
@@ -145,11 +145,11 @@ public struct ColorPickerBoxView: View {
                         .font(UniFont.caption())
                         .foregroundStyle(.secondary)
                     
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .fill(themeManager.accentColor)
                         .frame(width: 80, height: 48)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            Rectangle()
                                 .stroke(Color.primary.opacity(0.15), lineWidth: 1)
                         )
                         .shadow(color: themeManager.accentColor.opacity(0.3), radius: 6, y: 2)
@@ -202,7 +202,8 @@ public struct ColorPickerBoxView: View {
                             }
                             .frame(width: 28, height: 24)
                             .background(Color.primary.opacity(0.05))
-                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                            .clipShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .help(localizationManager.currentLanguage == .italian ? "Copia codice esadecimale (⌘C)" : "Copy HEX code")

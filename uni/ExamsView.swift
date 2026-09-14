@@ -2,7 +2,7 @@
 //  ExamsView.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -69,23 +69,24 @@ struct ExamsView: View {
                     isPresentingNewExam = true
                 }
                 
-                // Statistiche di Laurea & Media
+                // Statistiche di Laurea & Media Architettoniche
                 HStack(spacing: 14) {
-                    UniCard(padding: 16) {
-                        VStack(alignment: .leading, spacing: 4) {
+                    UniCard(padding: 18, cornerRadius: 0, style: .surface) {
+                        VStack(alignment: .leading, spacing: 6) {
                             Text(localizationManager.t(.weightedAverage).uppercased())
-                                .font(UniFont.caption())
+                                .font(UniFont.sectionLabel())
                                 .foregroundStyle(.secondary)
-                                .tracking(0.6)
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                .tracking(1.4)
+                            
+                            HStack(alignment: .firstTextBaseline, spacing: 5) {
                                 Text(dataManager.weightedAverage > 0 ? String(format: "%.2f", dataManager.weightedAverage) : "--")
-                                    .font(UniFont.largeTitle())
-                                    .fontWeight(.bold)
+                                    .font(UniFont.displayGigantic())
                                     .foregroundStyle(themeManager.accentColor)
                                 Text("/ 30")
-                                    .font(UniFont.subheadline())
+                                    .font(UniFont.title())
                                     .foregroundStyle(.secondary)
                             }
+                            
                             Text(dataManager.estimatedGraduationGrade > 0 ? localizationManager.t(.startGrade(Int(round(dataManager.estimatedGraduationGrade)))) : localizationManager.t(.awaitingExams))
                                 .font(UniFont.caption())
                                 .foregroundStyle(.secondary)
@@ -93,36 +94,24 @@ struct ExamsView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     
-                    UniCard(padding: 16) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(localizationManager.t(.cfuProgress))
-                                .font(UniFont.caption())
+                    UniCard(padding: 18, cornerRadius: 0, style: .surface) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(localizationManager.t(.cfuProgress).uppercased())
+                                .font(UniFont.sectionLabel())
                                 .foregroundStyle(.secondary)
-                                .tracking(0.6)
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                .tracking(1.4)
+                            
+                            HStack(alignment: .firstTextBaseline, spacing: 5) {
                                 Text("\(dataManager.totalCfuAcquired)")
-                                    .font(UniFont.largeTitle())
-                                    .fontWeight(.bold)
+                                    .font(UniFont.displayGigantic())
                                 Text("/ \(dataManager.totalCfuTarget) CFU")
-                                    .font(UniFont.subheadline())
+                                    .font(UniFont.title())
                                     .foregroundStyle(.secondary)
                             }
                             
-                            // Progress Bar
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                        .fill(Color.primary.opacity(0.06))
-                                        .frame(height: 5)
-                                    
-                                    let progress = dataManager.totalCfuTarget > 0 ? min(Double(dataManager.totalCfuAcquired) / Double(dataManager.totalCfuTarget), 1.0) : 0.0
-                                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                        .fill(themeManager.accentColor)
-                                        .frame(width: geo.size.width * CGFloat(progress), height: 5)
-                                }
-                            }
-                            .frame(height: 5)
-                            .padding(.top, 3)
+                            let progress = dataManager.totalCfuTarget > 0 ? min(Double(dataManager.totalCfuAcquired) / Double(dataManager.totalCfuTarget), 1.0) : 0.0
+                            UniBlockProgress(value: progress, height: 8, cornerRadius: 0)
+                                .padding(.top, 4)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -143,10 +132,10 @@ struct ExamsView: View {
                                         .font(UniFont.subheadline())
                                         .fontWeight(filterStatus == filter ? .semibold : .regular)
                                         .padding(.horizontal, 12)
-                                        .padding(.vertical, 5)
                                         .background(filterStatus == filter ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
                                         .foregroundStyle(filterStatus == filter ? themeManager.accentColor : .primary)
-                                        .clipShape(Capsule())
+                                        .overlay(Rectangle().stroke(filterStatus == filter ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1))
+                                        .clipShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -176,9 +165,9 @@ struct ExamsView: View {
                             }
                         }
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
                         .background(Color.primary.opacity(0.04))
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                        .clipShape(Rectangle())
                     }
                 }
                 
@@ -279,8 +268,9 @@ struct ExamsView: View {
     private func deleteExam(_ exam: Exam) {
         dataManager.exams.removeAll { $0.id == exam.id }
         dataManager.saveData()
+        let isEn = localizationManager.currentLanguage == .english
         NotificationManager.shared.notify(
-            title: "Esame rimosso",
+            title: isEn ? "Exam removed" : "Esame rimosso",
             message: exam.title,
             type: .warning,
             icon: "trash"
@@ -294,6 +284,7 @@ struct ExamRowView: View {
     let exam: Exam
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var localizationManager: LocalizationManager
     
     var onEdit: () -> Void
     var onDelete: () -> Void
@@ -351,7 +342,7 @@ struct ExamRowView: View {
                     }
                     
                     HStack(spacing: 10) {
-                        Label(exam.type.rawValue, systemImage: "pencil.and.outline")
+                        Label(exam.type.localizedName, systemImage: "pencil.and.outline")
                         if !exam.room.isEmpty {
                             Label(exam.room, systemImage: "mappin")
                         }
@@ -366,10 +357,10 @@ struct ExamRowView: View {
                 
                 Spacer()
                 
-                UniBadge(exam.status.rawValue, color: exam.status.badgeColor)
+                UniBadge(exam.status.localizedName, color: exam.status.badgeColor)
                 
                 if exam.status != .passed {
-                    Button("Registra Voto") {
+                    Button(localizationManager.text(it: "Registra Voto", en: "Record Grade")) {
                         onRegisterGrade()
                     }
                     .font(UniFont.subheadline())
@@ -378,8 +369,8 @@ struct ExamRowView: View {
                 }
                 
                 Menu {
-                    Button("Modifica", action: onEdit)
-                    Button("Elimina", role: .destructive, action: onDelete)
+                    Button(localizationManager.text(it: "Modifica", en: "Edit"), action: onEdit)
+                    Button(localizationManager.text(it: "Elimina", en: "Delete"), role: .destructive, action: onDelete)
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 13))
@@ -422,9 +413,10 @@ struct RegisterGradeSheet: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .fill(Color.green.opacity(0.12))
                         .frame(width: 36, height: 36)
+                        .overlay(Rectangle().stroke(Color.green.opacity(0.3), lineWidth: 1))
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 16))
                         .foregroundStyle(Color.green)
@@ -522,9 +514,10 @@ struct ExamEditorSheet: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .fill(themeManager.accentColor.opacity(0.12))
                         .frame(width: 36, height: 36)
+                        .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
                     Image(systemName: "graduationcap")
                         .font(.system(size: 16))
                         .foregroundStyle(themeManager.accentColor)
@@ -690,10 +683,12 @@ struct WhatIfSimulatorCard: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Simulatore Media & Proiezione Laurea (What-If)")
+                            Text(localizationManager.text(it: "Simulatore Media & Proiezione Laurea (What-If)", en: "GPA Simulator & Degree Projection (What-If)"))
                                 .font(UniFont.headline())
                                 .foregroundStyle(.primary)
-                            Text(isExpanded ? "Configura CFU e voto ipotetico per calcolare l'impatto istantaneo" : "Clicca per simulare il voto del prossimo esame")
+                            Text(isExpanded 
+                                ? localizationManager.text(it: "Configura CFU e voto ipotetico per calcolare l'impatto istantaneo", en: "Set credits and hypothetical grade to calculate instant impact")
+                                : localizationManager.text(it: "Clicca per simulare il voto del prossimo esame", en: "Click to simulate your next exam grade"))
                                 .font(UniFont.caption())
                                 .foregroundStyle(.secondary)
                         }
@@ -714,7 +709,7 @@ struct WhatIfSimulatorCard: View {
                     HStack(spacing: 20) {
                         // CFU
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("CFU ESAME:")
+                            Text(localizationManager.text(it: "CFU ESAME:", en: "EXAM CREDITS:"))
                                 .font(UniFont.caption())
                                 .foregroundStyle(.secondary)
                                 .tracking(0.6)
@@ -733,7 +728,7 @@ struct WhatIfSimulatorCard: View {
                         // Voto Ipotetico
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
-                                Text("VOTO IPOTETICO:")
+                                Text(localizationManager.text(it: "VOTO IPOTETICO:", en: "HYPOTHETICAL GRADE:"))
                                     .font(UniFont.caption())
                                     .foregroundStyle(.secondary)
                                     .tracking(0.6)
@@ -757,7 +752,7 @@ struct WhatIfSimulatorCard: View {
                     HStack(spacing: 12) {
                         // Proiezione Nuova Media
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("NUOVA MEDIA PREVISTA")
+                            Text(localizationManager.text(it: "NUOVA MEDIA PREVISTA", en: "PROJECTED NEW AVERAGE"))
                                 .font(UniFont.caption())
                                 .foregroundStyle(.secondary)
                             
@@ -768,25 +763,26 @@ struct WhatIfSimulatorCard: View {
                                     .foregroundStyle(themeManager.accentColor)
                                 
                                 if dataManager.weightedAverage > 0 {
-                                    let deltaStr = String(format: "%+.2f", averageDelta)
-                                    Text(deltaStr)
+                                    let avgDeltaStr = String(format: "%+.2f", averageDelta)
+                                    Text(avgDeltaStr)
                                         .font(.system(size: 11, weight: .bold))
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
                                         .background(averageDelta >= 0 ? Color.green.opacity(0.18) : Color.red.opacity(0.18))
                                         .foregroundStyle(averageDelta >= 0 ? Color.green : Color.red)
-                                        .clipShape(Capsule())
+                                        .clipShape(Rectangle())
                                 }
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(10)
                         .background(Color.primary.opacity(0.03))
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                        .clipShape(Rectangle())
                         
                         // Proiezione Base di Laurea
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("BASE LAUREA (/110)")
+                            Text(localizationManager.text(it: "BASE LAUREA (/110)", en: "GRADUATION BASE (/110)"))
                                 .font(UniFont.caption())
                                 .foregroundStyle(.secondary)
                             
@@ -804,14 +800,15 @@ struct WhatIfSimulatorCard: View {
                                         .padding(.vertical, 2)
                                         .background(graduationBaseDelta >= 0 ? Color.green.opacity(0.18) : Color.red.opacity(0.18))
                                         .foregroundStyle(graduationBaseDelta >= 0 ? Color.green : Color.red)
-                                        .clipShape(Capsule())
+                                        .clipShape(Rectangle())
                                 }
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(10)
                         .background(Color.primary.opacity(0.03))
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                        .clipShape(Rectangle())
                     }
                 }
             }

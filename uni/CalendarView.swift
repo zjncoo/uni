@@ -2,7 +2,7 @@
 //  CalendarView.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -140,16 +140,17 @@ struct CalendarView: View {
                                 .background(themeManager.accentColor)
                             
                             Text("\(calendar.component(.day, from: Date()))")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                                .font(UniFont.display(30))
+                                .fontWeight(.light)
                                 .foregroundStyle(.primary)
                                 .frame(width: 56, height: 40)
                                 .background(Color.primary.opacity(0.04))
                         }
                         .frame(width: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .clipShape(Rectangle())
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                            Rectangle()
+                                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
                         )
                         
                         VStack(alignment: .leading, spacing: 3) {
@@ -262,9 +263,10 @@ struct CalendarView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 10) {
                             ZStack {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                Rectangle()
                                     .fill(themeManager.accentColor.opacity(0.12))
                                     .frame(width: 30, height: 30)
+                                    .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
                                 Image(systemName: "link.badge.plus")
                                     .font(.system(size: 13))
                                     .foregroundStyle(themeManager.accentColor)
@@ -510,13 +512,12 @@ struct CalendarView: View {
                                                 Rectangle()
                                                     .fill(Color.red)
                                                     .frame(width: 3)
-                                                    .clipShape(Capsule())
                                                 VStack(alignment: .leading, spacing: 2) {
                                                     HStack {
                                                         Text(exam.title)
                                                             .font(UniFont.headline())
                                                         Spacer()
-                                                        UniBadge("Esame", color: .red)
+                                                        UniBadge(localizationManager.text(it: "Esame", en: "Exam"), color: .red)
                                                     }
                                                     if !exam.room.isEmpty {
                                                         Label(exam.room, systemImage: "mappin")
@@ -673,7 +674,6 @@ struct CalendarView: View {
                                                 Rectangle()
                                                     .fill(themeManager.accentColor)
                                                     .frame(width: 3)
-                                                    .clipShape(Capsule())
                                                 VStack(alignment: .leading, spacing: 3) {
                                                     HStack {
                                                         Text(event.title)
@@ -899,11 +899,11 @@ struct DayCellView: View {
         .frame(height: 50)
         .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            Rectangle()
                 .fill(isSelected ? themeManager.accentColor.opacity(0.12) : (isToday ? Color.primary.opacity(0.04) : Color.clear))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            Rectangle()
                 .stroke(isSelected ? themeManager.accentColor : Color.clear, lineWidth: 1.5)
         )
     }

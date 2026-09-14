@@ -2,7 +2,7 @@
 //  DataManager.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import Foundation
@@ -126,9 +126,6 @@ public class DataManager: ObservableObject {
                 self.universityPortalURL = payload.universityPortalURL ?? ""
                 self.hasCompletedOnboarding = payload.hasCompletedOnboarding ?? false
                 self.repairSyncedEventTimeZonesIfNeeded()
-                if !self.syncedEvents.isEmpty {
-                    self.resyncAllCourseSchedules()
-                }
                 // Sync widget data after load
                 WidgetDataProvider.shared.sync(from: self)
                 return

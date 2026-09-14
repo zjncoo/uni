@@ -2,7 +2,7 @@
 //  FocusTimerView.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -122,7 +122,8 @@ public struct FocusTimerView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(Color.primary.opacity(0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+            .clipShape(Rectangle())
             
             // Modalità Timer Tabs
             HStack(spacing: 6) {
@@ -137,7 +138,8 @@ public struct FocusTimerView: View {
                             .padding(.vertical, 6)
                             .background(currentMode == mode ? themeManager.accentColor.opacity(0.15) : Color.primary.opacity(0.04))
                             .foregroundStyle(currentMode == mode ? themeManager.accentColor : .primary)
-                            .clipShape(Capsule())
+                            .overlay(Rectangle().stroke(currentMode == mode ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1))
+                            .clipShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -195,7 +197,7 @@ public struct FocusTimerView: View {
                     .padding(.vertical, 10)
                     .background(themeManager.accentColor)
                     .foregroundStyle(themeManager.accentTextColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .clipShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 
@@ -206,7 +208,8 @@ public struct FocusTimerView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .padding(10)
                         .background(Color.primary.opacity(0.06))
-                        .clipShape(Circle())
+                        .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                        .clipShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help(localizationManager.text(it: "Azzera timer", en: "Reset timer"))
@@ -238,8 +241,12 @@ public struct FocusTimerView: View {
         }
         .frame(width: 480)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            Rectangle()
                 .fill(Color(nsColor: .windowBackgroundColor))
+        )
+        .overlay(
+            Rectangle()
+                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
         )
         .onDisappear {
             stopTimer()

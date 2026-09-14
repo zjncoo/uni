@@ -2,7 +2,7 @@
 //  AssignmentsView.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -91,9 +91,9 @@ struct AssignmentsView: View {
                             }
                         }
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
                         .background(Color.primary.opacity(0.04))
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                        .clipShape(Rectangle())
                     }
                 }
                 
@@ -181,7 +181,8 @@ struct AssignmentsView: View {
                 .padding(.vertical, 5)
                 .background(active ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
                 .foregroundStyle(active ? themeManager.accentColor : .primary)
-                .clipShape(Capsule())
+                .overlay(Rectangle().stroke(active ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1))
+                .clipShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -325,18 +326,19 @@ struct AssignmentCardView: View {
                     
                     HStack(spacing: 10) {
                         if assignment.weightPercent > 0 {
-                            Text("Peso: \(assignment.weightPercent)%")
+                            Text(localizationManager.text(it: "Peso: \(assignment.weightPercent)%", en: "Weight: \(assignment.weightPercent)%"))
                                 .font(UniFont.caption())
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 3)
                                 .background(themeManager.accentColor.opacity(0.1))
                                 .foregroundStyle(themeManager.accentColor)
-                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                                .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
+                                .clipShape(Rectangle())
                         }
                         
                         Menu {
-                            Button("Modifica", action: onEdit)
-                            Button("Elimina", role: .destructive, action: onDelete)
+                            Button(localizationManager.text(it: "Modifica", en: "Edit"), action: onEdit)
+                            Button(localizationManager.text(it: "Elimina", en: "Delete"), role: .destructive, action: onDelete)
                         } label: {
                             Image(systemName: "ellipsis")
                                 .font(.system(size: 13))
@@ -385,14 +387,14 @@ struct AssignmentCardView: View {
                             } label: {
                                 HStack(spacing: 4) {
                                     Image(systemName: "arrow.up.forward.square")
-                                    Text("Apri File")
+                                    Text(localizationManager.text(it: "Apri File", en: "Open File"))
                                 }
                                 .font(UniFont.caption())
                                 .fontWeight(.medium)
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(themeManager.accentColor)
-                            .help("Apre il file con l'applicazione di default di macOS")
+                            .help(localizationManager.text(it: "Apre il file con l'applicazione di default di macOS", en: "Opens file with macOS default application"))
                             
                             Button {
                                 AppSystemHelper.revealInFinder(path: filePath)
@@ -401,14 +403,14 @@ struct AssignmentCardView: View {
                                     .font(.system(size: 10))
                             }
                             .buttonStyle(.bordered)
-                            .help("Mostra in Finder")
+                            .help(localizationManager.text(it: "Mostra in Finder", en: "Reveal in Finder"))
                             
                             Button(action: onPickFile) {
                                 Image(systemName: "arrow.triangle.2.circlepath")
                                     .font(.system(size: 10))
                             }
                             .buttonStyle(.bordered)
-                            .help("Sostituisci file")
+                            .help(localizationManager.text(it: "Sostituisci file", en: "Replace file"))
                             
                             Button(role: .destructive, action: onRemoveFile) {
                                 Image(systemName: "xmark")
@@ -444,11 +446,11 @@ struct AssignmentCardView: View {
                 }
                 .padding(10)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .fill(isDropTargeted ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.03))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .strokeBorder(
                             isDropTargeted ? themeManager.accentColor : Color.primary.opacity(0.06),
                             style: StrokeStyle(lineWidth: isDropTargeted ? 2 : 1, dash: isDropTargeted ? [4] : [])
@@ -520,9 +522,10 @@ struct AssignmentEditorSheet: View {
             // Header
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .fill(themeManager.accentColor.opacity(0.12))
                         .frame(width: 36, height: 36)
+                        .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
                     Image(systemName: "doc.text")
                         .font(.system(size: 16))
                         .foregroundStyle(themeManager.accentColor)

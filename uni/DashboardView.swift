@@ -2,7 +2,7 @@
 //  DashboardView.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -19,224 +19,104 @@ struct DashboardView: View {
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Card Frase Motivazionale in Alto
-                    UniCard(padding: 16) {
-                        HStack(alignment: .top, spacing: 14) {
-                            ZStack {
-                                Circle()
-                                    .fill(themeManager.accentColor.opacity(0.12))
-                                    .frame(width: 36, height: 36)
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundStyle(themeManager.accentColor)
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(localizationManager.t(.quoteTitle))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(themeManager.accentColor)
-                                        .tracking(1.0)
-                                        .fontWeight(.semibold)
-                                    
-                                    Spacer()
-                                    
-                                    Button {
-                                        quoteManager.nextQuote()
-                                    } label: {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "arrow.triangle.2.circlepath")
-                                                .font(.system(size: 10))
-                                            Text(localizationManager.t(.newQuoteAction))
-                                                .font(UniFont.caption())
-                                        }
-                                        .foregroundStyle(.secondary)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .help("Mostra un'altra frase motivazionale")
-                                }
-                                
-                                Text("“\(quoteManager.currentQuote)”")
-                                    .font(UniFont.headline())
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(.primary)
-                                    .lineSpacing(2)
-                                    .animation(.easeInOut, value: quoteManager.currentQuote)
-                            }
-                        }
-                    }
-                    
-                    // Card Portale Universitario Personalizzabile
-                    UniCard(padding: 12) {
-                        HStack(spacing: 12) {
-                            ZStack {
-                                Circle()
-                                    .fill(themeManager.accentColor.opacity(0.12))
-                                    .frame(width: 34, height: 34)
-                                Image(systemName: "globe.europe.africa.fill")
-                                    .font(.system(size: 15))
-                                    .foregroundStyle(themeManager.accentColor)
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(dataManager.universityName.isEmpty ? localizationManager.t(.universityPortal) : dataManager.universityName)
-                                    .font(UniFont.headline())
-                                    .foregroundStyle(.primary)
-                                
-                                Text(dataManager.universityPortalURL.isEmpty ? localizationManager.t(.portalLink) : localizationManager.t(.portalAccess))
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            Spacer()
-                            
+                VStack(alignment: .leading, spacing: 22) {
+                    // Header Architettonico Display
+                    HStack(alignment: .top, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 8) {
-                                if !dataManager.universityPortalURL.isEmpty {
-                                    Button {
-                                        AppSystemHelper.openWebURL(urlString: dataManager.universityPortalURL)
-                                    } label: {
-                                        HStack(spacing: 5) {
-                                            Image(systemName: "arrow.up.forward.square")
-                                            Text(localizationManager.t(.openPortal))
-                                        }
-                                        .font(UniFont.caption())
-                                        .fontWeight(.medium)
+                                Text(todayDateFormatted().uppercased())
+                                    .font(UniFont.sectionLabel())
+                                    .foregroundStyle(.secondary)
+                                    .tracking(1.4)
+                                
+                                Text("•")
+                                    .foregroundStyle(.secondary)
+                                
+                                Text(dataManager.studentName.isEmpty ? "UNI WORKSPACE" : dataManager.studentName.uppercased())
+                                    .font(UniFont.sectionLabel())
+                                    .foregroundStyle(themeManager.accentColor)
+                                    .tracking(1.2)
+                            }
+                            
+                            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                if dataManager.weightedAverage > 0 {
+                                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                        Text(String(format: "%.2f", dataManager.weightedAverage))
+                                            .font(UniFont.displayGigantic())
+                                        Text("/ 30")
+                                            .font(UniFont.headline())
+                                            .foregroundStyle(.secondary)
                                     }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(themeManager.accentColor)
-                                    .help(localizationManager.text(it: "Apre il portale universitario nel browser", en: "Opens the university portal in the browser"))
+                                } else {
+                                    Text(dataManager.studentName.isEmpty ? localizationManager.t(.overviewTitle) : localizationManager.text(it: "Ciao, \(dataManager.studentName)", en: "Hey, \(dataManager.studentName)"))
+                                        .font(UniFont.displayGigantic())
                                 }
                                 
-                                Button {
-                                    isShowingEditPortalSheet = true
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: dataManager.universityPortalURL.isEmpty ? "plus.circle" : "pencil")
-                                        Text(dataManager.universityPortalURL.isEmpty ? localizationManager.t(.configureLink) : localizationManager.t(.editLink))
-                                    }
-                                    .font(UniFont.caption())
+                                if dataManager.totalCfuTarget > 0 {
+                                    Text("• \(dataManager.totalCfuAcquired)/\(dataManager.totalCfuTarget) CFU")
+                                        .font(UniFont.title())
+                                        .foregroundStyle(.secondary)
                                 }
-                                .buttonStyle(.bordered)
-                                .help(localizationManager.text(it: "Personalizza nome ateneo e link web", en: "Customize university name and web link"))
                             }
+                            
+                            let cfuRatio: Double = dataManager.totalCfuTarget > 0 ? Double(dataManager.totalCfuAcquired) / Double(dataManager.totalCfuTarget) : 0.0
+                            HStack(spacing: 8) {
+                                Text("\(Int(round(cfuRatio * 100)))% \(localizationManager.text(it: "CARRIERA COMPLETATA", en: "CAREER COMPLETED"))")
+                                    .font(.system(size: 9.5, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                    .tracking(1.0)
+                                
+                                if nextExam != nil {
+                                    Text("•")
+                                        .foregroundStyle(.secondary)
+                                    Text("\(localizationManager.text(it: "PROSSIMO ESAME", en: "NEXT EXAM")): \(nextExamCountdown.uppercased())")
+                                        .font(.system(size: 9.5, weight: .medium))
+                                        .foregroundStyle(themeManager.accentColor)
+                                        .tracking(0.8)
+                                }
+                            }
+                            .padding(.top, 2)
                         }
-                    }
-                    
-                    // Header principale con data e benvenuto personalizzato
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(todayDateFormatted().uppercased())
-                            .font(UniFont.caption())
-                            .foregroundStyle(.secondary)
-                            .tracking(1.0)
                         
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(dataManager.studentName.isEmpty ? localizationManager.t(.overviewTitle) : localizationManager.text(it: "Ciao, \(dataManager.studentName) 👋", en: "Hey, \(dataManager.studentName) 👋"))
-                                .font(UniFont.largeTitle())
-                                .fontWeight(.bold)
+                        Spacer()
+                        
+                        // Numero Monumentale in Filigrana
+                        Text("\(dataManager.courses.count > 0 ? dataManager.courses.count : 1)")
+                            .font(.system(size: 110, weight: .bold, design: .default))
+                            .foregroundStyle(Color.primary.opacity(0.06))
+                            .lineLimit(1)
+                            .padding(.trailing, 8)
+                    }
+                    .padding(.bottom, 4)
+                    
+                    // Griglia Bento 2x2 Principale
+                    bentoGridSection
+                    
+                    // Banner Frase Motivazionale Minimale
+                    UniCard(padding: 12, cornerRadius: 10, style: .surface) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(themeManager.accentColor)
+                            
+                            Text("“\(quoteManager.currentQuote)”")
+                                .font(UniFont.body())
+                                .foregroundStyle(.primary)
+                                .lineLimit(2)
                             
                             Spacer()
                             
-                            if !dataManager.courses.isEmpty {
-                                Button {
-                                    selectedTab = "deadlines"
-                                } label: {
-                                    HStack(spacing: 5) {
-                                        Image(systemName: "plus")
-                                            .font(.system(size: 10, weight: .bold))
-                                        Text(localizationManager.t(.newDeadlineAction))
-                                            .font(UniFont.subheadline())
-                                            .fontWeight(.medium)
-                                    }
-                                    .padding(.horizontal, 13)
-                                    .padding(.vertical, 6)
-                                    .background(themeManager.accentColor)
-                                    .foregroundStyle(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                    
-                    // Banner iniziale se non ci sono dati
-                    if dataManager.courses.isEmpty && dataManager.deadlines.isEmpty && dataManager.exams.isEmpty {
-                        UniCard(padding: 20) {
-                            VStack(alignment: .leading, spacing: 14) {
-                                HStack(spacing: 8) {
-                                    Circle()
-                                        .fill(themeManager.accentColor)
-                                        .frame(width: 7, height: 7)
-                                    Text(localizationManager.t(.welcomeTitle))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                        .tracking(1.0)
-                                }
-                                
-                                Text(localizationManager.t(.welcomeSubtitle))
-                                    .font(UniFont.title())
-                                    .fontWeight(.semibold)
-                                
-                                Text(localizationManager.t(.welcomeDesc))
-                                    .font(UniFont.subheadline())
+                            Button {
+                                quoteManager.nextQuote()
+                            } label: {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 11))
                                     .foregroundStyle(.secondary)
-                                    .frame(maxWidth: 540)
-                                
-                                HStack(spacing: 10) {
-                                    Button {
-                                        selectedTab = "courses"
-                                    } label: {
-                                        HStack(spacing: 5) {
-                                            Image(systemName: "book.closed")
-                                            Text(localizationManager.t(.addCourseAction))
-                                        }
-                                        .font(UniFont.subheadline())
-                                        .fontWeight(.medium)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 7)
-                                        .background(themeManager.accentColor)
-                                        .foregroundStyle(.white)
-                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                                    }
-                                    .buttonStyle(.plain)
-                                    
-                                    Button {
-                                        selectedTab = "calendar"
-                                    } label: {
-                                        HStack(spacing: 5) {
-                                            Image(systemName: "link.badge.plus")
-                                            Text(localizationManager.t(.linkCalendarAction))
-                                        }
-                                        .font(UniFont.subheadline())
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 7)
-                                        .background(Color.primary.opacity(0.05))
-                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                                    }
-                                    .buttonStyle(.plain)
-                                    
-                                    Button {
-                                        selectedTab = "deadlines"
-                                    } label: {
-                                        HStack(spacing: 5) {
-                                            Image(systemName: "clock")
-                                            Text(localizationManager.t(.createDeadlineAction))
-                                        }
-                                        .font(UniFont.subheadline())
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 7)
-                                        .background(Color.primary.opacity(0.05))
-                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                .padding(.top, 2)
                             }
+                            .buttonStyle(.plain)
+                            .help(localizationManager.text(it: "Mostra un'altra frase motivazionale", en: "Show another motivational quote"))
                         }
                     }
-                    
-                    // Sezione NEXT: Prossima Lezione, Prossime Scadenze, Prossimo Esame
-                    nextSection
                     
                     // Layout Responsivo: 2 Colonne su schermi ampi, 1 Colonna su schermi compatti
                     if proxy.size.width > 720 {
@@ -265,10 +145,10 @@ struct DashboardView: View {
     private var leftColumn: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text(localizationManager.t(.todayAtUni))
-                    .font(UniFont.caption())
+                Text(localizationManager.t(.todayAtUni).uppercased())
+                    .font(UniFont.sectionLabel())
                     .foregroundStyle(.secondary)
-                    .tracking(0.8)
+                    .tracking(1.4)
                 Spacer()
                 Button(localizationManager.t(.navCalendar)) {
                     selectedTab = "calendar"
@@ -296,7 +176,6 @@ struct DashboardView: View {
                                 Rectangle()
                                     .fill(themeManager.accentColor)
                                     .frame(width: 3)
-                                    .clipShape(Capsule())
                                 
                                 VStack(alignment: .leading, spacing: 3) {
                                     HStack {
@@ -324,10 +203,10 @@ struct DashboardView: View {
             // Materie Attive
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text(localizationManager.t(.activeCourses))
-                        .font(UniFont.caption())
+                    Text(localizationManager.t(.activeCourses).uppercased())
+                        .font(UniFont.sectionLabel())
                         .foregroundStyle(.secondary)
-                        .tracking(0.8)
+                        .tracking(1.4)
                     Spacer()
                     Button(localizationManager.t(.viewAll)) {
                         selectedTab = "courses"
@@ -359,7 +238,7 @@ struct DashboardView: View {
                                         Text(course.name)
                                             .font(UniFont.headline())
                                             .lineLimit(1)
-                                        Text("\(course.code.isEmpty ? "Corso" : course.code) • \(course.cfu) CFU\(course.professor.isEmpty ? "" : " • " + course.professor)")
+                                        Text("\(course.code.isEmpty ? localizationManager.text(it: "Corso", en: "Course") : course.code) • \(course.cfu) CFU\(course.professor.isEmpty ? "" : " • " + course.professor)")
                                             .font(UniFont.caption())
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
@@ -380,7 +259,8 @@ struct DashboardView: View {
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 4)
                                             .background(Color.primary.opacity(0.06))
-                                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                            .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                                            .clipShape(Rectangle())
                                         }
                                         .buttonStyle(.plain)
                                         .help(localizationManager.text(it: "Apri nell'app Notion", en: "Open in Notion app"))
@@ -399,9 +279,9 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(localizationManager.t(.upcomingDeadlines).uppercased())
-                    .font(UniFont.caption())
+                    .font(UniFont.sectionLabel())
                     .foregroundStyle(.secondary)
-                    .tracking(0.8)
+                    .tracking(1.4)
                 Spacer()
                 Button(localizationManager.t(.allCount(pendingDeadlines.count))) {
                     selectedTab = "deadlines"
@@ -468,10 +348,10 @@ struct DashboardView: View {
             // Assignments
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text(localizationManager.t(.assignmentsAndFiles))
-                        .font(UniFont.caption())
+                    Text(localizationManager.t(.assignmentsAndFiles).uppercased())
+                        .font(UniFont.sectionLabel())
                         .foregroundStyle(.secondary)
-                        .tracking(0.8)
+                        .tracking(1.4)
                     Spacer()
                     Button(localizationManager.t(.allCount(dataManager.assignments.count))) {
                         selectedTab = "assignments"
@@ -485,9 +365,9 @@ struct DashboardView: View {
                 if activeAssignments.isEmpty {
                     UniEmptyStateView(
                         icon: "doc.text",
-                        title: "Nessun assignment in corso",
-                        subtitle: "Aggiungi progetti o relazioni e collega direttamente i file memorizzati sul tuo Mac.",
-                        buttonTitle: "Nuovo Assignment"
+                        title: localizationManager.text(it: "Nessun assignment in corso", en: "No active assignments"),
+                        subtitle: localizationManager.text(it: "Aggiungi progetti o relazioni e collega direttamente i file memorizzati sul tuo Mac.", en: "Add projects or papers and link files directly from your Mac."),
+                        buttonTitle: localizationManager.text(it: "Nuovo Assignment", en: "New Assignment")
                     ) {
                         selectedTab = "assignments"
                     }
@@ -522,7 +402,7 @@ struct DashboardView: View {
                                                     .foregroundStyle(.secondary)
                                             }
                                             Spacer()
-                                            Button("Apri File") {
+                                            Button(localizationManager.text(it: "Apri File", en: "Open File")) {
                                                 AppSystemHelper.openLocalFile(path: filePath)
                                             }
                                             .font(UniFont.caption())
@@ -531,7 +411,8 @@ struct DashboardView: View {
                                         }
                                         .padding(5)
                                         .background(Color.primary.opacity(0.03))
-                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                        .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                                        .clipShape(Rectangle())
                                     }
                                 }
                             }
@@ -691,277 +572,321 @@ struct DashboardView: View {
             .first
     }
     
-    // MARK: - Sezione NEXT (Scorciatoie Rapide)
-    private var nextSection: some View {
+    // MARK: - Sezione Bento 2x2 Modulare
+    private var bentoGridSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                Text("NEXT")
-                    .font(UniFont.headline())
-                    .fontWeight(.bold)
-                    .foregroundStyle(.primary)
-                    .tracking(0.8)
-                
-                Text("•")
+            HStack(spacing: 8) {
+                Text(localizationManager.text(it: "PANORAMICA DI CONTROLLO", en: "CONTROL OVERVIEW"))
+                    .font(UniFont.sectionLabel())
                     .foregroundStyle(.secondary)
-                
-                Text(localizationManager.text(it: "Prossimi appuntamenti (tocca per aprire)", en: "Up next shortcuts (tap to open)"))
-                    .font(UniFont.caption())
-                    .foregroundStyle(.secondary)
+                    .tracking(1.4)
                 
                 Spacer()
             }
             
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 240, maximum: .infinity), spacing: 12)], spacing: 12) {
-                nextLectureCard
-                nextDeadlineCard
-                nextExamCard
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                bentoHeroCard
+                bentoLectureCard
+                bentoExamCard
+                bentoPortalCard
             }
         }
     }
     
-    private var nextLectureCard: some View {
-        Button {
-            selectedTab = "calendar"
-        } label: {
-            UniCard(padding: 14) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(Color.teal.opacity(0.15))
-                                .frame(width: 28, height: 28)
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Color.teal)
-                        }
-                        
-                        Text(localizationManager.text(it: "PROSSIMA LEZIONE", en: "NEXT LECTURE"))
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.secondary)
-                            .tracking(0.6)
-                        
-                        Spacer()
-                        
-                        if let lecture = nextUpcomingLecture, lecture.startDate <= Date() && lecture.endDate >= Date() {
-                            UniBadge(localizationManager.text(it: "IN CORSO", en: "NOW"), color: .green)
-                        }
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.secondary.opacity(0.6))
-                    }
-                    
-                    if let lecture = nextUpcomingLecture {
-                        Text(lecture.title)
-                            .font(UniFont.headline())
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                        
-                        HStack(spacing: 12) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "mappin.and.ellipse")
-                                    .font(.system(size: 10))
-                                Text(lecture.location.isEmpty ? localizationManager.text(it: "Aula N/D", en: "Room TBA") : lecture.location)
-                                    .lineLimit(1)
-                            }
-                            
-                            HStack(spacing: 4) {
-                                Image(systemName: "clock")
-                                    .font(.system(size: 10))
-                                Text(formatLectureWhen(lecture))
-                                    .lineLimit(1)
-                            }
-                        }
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                    } else {
-                        Text(localizationManager.text(it: "Nessuna lezione imminente", en: "No upcoming lectures"))
-                            .font(UniFont.headline())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                        
-                        Text(localizationManager.text(it: "Tocca per consultare o sincronizzare l'orario", en: "Tap to view or sync calendar"))
-                            .font(UniFont.caption())
-                            .foregroundStyle(.secondary.opacity(0.8))
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-    
-    private var nextDeadlineCard: some View {
+    // 1. Hero Card ad Accento Pieno
+    private var bentoHeroCard: some View {
         Button {
             selectedTab = "deadlines"
             if let first = pendingDeadlines.first {
                 dataManager.selectedDeadlineId = first.id
             }
         } label: {
-            UniCard(padding: 14) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(Color.orange.opacity(0.15))
-                                .frame(width: 28, height: 28)
-                            Image(systemName: "clock.fill")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Color.orange)
+            UniCard(padding: 16, cornerRadius: 0, style: .accentHero) {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(localizationManager.text(it: "PROSSIMA SCADENZA", en: "NEXT DEADLINE"))
+                                .font(UniFont.sectionLabel())
+                                .foregroundStyle(themeManager.accentTextColor.opacity(0.85))
+                                .tracking(1.4)
+                            
+                            if let first = pendingDeadlines.first {
+                                Text(formatDueDate(first.dueDate).uppercased())
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(themeManager.accentTextColor)
+                            } else {
+                                Text(localizationManager.text(it: "TUTTO IN REGOLA", en: "ALL CAUGHT UP"))
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(themeManager.accentTextColor)
+                            }
                         }
-                        
-                        Text(localizationManager.text(it: "PROSSIMA SCADENZA", en: "NEXT DEADLINE"))
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.secondary)
-                            .tracking(0.6)
                         
                         Spacer()
                         
-                        if let first = pendingDeadlines.first {
-                            UniBadge(first.priority.rawValue, color: first.priority.color)
-                        }
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.secondary.opacity(0.6))
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundStyle(themeManager.accentTextColor.opacity(0.75))
                     }
                     
-                    if let deadline = pendingDeadlines.first {
-                        let courseName = dataManager.courses.first(where: { $0.id == deadline.courseId })?.name
+                    Spacer(minLength: 16)
+                    
+                    if let first = pendingDeadlines.first {
+                        let courseName = dataManager.courses.first(where: { $0.id == first.courseId })?.name
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(deadline.title)
-                                .font(UniFont.headline())
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
+                            Text(first.title)
+                                .font(UniFont.title())
+                                .foregroundStyle(themeManager.accentTextColor)
+                                .lineLimit(2)
                             
                             if let cName = courseName {
                                 Text(cName)
                                     .font(UniFont.caption())
-                                    .foregroundStyle(themeManager.accentColor)
+                                    .foregroundStyle(themeManager.accentTextColor.opacity(0.85))
                                     .lineLimit(1)
                             }
                         }
-                        
-                        HStack(spacing: 4) {
-                            Image(systemName: "calendar.badge.exclamationmark")
-                                .font(.system(size: 10))
-                            Text(formatDueDate(deadline.dueDate))
-                                .lineLimit(1)
-                            
-                            if pendingDeadlines.count > 1 {
-                                Spacer()
-                                Text(localizationManager.text(it: "+\(pendingDeadlines.count - 1) altre", en: "+\(pendingDeadlines.count - 1) more"))
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .font(UniFont.caption())
-                        .foregroundStyle(isDueDateUrgent(deadline.dueDate) ? .red : .secondary)
                     } else {
-                        Text(localizationManager.text(it: "Tutte le scadenze completate! 🎉", en: "All caught up! 🎉"))
-                            .font(UniFont.headline())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        Text(localizationManager.text(it: "Nessuna consegna pendente", en: "No pending tasks"))
+                            .font(UniFont.title())
+                            .foregroundStyle(themeManager.accentTextColor)
+                            .lineLimit(2)
+                    }
+                    
+                    Spacer(minLength: 18)
+                    
+                    HStack {
+                        Image(systemName: "clock")
+                            .font(.system(size: 24, weight: .ultraLight))
+                            .foregroundStyle(themeManager.accentTextColor)
                         
-                        Text(localizationManager.text(it: "Nessuna consegna in sospeso", en: "No pending tasks"))
-                            .font(UniFont.caption())
-                            .foregroundStyle(.secondary.opacity(0.8))
+                        Spacer()
+                        
+                        if let first = pendingDeadlines.first {
+                            Text(first.priority.rawValue.uppercased())
+                                .font(.system(size: 9, weight: .medium))
+                                .tracking(1.0)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(themeManager.accentTextColor.opacity(0.18))
+                                .foregroundStyle(themeManager.accentTextColor)
+                                .clipShape(Rectangle())
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 145)
             }
         }
         .buttonStyle(.plain)
     }
     
-    private var nextExamCard: some View {
+    // 2. Card Prossima Lezione
+    private var bentoLectureCard: some View {
+        Button {
+            selectedTab = "calendar"
+        } label: {
+            UniCard(padding: 16, cornerRadius: 0, style: .surface) {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(localizationManager.text(it: "PROSSIMA LEZIONE", en: "NEXT LECTURE"))
+                                .font(UniFont.sectionLabel())
+                                .foregroundStyle(.secondary)
+                                .tracking(1.4)
+                            
+                            if let lecture = nextUpcomingLecture, lecture.startDate <= Date() && lecture.endDate >= Date() {
+                                Text(localizationManager.text(it: "IN CORSO ORA", en: "IN PROGRESS"))
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.green)
+                            } else if let lecture = nextUpcomingLecture {
+                                Text(formatLectureWhen(lecture).uppercased())
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(themeManager.accentColor)
+                            } else {
+                                Text(localizationManager.text(it: "NESSUNA LEZIONE", en: "NO LECTURES"))
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundStyle(.secondary.opacity(0.7))
+                    }
+                    
+                    Spacer(minLength: 16)
+                    
+                    if let lecture = nextUpcomingLecture {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(lecture.title)
+                                .font(UniFont.title())
+                                .foregroundStyle(.primary)
+                                .lineLimit(2)
+                            
+                            Text(lecture.location.isEmpty ? localizationManager.text(it: "Aula N/D", en: "Room TBA") : lecture.location)
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    } else {
+                        Text(localizationManager.text(it: "Nessuna lezione in programma", en: "No lectures today"))
+                            .font(UniFont.title())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    
+                    Spacer(minLength: 18)
+                    
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 24, weight: .ultraLight))
+                        .foregroundStyle(themeManager.accentColor)
+                }
+                .frame(minHeight: 145)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+    
+    // 3. Card Prossimo Esame
+    private var bentoExamCard: some View {
         Button {
             selectedTab = "exams"
             if let exam = nextExam {
                 dataManager.selectedExamId = exam.id
             }
         } label: {
-            UniCard(padding: 14) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(Color.purple.opacity(0.15))
-                                .frame(width: 28, height: 28)
-                            Image(systemName: "graduationcap.fill")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Color.purple)
+            UniCard(padding: 16, cornerRadius: 0, style: .surface) {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(localizationManager.text(it: "PROSSIMO ESAME", en: "NEXT EXAM"))
+                                .font(UniFont.sectionLabel())
+                                .foregroundStyle(.secondary)
+                                .tracking(1.4)
+                            
+                            Text(nextExamCountdown.uppercased())
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(nextExam != nil ? themeManager.accentColor : .secondary)
                         }
-                        
-                        Text(localizationManager.text(it: "PROSSIMO ESAME", en: "NEXT EXAM"))
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.secondary)
-                            .tracking(0.6)
                         
                         Spacer()
                         
-                        if let exam = nextExam {
-                            UniBadge(exam.type.rawValue, color: .purple)
-                        }
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.secondary.opacity(0.6))
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundStyle(.secondary.opacity(0.7))
                     }
+                    
+                    Spacer(minLength: 16)
                     
                     if let exam = nextExam {
                         let courseName = dataManager.courses.first(where: { $0.id == exam.courseId })?.name
                         
                         VStack(alignment: .leading, spacing: 2) {
                             Text(exam.title)
-                                .font(UniFont.headline())
-                                .fontWeight(.semibold)
+                                .font(UniFont.title())
                                 .foregroundStyle(.primary)
-                                .lineLimit(1)
+                                .lineLimit(2)
                             
                             if let cName = courseName {
                                 Text(cName)
                                     .font(UniFont.caption())
-                                    .foregroundStyle(themeManager.accentColor)
+                                    .foregroundStyle(.secondary)
                                     .lineLimit(1)
                             }
                         }
-                        
-                        HStack(spacing: 8) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "calendar")
-                                    .font(.system(size: 10))
-                                Text(formatExamDate(exam.examDate))
-                                    .lineLimit(1)
-                            }
-                            
-                            Text("•")
-                            
-                            Text(nextExamCountdown)
-                                .fontWeight(.medium)
-                                .foregroundStyle(themeManager.accentColor)
-                                .lineLimit(1)
-                        }
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
                     } else {
-                        Text(localizationManager.text(it: "Nessun appello fissato", en: "No upcoming exams"))
-                            .font(UniFont.headline())
+                        Text(localizationManager.text(it: "Nessun appello fissato", en: "No exams scheduled"))
+                            .font(UniFont.title())
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                        
-                        Text(localizationManager.text(it: "Tocca per pianificare o visualizzare gli esami", en: "Tap to schedule or view exams"))
-                            .font(UniFont.caption())
-                            .foregroundStyle(.secondary.opacity(0.8))
+                            .lineLimit(2)
                     }
+                    
+                    Spacer(minLength: 18)
+                    
+                    Image(systemName: "graduationcap")
+                        .font(.system(size: 24, weight: .ultraLight))
+                        .foregroundStyle(themeManager.accentColor)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 145)
             }
         }
         .buttonStyle(.plain)
+    }
+    
+    // 4. Card Portale Ateneo
+    private var bentoPortalCard: some View {
+        UniCard(padding: 16, cornerRadius: 0, style: .surface) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(localizationManager.text(it: "PORTALE ATENEO", en: "CAMPUS PORTAL"))
+                            .font(UniFont.sectionLabel())
+                            .foregroundStyle(.secondary)
+                            .tracking(1.4)
+                        
+                        Text(dataManager.universityPortalURL.isEmpty ? localizationManager.text(it: "NON CONFIGURATO", en: "NOT CONFIGURED") : localizationManager.text(it: "PRONTO ALL'USO", en: "READY TO USE"))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(dataManager.universityPortalURL.isEmpty ? .secondary : themeManager.accentColor)
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        isShowingEditPortalSheet = true
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundStyle(.secondary.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                    .help(localizationManager.text(it: "Modifica link e nome ateneo", en: "Edit university and link"))
+                }
+                
+                Spacer(minLength: 16)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(dataManager.universityName.isEmpty ? localizationManager.t(.universityPortal) : dataManager.universityName)
+                        .font(UniFont.title())
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                    
+                    Text(dataManager.universityPortalURL.isEmpty ? localizationManager.text(it: "Tocca ... per inserire il link", en: "Tap ... to configure link") : dataManager.universityPortalURL)
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                
+                Spacer(minLength: 18)
+                
+                HStack {
+                    if !dataManager.universityPortalURL.isEmpty {
+                        Button {
+                            AppSystemHelper.openWebURL(urlString: dataManager.universityPortalURL)
+                        } label: {
+                            Image(systemName: "arrow.up.forward")
+                                .font(.system(size: 24, weight: .light))
+                                .foregroundStyle(themeManager.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                        .help(localizationManager.text(it: "Apri portale nel browser", en: "Open portal in browser"))
+                    } else {
+                        Button {
+                            isShowingEditPortalSheet = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 22, weight: .light))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    
+                    Spacer()
+                }
+            }
+            .frame(minHeight: 145)
+        }
     }
 }
 

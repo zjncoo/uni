@@ -2,7 +2,7 @@
 //  LocalizationManager.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -361,8 +361,8 @@ public enum LocalizedKey {
             case .addQuoteButton: return "Aggiungi Frase"
             case .activeQuotesTitle: return "Frasi Attive"
             case .typographySection: return "TIPOGRAFIA"
-            case .typographyTitle: return "SF Pro (Apple System Style)"
-            case .typographySubtitle: return "Tipografia nativa di sistema con rendering pulito, proporzioni geometriche e leggibilità eccellente su macOS."
+            case .typographyTitle: return "Carattere & Stile Tipografico"
+            case .typographySubtitle: return "Personalizza il carattere dell'app selezionando uno stile geometrico sottile, editoriale o inserendo qualsiasi font installato sul Mac."
             case .dataManagementSection: return "GESTIONE DATI & BACKUP"
             case .dataManagementTitle: return "Persistenza Locale e Salvataggio Sicuro"
             case .dataManagementSubtitle: return "Tutti i dati sono salvati in locale sul Mac in formato JSON. Puoi esportare o ripristinare una copia di sicurezza in qualsiasi momento."
@@ -545,8 +545,8 @@ public enum LocalizedKey {
             case .addQuoteButton: return "Add Quote"
             case .activeQuotesTitle: return "Active Quotes"
             case .typographySection: return "TYPOGRAPHY"
-            case .typographyTitle: return "SF Pro (Apple System Style)"
-            case .typographySubtitle: return "Native system typography with clean rendering, geometric proportions and high legibility on macOS."
+            case .typographyTitle: return "Font & Typography Style"
+            case .typographySubtitle: return "Customize the app typography by choosing a subtle geometric or editorial style, or entering any custom font installed on your Mac."
             case .dataManagementSection: return "DATA MANAGEMENT & BACKUP"
             case .dataManagementTitle: return "Local Persistence & Safe Storage"
             case .dataManagementSubtitle: return "All data is securely saved locally on your Mac in JSON format. You can export or restore a backup anytime."

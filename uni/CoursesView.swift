@@ -2,7 +2,7 @@
 //  CoursesView.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -82,13 +82,13 @@ struct CoursesView: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.triangle.2.circlepath")
-                                Text("Ricalcola orari da calendario")
+                                Text(localizationManager.text(it: "Ricalcola orari da calendario", en: "Recalculate schedule from calendar"))
                             }
                             .font(UniFont.caption())
                             .foregroundStyle(themeManager.accentColor)
                         }
                         .buttonStyle(.plain)
-                        .help("Ricalcola automaticamente tutti gli orari settimanali dei corsi dagli eventi sincronizzati")
+                        .help(localizationManager.text(it: "Ricalcola automaticamente tutti gli orari settimanali dei corsi dagli eventi sincronizzati", en: "Automatically recalculate course weekly schedules from synced events"))
                         Spacer()
                     }
                     .padding(.horizontal, 16)
@@ -299,7 +299,7 @@ struct CourseRowView: View {
         }
         .padding(8)
         .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            Rectangle()
                 .fill(isSelected ? themeManager.accentColor.opacity(0.12) : Color.clear)
         )
     }
@@ -333,7 +333,7 @@ struct CourseDetailView: View {
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
                                         .background(Color.primary.opacity(0.05))
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                                        .clipShape(Rectangle())
                                 }
                                 
                                 Text("\(course.cfu) CFU")
@@ -341,7 +341,7 @@ struct CourseDetailView: View {
                                     .fontWeight(.semibold)
                                     .foregroundStyle(themeManager.accentColor)
                                 
-                                Text("Semestre \(course.semester)")
+                                Text(localizationManager.text(it: "Semestre \(course.semester)", en: "Semester \(course.semester)"))
                                     .font(UniFont.caption())
                                     .foregroundStyle(.secondary)
                             }
@@ -361,7 +361,7 @@ struct CourseDetailView: View {
                                     .font(.system(size: 11))
                             }
                             .buttonStyle(.bordered)
-                            .help("Modifica materia")
+                            .help(localizationManager.text(it: "Modifica materia", en: "Edit course"))
                             
                             Button(role: .destructive) {
                                 onDelete()
@@ -370,7 +370,7 @@ struct CourseDetailView: View {
                                     .font(.system(size: 11))
                             }
                             .buttonStyle(.bordered)
-                            .help("Elimina materia")
+                            .help(localizationManager.text(it: "Elimina materia", en: "Delete course"))
                         }
                     }
                     
@@ -425,7 +425,7 @@ struct CourseDetailView: View {
                     UniCard(padding: 14) {
                         HStack(spacing: 12) {
                             ZStack {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                Rectangle()
                                     .fill(Color.primary.opacity(0.04))
                                     .frame(width: 36, height: 36)
                                 Image(systemName: "book.pages.fill")
@@ -459,7 +459,7 @@ struct CourseDetailView: View {
                                     .padding(.vertical, 6)
                                     .background(themeManager.accentColor)
                                     .foregroundStyle(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    .clipShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                             } else {
@@ -476,12 +476,12 @@ struct CourseDetailView: View {
                 // RISORSE & LINK ESTERNI
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("RISORSE & LINK ESTERNI")
+                        Text(localizationManager.text(it: "RISORSE & LINK ESTERNI", en: "RESOURCES & EXTERNAL LINKS"))
                             .font(UniFont.caption())
                             .foregroundStyle(.secondary)
                             .tracking(0.8)
                         Spacer()
-                        Button("+ Aggiungi Risorsa") {
+                        Button(localizationManager.text(it: "+ Aggiungi Risorsa", en: "+ Add Resource")) {
                             onAddLink()
                         }
                         .font(UniFont.caption())
@@ -492,9 +492,9 @@ struct CourseDetailView: View {
                     if course.links.isEmpty {
                         UniEmptyStateView(
                             icon: "link",
-                            title: "Nessuna risorsa esterna",
-                            subtitle: "Collega portali del corso, canali Teams/Zoom, cartelle Drive o slide.",
-                            buttonTitle: "Aggiungi Risorsa"
+                            title: localizationManager.text(it: "Nessuna risorsa esterna", en: "No external resources"),
+                            subtitle: localizationManager.text(it: "Collega portali del corso, canali Teams/Zoom, cartelle Drive o slide.", en: "Link course portals, Teams/Zoom channels, Drive folders, or slides."),
+                            buttonTitle: localizationManager.text(it: "Aggiungi Risorsa", en: "Add Resource")
                         ) {
                             onAddLink()
                         }
@@ -511,7 +511,7 @@ struct CourseDetailView: View {
                                             Text(link.title)
                                                 .font(UniFont.headline())
                                                 .lineLimit(1)
-                                            Text(link.type.rawValue)
+                                            Text(link.type.localizedName)
                                                 .font(UniFont.caption())
                                                 .foregroundStyle(.secondary)
                                         }
@@ -525,7 +525,7 @@ struct CourseDetailView: View {
                                                 .font(.system(size: 12))
                                         }
                                         .buttonStyle(.plain)
-                                        .help("Apri nel browser")
+                                        .help(localizationManager.text(it: "Apri nel browser", en: "Open in browser"))
                                         
                                         Button(role: .destructive) {
                                             course.links.removeAll { $0.id == link.id }
@@ -546,12 +546,12 @@ struct CourseDetailView: View {
                 // ORARIO SETTIMANALE LEZIONI
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("ORARIO SETTIMANALE")
+                        Text(localizationManager.text(it: "ORARIO SETTIMANALE", en: "WEEKLY SCHEDULE"))
                             .font(UniFont.caption())
                             .foregroundStyle(.secondary)
                             .tracking(0.8)
                         Spacer()
-                        Button("+ Aggiungi Orario") {
+                        Button(localizationManager.text(it: "+ Aggiungi Orario", en: "+ Add Schedule")) {
                             onAddSchedule()
                         }
                         .font(UniFont.caption())
@@ -562,9 +562,9 @@ struct CourseDetailView: View {
                     if course.schedule.isEmpty {
                         UniEmptyStateView(
                             icon: "clock",
-                            title: "Nessun orario",
-                            subtitle: "Inserisci i giorni e le ore delle lezioni.",
-                            buttonTitle: "Aggiungi Orario"
+                            title: localizationManager.text(it: "Nessun orario", en: "No schedule"),
+                            subtitle: localizationManager.text(it: "Inserisci i giorni e le ore delle lezioni.", en: "Enter days and times of classes."),
+                            buttonTitle: localizationManager.text(it: "Aggiungi Orario", en: "Add Schedule")
                         ) {
                             onAddSchedule()
                         }
@@ -656,7 +656,7 @@ struct CourseDetailView: View {
                             .padding(.vertical, 22)
                             .padding(.horizontal, 16)
                             .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                Rectangle()
                                     .strokeBorder(
                                         style: StrokeStyle(lineWidth: isDropTargeted ? 2 : 1, dash: [5, 4])
                                     )
@@ -676,7 +676,7 @@ struct CourseDetailView: View {
                             }
                             .padding(9)
                             .background(
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                Rectangle()
                                     .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                                     .foregroundStyle(isDropTargeted ? themeManager.accentColor : Color.primary.opacity(0.1))
                             )
@@ -687,7 +687,7 @@ struct CourseDetailView: View {
                                 UniCard(padding: 10) {
                                     HStack(spacing: 10) {
                                         ZStack {
-                                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                            Rectangle()
                                                 .fill(file.isDirectory ? Color.blue.opacity(0.12) : Color.primary.opacity(0.04))
                                                 .frame(width: 32, height: 32)
                                             Image(systemName: file.isDirectory ? "folder.fill" : iconForFileExtension(file.fileTypeExtension))
@@ -708,7 +708,7 @@ struct CourseDetailView: View {
                                                         .padding(.vertical, 1.5)
                                                         .background(Color.blue.opacity(0.12))
                                                         .foregroundStyle(Color.blue)
-                                                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                                                        .clipShape(Rectangle())
                                                 }
                                             }
                                             
@@ -776,7 +776,7 @@ struct CourseDetailView: View {
                 // NOTE
                 if !course.notes.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("NOTE")
+                        Text(localizationManager.text(it: "NOTE", en: "NOTES"))
                             .font(UniFont.caption())
                             .foregroundStyle(.secondary)
                             .tracking(0.8)
@@ -936,7 +936,7 @@ struct CourseEditorSheet: View {
             // Sheet Header
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .fill(themeManager.accentColor.opacity(0.12))
                         .frame(width: 36, height: 36)
                     Image(systemName: "book.closed")
@@ -1067,7 +1067,7 @@ struct AddLinkSheet: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .fill(themeManager.accentColor.opacity(0.12))
                         .frame(width: 36, height: 36)
                     Image(systemName: "link")
@@ -1145,7 +1145,7 @@ struct AddScheduleSheet: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .fill(themeManager.accentColor.opacity(0.12))
                         .frame(width: 36, height: 36)
                     Image(systemName: "clock")

@@ -2,7 +2,7 @@
 //  SoundManager.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 12/09/2026.
+//  Created by zinco.cc on 12/09/2026.
 //
 
 import Foundation

@@ -2,7 +2,7 @@
 //  uniUITestsLaunchTests.swift
 //  uniUITests
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import XCTest

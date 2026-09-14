@@ -2,7 +2,7 @@
 //  QuickSearchPaletteView.swift
 //  uni
 //
-//  Created by Francesco Zanchetta on 10/09/2026.
+//  Created by zinco.cc on 10/09/2026.
 //
 
 import SwiftUI
@@ -397,7 +397,8 @@ public struct QuickSearchPaletteView: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Color.primary.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .overlay(Rectangle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
+                        .clipShape(Rectangle())
                         .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 18)
@@ -424,7 +425,7 @@ public struct QuickSearchPaletteView: View {
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 1)
                                             .background(selectedCategory == cat ? Color.white.opacity(0.2) : Color.primary.opacity(0.08))
-                                            .clipShape(Capsule())
+                                            .clipShape(Rectangle())
                                     }
                                 }
                                 .font(UniFont.caption())
@@ -432,7 +433,8 @@ public struct QuickSearchPaletteView: View {
                                 .padding(.vertical, 5)
                                 .background(selectedCategory == cat ? themeManager.accentColor : Color.primary.opacity(0.05))
                                 .foregroundStyle(selectedCategory == cat ? Color.white : Color.primary)
-                                .clipShape(Capsule())
+                                .overlay(Rectangle().stroke(selectedCategory == cat ? themeManager.accentColor : Color.primary.opacity(0.1), lineWidth: 1))
+                                .clipShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }
@@ -554,12 +556,12 @@ public struct QuickSearchPaletteView: View {
             }
             .frame(width: 620)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                Rectangle()
                     .fill(Color(nsColor: .windowBackgroundColor))
                     .shadow(color: Color.black.opacity(0.35), radius: 35, x: 0, y: 18)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                Rectangle()
                     .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
             )
         }
@@ -638,9 +640,10 @@ private struct PaletteRow: View {
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                Rectangle()
                     .fill(item.color.opacity(0.15))
                     .frame(width: 32, height: 32)
+                    .overlay(Rectangle().stroke(item.color.opacity(0.3), lineWidth: 1))
                 
                 Image(systemName: item.iconName)
                     .font(.system(size: 14, weight: .semibold))
@@ -668,17 +671,18 @@ private struct PaletteRow: View {
                     .padding(.vertical, 2.5)
                     .background(isSelected ? themeManager.accentColor.opacity(0.25) : Color.primary.opacity(0.06))
                     .foregroundStyle(isSelected ? themeManager.accentColor : .secondary)
-                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .overlay(Rectangle().stroke(isSelected ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.1), lineWidth: 1))
+                    .clipShape(Rectangle())
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            Rectangle()
                 .fill(isSelected ? themeManager.accentColor.opacity(0.12) : (isHovering ? Color.primary.opacity(0.04) : Color.clear))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            Rectangle()
                 .strokeBorder(isSelected ? themeManager.accentColor.opacity(0.35) : Color.clear, lineWidth: 1)
         )
         .contentShape(Rectangle())

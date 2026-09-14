@@ -7,7 +7,7 @@
 - **Website**: https://zjncoo.github.io/uni/
 - **GitHub Repository**: https://github.com/zjncoo/uni
 - **License**: MIT Open Source License
-- **Author**: Francesco Zanchetta (zinco.cc)
+- **Author**: zinco.cc (zinco.cc)
 - **Supported OS**: macOS 13.0 (Ventura), macOS 14.0 (Sonoma), macOS 15.0 (Sequoia) or later
 - **Architecture**: Universal Binary (Apple Silicon M1/M2/M3/M4 & Intel x86_64)
 - **Price**: 100% Free and Open Source ($0.00)

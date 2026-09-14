@@ -234,7 +234,7 @@ const i18n = {
 
     pol_sec1_title: "1. Data Controller",
     pol_sec1_desc: "This document describes the privacy practices of the website <strong>https://zjncoo.github.io/uni/</strong> and the macOS application <strong>uni</strong> with respect to the processing of personal data pursuant to the EU General Data Protection Regulation (GDPR 2016/679).",
-    pol_sec1_owner: "The Data Controller is <strong>Francesco Zanchetta</strong> (<a href=\"https://zinco.cc\" target=\"_blank\" rel=\"noopener\">zinco.cc</a>), reachable via the official GitHub repository at <a href=\"https://github.com/zjncoo/uni\" target=\"_blank\" rel=\"noopener\">zjncoo/uni</a> or through contact channels on zinco.cc.",
+    pol_sec1_owner: "The Data Controller is <strong>zinco.cc</strong> (<a href=\"https://zinco.cc\" target=\"_blank\" rel=\"noopener\">zinco.cc</a>), reachable via the official GitHub repository at <a href=\"https://github.com/zjncoo/uni\" target=\"_blank\" rel=\"noopener\">zjncoo/uni</a> or through contact channels on zinco.cc.",
 
     pol_sec2_title: "2. Privacy in the macOS Application \"uni\"",
     pol_sec2_highlight_title: "100% Local &amp; Offline-First Privacy",
