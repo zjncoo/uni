@@ -332,6 +332,11 @@ struct ContentView: View {
         .sheet(isPresented: $isShowingOnboarding) {
             OnboardingWizardView()
         }
+        .sheet(isPresented: $updateManager.showUpdateModal) {
+            UpdateModalView()
+                .environmentObject(themeManager)
+                .environmentObject(localizationManager)
+        }
         .onAppear {
             if !dataManager.hasCompletedOnboarding {
                 isShowingOnboarding = true

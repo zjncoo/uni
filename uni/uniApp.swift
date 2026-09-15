@@ -58,6 +58,13 @@ struct uniApp: App {
         .windowToolbarStyle(.unified)
         .commands {
             SidebarCommands()
+            CommandGroup(after: .appInfo) {
+                Button(localizationManager.text(it: "Controlla Aggiornamenti...", en: "Check for Updates...")) {
+                    Task {
+                        await updateManager.checkForUpdates(force: true, isManual: true)
+                    }
+                }
+            }
             CommandGroup(replacing: .newItem) {
                 Button(localizationManager.t(.syncCalendarCmd)) {
                     Task {

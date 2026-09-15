@@ -19,6 +19,7 @@ struct SettingsView: View {
     
     @ObservedObject private var notificationManager = NotificationManager.shared
     @ObservedObject private var soundManager = SoundManager.shared
+    @ObservedObject private var updateManager = UpdateManager.shared
     @State private var isShowingOnboarding = false
     @State private var showingClearAlert = false
     @State private var newQuoteText: String = ""
@@ -887,7 +888,194 @@ struct SettingsView: View {
                     }
                 }
                 
-                // SEZIONE 9: INFORMAZIONI, CREDITI & LICENZA
+                // SEZIONE 9: AGGIORNAMENTI SOFTWARE
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(localizationManager.text(it: "AGGIORNAMENTI SOFTWARE", en: "SOFTWARE UPDATES"))
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                        .tracking(1.2)
+                    
+                    UniCard(padding: 20) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack(alignment: .center, spacing: 16) {
+                                Circle()
+                                    .fill(themeManager.accentColor.opacity(0.12))
+                                    .frame(width: 44, height: 44)
+                                    .overlay(
+                                        Image(systemName: "arrow.triangle.2.circlepath")
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .foregroundStyle(themeManager.accentColor)
+                                            .rotationEffect(.degrees(updateManager.checkStatus == .checking ? 360 : 0))
+                                            .animation(updateManager.checkStatus == .checking ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: updateManager.checkStatus == .checking)
+                                    )
+                                
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(spacing: 8) {
+                                        Text(localizationManager.text(it: "Stato Aggiornamenti", en: "Update Status"))
+                                            .font(UniFont.headline())
+                                        
+                                        Text("v\(updateManager.currentVersion) (\(updateManager.currentBuild))")
+                                            .font(UniFont.mono())
+                                            .foregroundStyle(.secondary)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.primary.opacity(0.05))
+                                            .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                                    }
+                                    
+                                    if let last = updateManager.lastCheckDate {
+                                        Text(localizationManager.text(
+                                            it: "Ultimo controllo: \(formatCheckDate(last))",
+                                            en: "Last checked: \(formatCheckDate(last))"
+                                        ))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                    } else {
+                                        Text(localizationManager.text(it: "Nessun controllo effettuato di recente", en: "No recent update check performed"))
+                                            .font(UniFont.caption())
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                Button {
+                                    Task {
+                                        await updateManager.checkForUpdates(force: true, isManual: true)
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        if updateManager.checkStatus == .checking {
+                                            ProgressView()
+                                                .scaleEffect(0.65)
+                                                .frame(width: 14, height: 14)
+                                            Text(localizationManager.text(it: "Controllo in corso...", en: "Checking..."))
+                                        } else {
+                                            Image(systemName: "arrow.clockwise")
+                                                .font(.system(size: 12, weight: .semibold))
+                                            Text(localizationManager.text(it: "Controlla Aggiornamenti", en: "Check for Updates"))
+                                        }
+                                    }
+                                    .font(UniFont.headline())
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(themeManager.accentColor)
+                                .disabled(updateManager.checkStatus == .checking)
+                            }
+                            
+                            // Feedback Banner
+                            switch updateManager.checkStatus {
+                            case .upToDate(let ver):
+                                HStack(spacing: 8) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                        .font(.system(size: 14))
+                                    Text(localizationManager.text(
+                                        it: "uni v\(ver) è aggiornato alla versione più recente.",
+                                        en: "uni v\(ver) is up to date with the latest release."
+                                    ))
+                                    .font(UniFont.subheadline())
+                                    .foregroundStyle(.primary)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.green.opacity(0.08))
+                                .overlay(Rectangle().stroke(Color.green.opacity(0.2), lineWidth: 1))
+                                
+                            case .updateAvailable(let rel):
+                                HStack(spacing: 10) {
+                                    Image(systemName: "sparkles")
+                                        .foregroundStyle(.orange)
+                                        .font(.system(size: 16))
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(localizationManager.text(
+                                            it: "Nuova versione disponibile: uni v\(rel.version)!",
+                                            en: "New version available: uni v\(rel.version)!"
+                                        ))
+                                        .font(UniFont.subheadline())
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.primary)
+                                        
+                                        Text(localizationManager.text(
+                                            it: "Visualizza le note di rilascio e avvia il download dell'aggiornamento.",
+                                            en: "View release notes and download the update."
+                                        ))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Button {
+                                        updateManager.showUpdateModal = true
+                                    } label: {
+                                        HStack(spacing: 5) {
+                                            Text(localizationManager.text(it: "Vedi Aggiornamento", en: "View Update"))
+                                            Image(systemName: "chevron.right")
+                                                .font(.system(size: 10))
+                                        }
+                                        .font(UniFont.caption())
+                                        .fontWeight(.semibold)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(Color.orange)
+                                        .foregroundStyle(.white)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(12)
+                                .background(Color.orange.opacity(0.08))
+                                .overlay(Rectangle().stroke(Color.orange.opacity(0.25), lineWidth: 1))
+                                
+                            case .error(let err):
+                                HStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(.red)
+                                        .font(.system(size: 14))
+                                    Text(err)
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    Button {
+                                        Task {
+                                            await updateManager.checkForUpdates(force: true, isManual: true)
+                                        }
+                                    } label: {
+                                        Text(localizationManager.text(it: "Riprova", en: "Retry"))
+                                            .font(UniFont.caption())
+                                            .foregroundStyle(themeManager.accentColor)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(10)
+                                .background(Color.red.opacity(0.06))
+                                .overlay(Rectangle().stroke(Color.red.opacity(0.15), lineWidth: 1))
+                                
+                            default:
+                                EmptyView()
+                            }
+                            
+                            Divider()
+                            
+                            Toggle(isOn: $updateManager.autoCheckUpdates) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(localizationManager.text(it: "Controlla aggiornamenti automaticamente all'avvio", en: "Automatically check for updates at launch"))
+                                        .font(UniFont.subheadline())
+                                    Text(localizationManager.text(it: "Verifica periodicamente e mostra un pop-up quando è pronta una nuova versione", en: "Periodically checks and presents a popup dialog when a new release is ready"))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .toggleStyle(.switch)
+                        }
+                    }
+                }
+                
+                // SEZIONE 10: INFORMAZIONI, CREDITI & LICENZA
                 VStack(alignment: .leading, spacing: 14) {
                     Text(localizationManager.text(it: "INFORMAZIONI & CREDITI", en: "ABOUT & CREDITS"))
                         .font(UniFont.caption())
@@ -1102,6 +1290,13 @@ struct SettingsView: View {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
         return f.string(from: Date())
+    }
+    
+    private func formatCheckDate(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .short
+        return f.string(from: date)
     }
     
     private func modeTitle(for mode: AppThemeMode) -> String {

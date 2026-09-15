@@ -1,0 +1,9 @@
+{
+  "tag_name": "v1.2.0",
+  "version": "1.2.0",
+  "name": "uni 1.2.0 — Liquid Glass & Nuove Funzionalità",
+  "body": "Novità introdotte in uni v1.2.0:\n• Nuovo stile Liquid Glass con trasparenza ultraThinMaterial e riflessi dinamici\n• Pulsanti sidebar polished ispirati a Mastro con animazioni fluide\n• Caricamento iniziale elegante con Splash Screen dedicato e animazioni d'entrata\n• Riposizionamento delle Impostazioni nell'angolo inferiore sinistro della navbar\n• Bottone rapido personalizzabile nella barra laterale (Outlook, Timer Focus, Scadenze, Esami o Link)\n• Gestione completa dei link scorciatoia per la Home dalle Impostazioni\n• Quadrati spigolosi a 90° preservati per tutte le card della schermata Overview\n• Nuovo sistema di controllo aggiornamenti integrato nelle Impostazioni con finestra pop-up interattiva",
+  "html_url": "https://github.com/zjncoo/uni/releases/tag/v1.2.0",
+  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/v1.2.0/uni.dmg",
+  "pub_date": "2026-09-15T13:00:00Z"
+}
