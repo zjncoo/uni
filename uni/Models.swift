@@ -603,3 +603,66 @@ extension CalendarEventItem.EventCategory {
     }
 }
 
+// MARK: - Quick Shortcut Link (Scorciatoie Home & Accesso Rapido)
+public struct QuickShortcutLink: Identifiable, Codable, Hashable {
+    public var id: UUID
+    public var title: String
+    public var url: String
+    public var iconName: String
+    public var dateAdded: Date
+    
+    public init(
+        id: UUID = UUID(),
+        title: String,
+        url: String,
+        iconName: String = "link",
+        dateAdded: Date = Date()
+    ) {
+        self.id = id
+        self.title = title
+        self.url = url
+        self.iconName = iconName
+        self.dateAdded = dateAdded
+    }
+}
+
+// MARK: - Navbar Quick Action Option (Scelta del Bottone Rapido nella Navbar)
+public enum NavbarQuickActionOption: String, Codable, CaseIterable, Identifiable {
+    case outlook = "outlook"
+    case portal = "portal"
+    case focusTimer = "focusTimer"
+    case quickSearch = "quickSearch"
+    case newEntry = "newEntry"
+    case customShortcut = "customShortcut"
+    
+    public var id: String { rawValue }
+    
+    public var defaultIcon: String {
+        switch self {
+        case .outlook: return "envelope.fill"
+        case .portal: return "globe"
+        case .focusTimer: return "timer"
+        case .quickSearch: return "magnifyingglass"
+        case .newEntry: return "plus"
+        case .customShortcut: return "link"
+        }
+    }
+    
+    public func displayName(isItalian: Bool = true) -> String {
+        switch self {
+        case .outlook:
+            return isItalian ? "Microsoft Outlook / Posta" : "Microsoft Outlook / Mail"
+        case .portal:
+            return isItalian ? "Portale Ateneo" : "University Portal"
+        case .focusTimer:
+            return isItalian ? "Focus Timer (⌘T)" : "Focus Timer (⌘T)"
+        case .quickSearch:
+            return isItalian ? "Ricerca Globale (⌘F)" : "Global Search (⌘F)"
+        case .newEntry:
+            return isItalian ? "Nuovo Elemento (⌘N)" : "New Item (⌘N)"
+        case .customShortcut:
+            return isItalian ? "Scorciatoia Personalizzata" : "Custom Shortcut"
+        }
+    }
+}
+

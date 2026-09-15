@@ -314,16 +314,17 @@ public struct UniFont {
 // MARK: - Card Style
 public enum UniCardStyle {
     case surface       // Superficie piana antracite scura / bianco puro con bordo micro-fine
+    case liquidGlass   // Vetro liquido translucido ultraThinMaterial con riflesso satinato
     case accentHero    // Sfondo solido nel colore d'accento ad alto contrasto
     case secondary     // Grigio secondario pulito
     case outline       // Solo contorno geometrico
 }
 
-// MARK: - Polished Minimalist Bento Card (Riquadri con Spigoli Vivi)
+// MARK: - Polished Bento Card (Supporta sia Spigoli Netti a 90° che angoli arrotondati e finitura Liquid Glass)
 public struct UniCard<Content: View>: View {
     let content: Content
     var padding: CGFloat = 16
-    var cornerRadius: CGFloat = 0 // Spigoli geometrici netti a 90°
+    var cornerRadius: CGFloat = 0 // Default 0 per mantenere i quadrati spigolosi nella overview
     var style: UniCardStyle = .surface
     
     @Environment(\.colorScheme) private var colorScheme
@@ -342,29 +343,43 @@ public struct UniCard<Content: View>: View {
     }
     
     public var body: some View {
+        let shape = RoundedRectangle(cornerRadius: max(0, cornerRadius), style: .continuous)
         content
             .padding(padding)
             .background(
-                RoundedRectangle(cornerRadius: max(0, cornerRadius), style: .continuous)
-                    .fill(backgroundFill)
+                Group {
+                    if style == .liquidGlass {
+                        shape
+                            .fill(.ultraThinMaterial)
+                    } else {
+                        shape
+                            .fill(backgroundFill)
+                    }
+                }
             )
             .overlay(
-                RoundedRectangle(cornerRadius: max(0, cornerRadius), style: .continuous)
+                shape
                     .strokeBorder(strokeBorderColor, lineWidth: 1)
             )
-            .clipShape(
-                RoundedRectangle(cornerRadius: max(0, cornerRadius), style: .continuous)
+            .clipShape(shape)
+            .shadow(
+                color: style == .liquidGlass ? Color.black.opacity(colorScheme == .dark ? 0.22 : 0.05) : Color.clear,
+                radius: 12,
+                x: 0,
+                y: 4
             )
     }
     
     private var backgroundFill: Color {
         switch style {
+        case .liquidGlass:
+            return colorScheme == .dark ? Color(hex: "#151618")!.opacity(0.85) : Color.white.opacity(0.85)
         case .accentHero:
             return themeManager.accentColor
         case .surface:
-            return colorScheme == .dark ? Color(hex: "#141414")! : Color.white
+            return colorScheme == .dark ? Color(hex: "#151618")! : Color.white
         case .secondary:
-            return colorScheme == .dark ? Color(hex: "#1C1C1E")! : Color(hex: "#F2F3F5")!
+            return colorScheme == .dark ? Color(hex: "#1C1D21")! : Color(hex: "#F2F3F5")!
         case .outline:
             return Color.clear
         }
@@ -372,6 +387,8 @@ public struct UniCard<Content: View>: View {
     
     private var strokeBorderColor: Color {
         switch style {
+        case .liquidGlass:
+            return colorScheme == .dark ? Color.white.opacity(0.14) : Color.white.opacity(0.75)
         case .accentHero:
             return Color.clear
         case .surface:
@@ -380,6 +397,224 @@ public struct UniCard<Content: View>: View {
             return colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.04)
         case .outline:
             return colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.10)
+        }
+    }
+}
+
+// MARK: - Fluid Background Gradient (Liquid Glass Backdrop ispirato a Mastro)
+public struct UniBackgroundGradientView: View {
+    let isDarkMode: Bool
+    
+    public init(isDarkMode: Bool) {
+        self.isDarkMode = isDarkMode
+    }
+    
+    public var body: some View {
+        let colors = isDarkMode
+            ? [Color(red: 0.08, green: 0.09, blue: 0.12), Color(red: 0.04, green: 0.05, blue: 0.07)]
+            : [Color(red: 0.95, green: 0.96, blue: 0.98), Color(red: 0.89, green: 0.91, blue: 0.94)]
+        LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+            .ignoresSafeArea()
+    }
+}
+
+// MARK: - Liquid Sidebar Navigation Button (Ispirato a Mastro con micro-interazioni polished)
+public struct SidebarButtonLiquidUni: View {
+    let title: String
+    let icon: String
+    var count: Int = 0
+    var badgeText: String? = nil
+    var shortcutHint: String? = nil
+    let isSelected: Bool
+    let isDark: Bool
+    let action: () -> Void
+    
+    @EnvironmentObject private var themeManager: ThemeManager
+    @State private var isHovered: Bool = false
+    
+    public init(
+        title: String,
+        icon: String,
+        count: Int = 0,
+        badgeText: String? = nil,
+        shortcutHint: String? = nil,
+        isSelected: Bool,
+        isDark: Bool,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.icon = icon
+        self.count = count
+        self.badgeText = badgeText
+        self.shortcutHint = shortcutHint
+        self.isSelected = isSelected
+        self.isDark = isDark
+        self.action = action
+    }
+    
+    private var iconColor: Color {
+        if isSelected { return themeManager.accentColor }
+        if isHovered { return themeManager.accentColor.opacity(0.9) }
+        return .secondary
+    }
+    
+    private var textColor: Color {
+        if isSelected {
+            return isDark ? .white : .primary
+        }
+        if isHovered {
+            return isDark ? Color.white.opacity(0.95) : Color.black.opacity(0.88)
+        }
+        return .secondary
+    }
+    
+    private var badgeBgColor: Color {
+        if isSelected { return themeManager.accentColor.opacity(0.22) }
+        if isHovered { return themeManager.accentColor.opacity(0.14) }
+        return Color.primary.opacity(0.06)
+    }
+    
+    private var buttonBgColor: Color {
+        if isSelected {
+            return isDark ? Color.white.opacity(0.12) : Color.white.opacity(0.85)
+        }
+        if isHovered {
+            return isDark ? Color.white.opacity(0.06) : Color.white.opacity(0.45)
+        }
+        return Color.clear
+    }
+    
+    private var buttonStrokeColor: Color {
+        if isSelected {
+            return isDark ? Color.white.opacity(0.25) : Color.white
+        }
+        if isHovered {
+            return isDark ? Color.white.opacity(0.12) : Color.white.opacity(0.6)
+        }
+        return Color.clear
+    }
+    
+    public var body: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) {
+                action()
+            }
+        }) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                    .foregroundColor(iconColor)
+                    .frame(width: 18)
+                
+                Text(title)
+                    .font(UniFont.body())
+                    .fontWeight(isSelected ? .semibold : .regular)
+                    .foregroundColor(textColor)
+                
+                Spacer()
+                
+                if let hint = shortcutHint, !isSelected && !isHovered && count == 0 {
+                    Text(hint)
+                        .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.secondary.opacity(0.6))
+                }
+                
+                if let b = badgeText, !b.isEmpty {
+                    Text(b)
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(badgeBgColor)
+                        .foregroundColor(isSelected ? themeManager.accentColor : .secondary)
+                        .clipShape(Capsule())
+                } else if count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: 10.5, weight: .bold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(badgeBgColor)
+                        .foregroundColor(isSelected ? themeManager.accentColor : .secondary)
+                        .clipShape(Capsule())
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(buttonBgColor))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(buttonStrokeColor, lineWidth: 1))
+            .scaleEffect(isHovered ? 1.015 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .onHover { hover in
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.78)) {
+                isHovered = hover
+            }
+        }
+    }
+}
+
+// MARK: - Polished Liquid Button Style (Pulsanti generali dell'app)
+public struct LiquidButtonStyle: ButtonStyle {
+    var isAccent: Bool = false
+    var cornerRadius: CGFloat = 8
+    
+    public init(isAccent: Bool = false, cornerRadius: CGFloat = 8) {
+        self.isAccent = isAccent
+        self.cornerRadius = cornerRadius
+    }
+    
+    public func makeBody(configuration: Configuration) -> some View {
+        LiquidButtonView(configuration: configuration, isAccent: isAccent, cornerRadius: cornerRadius)
+    }
+    
+    private struct LiquidButtonView: View {
+        let configuration: Configuration
+        let isAccent: Bool
+        let cornerRadius: CGFloat
+        
+        @Environment(\.colorScheme) private var colorScheme
+        @EnvironmentObject private var themeManager: ThemeManager
+        @State private var isHovered: Bool = false
+        
+        var body: some View {
+            configuration.label
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(backgroundFill)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(strokeColor, lineWidth: 1)
+                )
+                .scaleEffect(configuration.isPressed ? 0.98 : (isHovered ? 1.015 : 1.0))
+                .animation(.spring(response: 0.25, dampingFraction: 0.78), value: isHovered)
+                .animation(.spring(response: 0.2, dampingFraction: 0.8), value: configuration.isPressed)
+                .onHover { hovering in
+                    isHovered = hovering
+                }
+        }
+        
+        private var backgroundFill: Color {
+            if isAccent {
+                return configuration.isPressed ? themeManager.accentColor.opacity(0.85) : (isHovered ? themeManager.accentColor.opacity(0.95) : themeManager.accentColor)
+            }
+            if colorScheme == .dark {
+                return configuration.isPressed ? Color.white.opacity(0.14) : (isHovered ? Color.white.opacity(0.08) : Color.white.opacity(0.04))
+            } else {
+                return configuration.isPressed ? Color.black.opacity(0.08) : (isHovered ? Color.white.opacity(0.85) : Color.white.opacity(0.55))
+            }
+        }
+        
+        private var strokeColor: Color {
+            if isAccent {
+                return Color.white.opacity(0.25)
+            }
+            if colorScheme == .dark {
+                return isHovered ? Color.white.opacity(0.22) : Color.white.opacity(0.08)
+            } else {
+                return isHovered ? Color.white : Color.black.opacity(0.08)
+            }
         }
     }
 }

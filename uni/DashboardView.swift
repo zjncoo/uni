@@ -92,8 +92,8 @@ struct DashboardView: View {
                     // Griglia Bento 2x2 Principale
                     bentoGridSection
                     
-                    // Banner Frase Motivazionale Minimale
-                    UniCard(padding: 12, cornerRadius: 10, style: .surface) {
+                    // Banner Frase Motivazionale Minimale con spigoli vivi a 90°
+                    UniCard(padding: 12, cornerRadius: 0, style: .surface) {
                         HStack(spacing: 12) {
                             Image(systemName: "sparkles")
                                 .font(.system(size: 13, weight: .semibold))
@@ -815,74 +815,139 @@ struct DashboardView: View {
         .buttonStyle(.plain)
     }
     
-    // 4. Card Portale Ateneo
+    // 4. Card Accesso Rapido & Scorciatoie Home (Riquadro a Spigoli Vivi a 90° con finitura Liquid Glass)
     private var bentoPortalCard: some View {
         UniCard(padding: 16, cornerRadius: 0, style: .surface) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(localizationManager.text(it: "PORTALE ATENEO", en: "CAMPUS PORTAL"))
+                        Text(localizationManager.text(it: "ACCESSO RAPIDO", en: "QUICK SHORTCUTS"))
                             .font(UniFont.sectionLabel())
                             .foregroundStyle(.secondary)
                             .tracking(1.4)
                         
-                        Text(dataManager.universityPortalURL.isEmpty ? localizationManager.text(it: "NON CONFIGURATO", en: "NOT CONFIGURED") : localizationManager.text(it: "PRONTO ALL'USO", en: "READY TO USE"))
+                        let count = dataManager.quickShortcuts.count
+                        Text(count > 0 ? "\(count) \(localizationManager.text(it: "COLLEGAMENTI", en: "SHORTCUTS"))" : localizationManager.text(it: "NON CONFIGURATO", en: "NOT CONFIGURED"))
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(dataManager.universityPortalURL.isEmpty ? .secondary : themeManager.accentColor)
+                            .foregroundStyle(count > 0 ? themeManager.accentColor : .secondary)
                     }
                     
                     Spacer()
                     
                     Button {
-                        isShowingEditPortalSheet = true
+                        selectedTab = "settings"
                     } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundStyle(.secondary.opacity(0.7))
+                        HStack(spacing: 4) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 11, weight: .regular))
+                            Text(localizationManager.text(it: "Gestisci", en: "Manage"))
+                                .font(UniFont.caption())
+                        }
+                        .foregroundStyle(.secondary.opacity(0.8))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.primary.opacity(0.04))
                     }
                     .buttonStyle(.plain)
-                    .help(localizationManager.text(it: "Modifica link e nome ateneo", en: "Edit university and link"))
+                    .help(localizationManager.text(it: "Gestisci e aggiungi scorciatoie nelle impostazioni", en: "Manage and add shortcuts in settings"))
                 }
                 
-                Spacer(minLength: 16)
+                Spacer(minLength: 12)
                 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(dataManager.universityName.isEmpty ? localizationManager.t(.universityPortal) : dataManager.universityName)
-                        .font(UniFont.title())
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                    
-                    Text(dataManager.universityPortalURL.isEmpty ? localizationManager.text(it: "Tocca ... per inserire il link", en: "Tap ... to configure link") : dataManager.universityPortalURL)
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                
-                Spacer(minLength: 18)
-                
-                HStack {
-                    if !dataManager.universityPortalURL.isEmpty {
+                if dataManager.quickShortcuts.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(dataManager.universityName.isEmpty ? localizationManager.t(.universityPortal) : dataManager.universityName)
+                            .font(UniFont.headline())
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        
+                        Text(localizationManager.text(it: "Aggiungi link scorciatoia dalle Impostazioni", en: "Add shortcut links from Settings"))
+                            .font(UniFont.caption())
+                            .foregroundStyle(.secondary)
+                        
+                        Spacer()
+                        
                         Button {
-                            AppSystemHelper.openWebURL(urlString: dataManager.universityPortalURL)
+                            selectedTab = "settings"
                         } label: {
-                            Image(systemName: "arrow.up.forward")
-                                .font(.system(size: 24, weight: .light))
-                                .foregroundStyle(themeManager.accentColor)
-                        }
-                        .buttonStyle(.plain)
-                        .help(localizationManager.text(it: "Apri portale nel browser", en: "Open portal in browser"))
-                    } else {
-                        Button {
-                            isShowingEditPortalSheet = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 22, weight: .light))
-                                .foregroundStyle(.secondary)
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 11, weight: .bold))
+                                Text(localizationManager.text(it: "Configura Scorciatoie", en: "Configure Shortcuts"))
+                                    .font(UniFont.caption())
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(themeManager.accentColor.opacity(0.12))
+                            .foregroundStyle(themeManager.accentColor)
                         }
                         .buttonStyle(.plain)
                     }
-                    
-                    Spacer()
+                } else {
+                    VStack(spacing: 6) {
+                        ForEach(dataManager.quickShortcuts.prefix(3)) { shortcut in
+                            Button {
+                                AppSystemHelper.openWebURL(urlString: shortcut.url)
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: shortcut.iconName.isEmpty ? "link" : shortcut.iconName)
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(themeManager.accentColor)
+                                        .frame(width: 20, height: 20)
+                                        .background(themeManager.accentColor.opacity(0.12))
+                                    
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(shortcut.title)
+                                            .font(UniFont.subheadline())
+                                            .fontWeight(.medium)
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(1)
+                                        
+                                        if let host = URL(string: shortcut.url)?.host {
+                                            Text(host)
+                                                .font(.system(size: 9.5))
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(1)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "arrow.up.forward")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundStyle(.secondary.opacity(0.6))
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(Color.primary.opacity(0.03))
+                                .overlay(
+                                    Rectangle()
+                                        .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .help(shortcut.url)
+                        }
+                        
+                        if dataManager.quickShortcuts.count > 3 {
+                            Button {
+                                selectedTab = "settings"
+                            } label: {
+                                HStack {
+                                    Text("+\(dataManager.quickShortcuts.count - 3) \(localizationManager.text(it: "altre scorciatoie...", en: "more shortcuts..."))")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundStyle(themeManager.accentColor)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 9))
+                                        .foregroundStyle(themeManager.accentColor)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
             }
             .frame(minHeight: 145)

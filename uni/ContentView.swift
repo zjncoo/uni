@@ -15,6 +15,11 @@ struct ContentView: View {
     @EnvironmentObject var outlookManager: OutlookManager
     
     @State private var selectedTab: String = "dashboard"
+    @State private var isLoading: Bool = true
+    
+    // Animazione a cascata degli elementi UI (ispirata a Mastro)
+    @State private var showSidebarUI: Bool = false
+    @State private var showContentUI: Bool = false
     
     // Quick Search & Focus Timer Modals
     @State private var isShowingQuickSearch = false
@@ -27,297 +32,189 @@ struct ContentView: View {
     @State private var isPresentingNewAssignmentSheet = false
     @State private var isPresentingNewCourseSheet = false
     
+    @Environment(\.colorScheme) private var systemColorScheme
+    
+    var isDarkMode: Bool {
+        if themeManager.themeMode == .dark { return true }
+        if themeManager.themeMode == .light { return false }
+        return systemColorScheme == .dark
+    }
+    
+    private func triggerCascadingAnimation() {
+        showSidebarUI = false
+        showContentUI = false
+        
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.78)) {
+            showSidebarUI = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            withAnimation(.spring(response: 0.50, dampingFraction: 0.78)) {
+                showContentUI = true
+            }
+        }
+    }
+    
     var body: some View {
         ZStack {
-            NavigationSplitView {
-                VStack(alignment: .leading, spacing: 0) {
-                    // Header Brand Logo ("uni" in minuscolo) con tasto rapido Spotlight ⌘K
-                    HStack(spacing: 8) {
-                        // App icon
-                        #if canImport(AppKit)
-                        if let nsImg = NSImage(named: "AppIcon") {
-                            Image(nsImage: nsImg)
-                                .resizable()
-                                .interpolation(.high)
-                                .frame(width: 22, height: 22)
-                                .clipShape(Rectangle())
-                                .overlay(Rectangle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
-                        }
-                        #endif
-                        
-                        Text("uni")
-                            .font(UniFont.title())
-                            .fontWeight(.semibold)
-                            .tracking(-0.6)
-                            .foregroundStyle(.primary)
-                        
-                        Spacer()
-                        
-                        // Tasto Rapido Ricerca Spotlight ⌘F
-                        Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                isShowingQuickSearch.toggle()
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.system(size: 10, weight: .semibold))
-                                Text("⌘F")
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            }
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
-                            .background(Color.primary.opacity(0.06))
-                            .overlay(Rectangle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
-                            .clipShape(Rectangle())
-                            .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .help(localizationManager.text(it: "Cerca rapidamente in tutto uni (⌘F)", en: "Quick search throughout uni (⌘F)"))
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 18)
-                    .padding(.bottom, 14)
-                    
-                    // Update available banner (shown above nav when a new release is ready)
-                    UpdateBannerView()
-                        .environmentObject(themeManager)
-                        .environmentObject(localizationManager)
-                    
-                    Divider()
-                        .padding(.bottom, 6)
-                    
-                    // Voci di Navigazione
-                    List(selection: $selectedTab) {
-                        Section {
-                            NavigationLink(value: "dashboard") {
-                                Label(localizationManager.t(.navOverview), systemImage: "square.grid.2x2")
-                                    .font(UniFont.body())
-                            }
+            UniBackgroundGradientView(isDarkMode: isDarkMode)
+            
+            if isLoading {
+                UniSplashScreenView(dataManager: dataManager, isDarkMode: isDarkMode)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    .zIndex(500)
+            } else {
+                NavigationSplitView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if showSidebarUI {
+                            sidebarHeader
                             
-                            NavigationLink(value: "calendar") {
-                                Label(localizationManager.t(.navCalendar), systemImage: "calendar")
-                                    .font(UniFont.body())
-                            }
+                            // Update available banner
+                            UpdateBannerView()
+                                .environmentObject(themeManager)
+                                .environmentObject(localizationManager)
                             
-                            // Pomodoro Timer
-                            Button {
-                                isShowingFocusTimer = true
-                            } label: {
-                                HStack {
-                                    Label("Focus Timer", systemImage: "timer")
-                                        .font(UniFont.body())
-                                        .foregroundStyle(.primary)
-                                    Spacer()
-                                    Text("⌘T")
-                                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        } header: {
-                            Text(localizationManager.t(.navGeneral).uppercased())
-                                .font(UniFont.sectionLabel())
-                                .foregroundStyle(.secondary)
-                                .tracking(1.4)
-                        }
-                        
-                        // Sezione Materie / Didattica
-                        Section {
-                            NavigationLink(value: "courses") {
-                                HStack {
-                                    Label(localizationManager.t(.navCourses), systemImage: "book.closed")
-                                        .font(UniFont.body())
-                                    Spacer()
-                                    if !dataManager.courses.isEmpty {
-                                        Text("\(dataManager.courses.count)")
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                        } header: {
-                            Text(localizationManager.t(.navCoursesSection).uppercased())
-                                .font(UniFont.sectionLabel())
-                                .foregroundStyle(.secondary)
-                                .tracking(1.4)
-                        }
-                        
-                        // Sezione Scadenze, Esami & Assignments
-                        Section {
-                            NavigationLink(value: "deadlines") {
-                                HStack {
-                                    Label(localizationManager.t(.navDeadlines), systemImage: "clock")
-                                        .font(UniFont.body())
-                                    Spacer()
-                                    let count = dataManager.deadlines.filter { !$0.isCompleted }.count
-                                    if count > 0 {
-                                        Text("\(count)")
-                                            .font(.system(size: 9.5, weight: .bold))
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(themeManager.accentColor.opacity(0.18))
-                                            .foregroundStyle(themeManager.accentColor)
-                                            .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
-                                            .clipShape(Rectangle())
-                                    }
-                                }
-                            }
-                            
-                            NavigationLink(value: "exams") {
-                                HStack {
-                                    Label(localizationManager.t(.navExams), systemImage: "graduationcap")
-                                        .font(UniFont.body())
-                                    Spacer()
-                                    let upcoming = dataManager.exams.filter { $0.status != .passed }.count
-                                    if upcoming > 0 {
-                                        Text("\(upcoming)")
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            
-                            NavigationLink(value: "assignments") {
-                                HStack {
-                                    Label(localizationManager.t(.navAssignments), systemImage: "doc.text")
-                                        .font(UniFont.body())
-                                    Spacer()
-                                    let count = dataManager.assignments.filter { !$0.isCompleted }.count
-                                    if count > 0 {
-                                        Text("\(count)")
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                        } header: {
-                            Text(localizationManager.t(.navActivitiesSection).uppercased())
-                                .font(UniFont.sectionLabel())
-                                .foregroundStyle(.secondary)
-                                .tracking(1.4)
-                        }
-                        
-                        Section {
-                            NavigationLink(value: "settings") {
-                                Label(localizationManager.t(.navSettings), systemImage: "gearshape")
-                                    .font(UniFont.body())
-                            }
-                        } header: {
-                            Text((localizationManager.currentLanguage == .italian ? "SISTEMA" : "SYSTEM").uppercased())
-                                .font(UniFont.sectionLabel())
-                                .foregroundStyle(.secondary)
-                                .tracking(1.4)
-                        }
-                    }
-                    .listStyle(.sidebar)
-                    
-                    // Footer Statistiche Architettonico (con indicatore di avanzamento a blocco)
-                    if dataManager.weightedAverage > 0 || dataManager.totalCfuTarget > 0 {
-                        VStack(spacing: 8) {
                             Divider()
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(localizationManager.t(.currentGPA).uppercased())
+                                .opacity(isDarkMode ? 0.2 : 0.4)
+                                .padding(.horizontal, 14)
+                                .padding(.bottom, 8)
+                            
+                            // Lista di Navigazione con Pulsanti Liquidi (stile Mastro)
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 14) {
+                                    // Sezione Generale
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(localizationManager.t(.navGeneral).uppercased())
                                             .font(UniFont.sectionLabel())
                                             .foregroundStyle(.secondary)
-                                            .tracking(1.0)
-                                        Text(dataManager.weightedAverage > 0 ? String(format: "%.2f", dataManager.weightedAverage) : "--")
-                                            .font(UniFont.headline())
-                                            .foregroundStyle(themeManager.accentColor)
+                                            .tracking(1.4)
+                                            .padding(.horizontal, 10)
+                                            .padding(.bottom, 2)
+                                        
+                                        SidebarButtonLiquidUni(
+                                            title: localizationManager.t(.navOverview),
+                                            icon: "square.grid.2x2",
+                                            shortcutHint: "⌘1",
+                                            isSelected: selectedTab == "dashboard",
+                                            isDark: isDarkMode
+                                        ) {
+                                            selectedTab = "dashboard"
+                                        }
+                                        
+                                        SidebarButtonLiquidUni(
+                                            title: localizationManager.t(.navCalendar),
+                                            icon: "calendar",
+                                            shortcutHint: "⌘2",
+                                            isSelected: selectedTab == "calendar",
+                                            isDark: isDarkMode
+                                        ) {
+                                            selectedTab = "calendar"
+                                        }
+                                        
+                                        SidebarButtonLiquidUni(
+                                            title: "Focus Timer",
+                                            icon: "timer",
+                                            shortcutHint: "⌘T",
+                                            isSelected: false,
+                                            isDark: isDarkMode
+                                        ) {
+                                            isShowingFocusTimer = true
+                                        }
                                     }
                                     
-                                    Spacer()
-                                    
-                                    VStack(alignment: .trailing, spacing: 2) {
-                                        Text(localizationManager.t(.totalCredits).uppercased())
+                                    // Sezione Didattica / Materie
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(localizationManager.t(.navCoursesSection).uppercased())
                                             .font(UniFont.sectionLabel())
                                             .foregroundStyle(.secondary)
-                                            .tracking(1.0)
-                                        Text("\(dataManager.totalCfuAcquired) / \(dataManager.totalCfuTarget)")
-                                            .font(UniFont.headline())
-                                            .foregroundStyle(.primary)
+                                            .tracking(1.4)
+                                            .padding(.horizontal, 10)
+                                            .padding(.bottom, 2)
+                                        
+                                        SidebarButtonLiquidUni(
+                                            title: localizationManager.t(.navCourses),
+                                            icon: "book.closed",
+                                            count: dataManager.courses.count,
+                                            shortcutHint: "⌘3",
+                                            isSelected: selectedTab == "courses",
+                                            isDark: isDarkMode
+                                        ) {
+                                            selectedTab = "courses"
+                                        }
+                                    }
+                                    
+                                    // Sezione Scadenze, Esami & Progetti
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(localizationManager.t(.navActivitiesSection).uppercased())
+                                            .font(UniFont.sectionLabel())
+                                            .foregroundStyle(.secondary)
+                                            .tracking(1.4)
+                                            .padding(.horizontal, 10)
+                                            .padding(.bottom, 2)
+                                        
+                                        let activeDeadlines = dataManager.deadlines.filter { !$0.isCompleted }.count
+                                        SidebarButtonLiquidUni(
+                                            title: localizationManager.t(.navDeadlines),
+                                            icon: "clock",
+                                            count: activeDeadlines,
+                                            shortcutHint: "⌘4",
+                                            isSelected: selectedTab == "deadlines",
+                                            isDark: isDarkMode
+                                        ) {
+                                            selectedTab = "deadlines"
+                                        }
+                                        
+                                        let pendingExams = dataManager.exams.filter { $0.status != .passed }.count
+                                        SidebarButtonLiquidUni(
+                                            title: localizationManager.t(.navExams),
+                                            icon: "graduationcap",
+                                            count: pendingExams,
+                                            shortcutHint: "⌘5",
+                                            isSelected: selectedTab == "exams",
+                                            isDark: isDarkMode
+                                        ) {
+                                            selectedTab = "exams"
+                                        }
+                                        
+                                        let pendingAssignments = dataManager.assignments.filter { !$0.isCompleted }.count
+                                        SidebarButtonLiquidUni(
+                                            title: localizationManager.t(.navAssignments),
+                                            icon: "doc.text",
+                                            count: pendingAssignments,
+                                            shortcutHint: "⌘6",
+                                            isSelected: selectedTab == "assignments",
+                                            isDark: isDarkMode
+                                        ) {
+                                            selectedTab = "assignments"
+                                        }
                                     }
                                 }
+                                .padding(.horizontal, 10)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                        }
-                    }
-                    
-                    // Barra Inferiore Sidebar con Bottone Mail Outlook
-                    VStack(spacing: 0) {
-                        Divider()
-                        HStack {
-                            Button {
-                                outlookManager.openOutlook()
-                            } label: {
-                                Image(systemName: "envelope.fill")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(themeManager.accentColor)
-                                    .frame(width: 28, height: 28)
-                                    .background(themeManager.accentColor.opacity(0.12))
-                                    .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
-                                    .clipShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .help(localizationManager.text(it: "Apri Microsoft Outlook / Posta", en: "Open Microsoft Outlook / Mail"))
                             
                             Spacer()
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                    }
-                }
-                .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 280)
-            } detail: {
-                Group {
-                    switch selectedTab {
-                    case "dashboard":
-                        DashboardView(selectedTab: $selectedTab)
-                    case "calendar":
-                        CalendarView()
-                    case "courses":
-                        CoursesView()
-                    case "deadlines":
-                        DeadlinesView()
-                    case "exams":
-                        ExamsView()
-                    case "assignments":
-                        AssignmentsView()
-                    case "settings":
-                        SettingsView()
-                    default:
-                        DashboardView(selectedTab: $selectedTab)
-                    }
-                }
-                .frame(minWidth: 620, minHeight: 520)
-                .preferredColorScheme(themeManager.themeMode.colorScheme)
-                .toolbar {
-                    ToolbarItemGroup(placement: .primaryAction) {
-                        Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                isShowingQuickSearch = true
+                            
+                            // Statistiche Compatte Media & CFU
+                            if dataManager.weightedAverage > 0 || dataManager.totalCfuTarget > 0 {
+                                sidebarStatsFooter
                             }
-                        } label: {
-                            Label(localizationManager.text(it: "Cerca (⌘F)", en: "Search (⌘F)"), systemImage: "magnifyingglass")
+                            
+                            // BARRA INFERIORE NAVBAR: Impostazioni in basso a sinistra + Bottone Rapido Configurabile
+                            sidebarBottomActionBar
                         }
-                        .help(localizationManager.text(it: "Ricerca globale e comandi rapidi (⌘F)", en: "Global search and quick commands (⌘F)"))
-                        
-                        Button {
-                            isShowingFocusTimer.toggle()
-                        } label: {
-                            Label(localizationManager.text(it: "Focus Timer (⌘T)", en: "Focus Timer (⌘T)"), systemImage: "timer")
-                        }
-                        .help(localizationManager.text(it: "Avvia sessione di studio con Focus Timer (⌘T)", en: "Start a Focus Timer study session (⌘T)"))
-                        
-                        Button {
-                            triggerContextualNew()
-                        } label: {
-                            Label(localizationManager.text(it: "Nuovo (⌘N)", en: "New (⌘N)"), systemImage: "plus")
-                        }
-                        .help(localizationManager.text(it: "Aggiungi elemento contestuale (⌘N)", en: "Add contextual item (⌘N)"))
+                    }
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial)
+                    .overlay(
+                        Rectangle()
+                            .fill(isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.06))
+                            .frame(width: 1),
+                        alignment: .trailing
+                    )
+                    .navigationSplitViewColumnWidth(min: 220, ideal: 245, max: 285)
+                } detail: {
+                    if showContentUI {
+                        detailMainView
+                            .transition(.opacity)
                     }
                 }
             }
@@ -447,6 +344,199 @@ struct ContentView: View {
             )
             AppleCalendarManager.shared.refreshStatus()
         }
+        .task {
+            // 1. Caricamento iniziale SplashScreen con badge logo
+            try? await Task.sleep(for: .milliseconds(1100))
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                isLoading = false
+            }
+            // 2. Animazione d'ingresso a cascata dell'interfaccia
+            triggerCascadingAnimation()
+        }
+    }
+    
+    // MARK: - Main Detail View
+    @ViewBuilder
+    private var detailMainView: some View {
+        Group {
+            switch selectedTab {
+            case "dashboard":
+                DashboardView(selectedTab: $selectedTab)
+            case "calendar":
+                CalendarView()
+            case "courses":
+                CoursesView()
+            case "deadlines":
+                DeadlinesView()
+            case "exams":
+                ExamsView()
+            case "assignments":
+                AssignmentsView()
+            case "settings":
+                SettingsView()
+            default:
+                DashboardView(selectedTab: $selectedTab)
+            }
+        }
+        .frame(minWidth: 620, minHeight: 520)
+        .preferredColorScheme(themeManager.themeMode.colorScheme)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        isShowingQuickSearch = true
+                    }
+                } label: {
+                    Label(localizationManager.text(it: "Cerca (⌘F)", en: "Search (⌘F)"), systemImage: "magnifyingglass")
+                }
+                .help(localizationManager.text(it: "Ricerca globale e comandi rapidi (⌘F)", en: "Global search and quick commands (⌘F)"))
+                
+                Button {
+                    isShowingFocusTimer.toggle()
+                } label: {
+                    Label(localizationManager.text(it: "Focus Timer (⌘T)", en: "Focus Timer (⌘T)"), systemImage: "timer")
+                }
+                .help(localizationManager.text(it: "Avvia sessione di studio con Focus Timer (⌘T)", en: "Start a Focus Timer study session (⌘T)"))
+                
+                Button {
+                    triggerContextualNew()
+                } label: {
+                    Label(localizationManager.text(it: "Nuovo (⌘N)", en: "New (⌘N)"), systemImage: "plus")
+                }
+                .help(localizationManager.text(it: "Aggiungi elemento contestuale (⌘N)", en: "Add contextual item (⌘N)"))
+            }
+        }
+    }
+    
+    // MARK: - Sidebar Subviews
+    private var sidebarHeader: some View {
+        HStack(spacing: 8) {
+            #if canImport(AppKit)
+            if let nsImg = NSImage(named: "AppIcon") {
+                Image(nsImage: nsImg)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 24, height: 24)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                    )
+            }
+            #endif
+            
+            Text("uni")
+                .font(UniFont.title())
+                .fontWeight(.bold)
+                .tracking(-0.6)
+                .foregroundStyle(.primary)
+            
+            Spacer()
+            
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    isShowingQuickSearch.toggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text("⌘F")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                )
+                .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(localizationManager.text(it: "Cerca rapidamente in tutto uni (⌘F)", en: "Quick search throughout uni (⌘F)"))
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 6)
+        .padding(.bottom, 10)
+    }
+
+    private var sidebarStatsFooter: some View {
+        VStack(spacing: 6) {
+            Divider().opacity(isDarkMode ? 0.2 : 0.4)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(localizationManager.t(.currentGPA).uppercased())
+                            .font(UniFont.sectionLabel())
+                            .foregroundStyle(.secondary)
+                            .tracking(1.0)
+                        Text(dataManager.weightedAverage > 0 ? String(format: "%.2f", dataManager.weightedAverage) : "--")
+                            .font(UniFont.headline())
+                            .foregroundStyle(themeManager.accentColor)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(localizationManager.t(.totalCredits).uppercased())
+                            .font(UniFont.sectionLabel())
+                            .foregroundStyle(.secondary)
+                            .tracking(1.0)
+                        Text("\(dataManager.totalCfuAcquired) / \(dataManager.totalCfuTarget)")
+                            .font(UniFont.headline())
+                            .foregroundStyle(.primary)
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+        }
+    }
+
+    private var sidebarBottomActionBar: some View {
+        VStack(spacing: 0) {
+            Divider().opacity(isDarkMode ? 0.2 : 0.4)
+            HStack(spacing: 8) {
+                // Impostazioni con icona in basso a sinistra (come in Mastro)
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) {
+                        selectedTab = "settings"
+                    }
+                } label: {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(selectedTab == "settings" ? (isDarkMode ? Color.white.opacity(0.18) : themeManager.accentColor.opacity(0.14)) : (isDarkMode ? Color.white.opacity(0.05) : Color.black.opacity(0.04)))
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(selectedTab == "settings" ? themeManager.accentColor : .secondary)
+                    }
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(selectedTab == "settings" ? themeManager.accentColor.opacity(0.4) : (isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.06)), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .help(localizationManager.text(it: "Impostazioni Generali (⌘,)", en: "General Settings (⌘,)"))
+                
+                // Pulsante Rapido della Navbar (configurabile dall'utente)
+                NavbarQuickActionButton(
+                    isDarkMode: isDarkMode,
+                    onOpenFocusTimer: { isShowingFocusTimer = true },
+                    onOpenQuickSearch: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            isShowingQuickSearch = true
+                        }
+                    },
+                    onTriggerNew: { triggerContextualNew() }
+                )
+                
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
     }
     
     private func triggerContextualNew() {
@@ -463,6 +553,165 @@ struct ContentView: View {
         }
     }
 }
+
+// MARK: - Navbar Quick Action Button (Pulsante Rapido Configurabile)
+struct NavbarQuickActionButton: View {
+    @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var localizationManager: LocalizationManager
+    @EnvironmentObject var outlookManager: OutlookManager
+    let isDarkMode: Bool
+    let onOpenFocusTimer: () -> Void
+    let onOpenQuickSearch: () -> Void
+    let onTriggerNew: () -> Void
+    
+    var actionOption: NavbarQuickActionOption {
+        NavbarQuickActionOption(rawValue: dataManager.navbarQuickActionType) ?? .outlook
+    }
+    
+    var targetCustomShortcut: QuickShortcutLink? {
+        guard actionOption == .customShortcut, let customId = dataManager.navbarQuickActionCustomId else { return nil }
+        return dataManager.quickShortcuts.first(where: { $0.id == customId })
+    }
+    
+    var buttonIcon: String {
+        if let custom = targetCustomShortcut {
+            return custom.iconName.isEmpty ? "link" : custom.iconName
+        }
+        return actionOption.defaultIcon
+    }
+    
+    var buttonTooltip: String {
+        if let custom = targetCustomShortcut {
+            return custom.title
+        }
+        return actionOption.displayName(isItalian: localizationManager.currentLanguage == .italian)
+    }
+    
+    var body: some View {
+        Button {
+            executeAction()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: buttonIcon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(themeManager.accentColor)
+                
+                if let custom = targetCustomShortcut {
+                    Text(custom.title)
+                        .font(UniFont.caption())
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                        .foregroundStyle(.primary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 32)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(themeManager.accentColor.opacity(isDarkMode ? 0.14 : 0.09))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(buttonTooltip)
+    }
+    
+    private func executeAction() {
+        switch actionOption {
+        case .outlook:
+            outlookManager.openOutlook()
+        case .portal:
+            if !dataManager.universityPortalURL.isEmpty {
+                AppSystemHelper.openWebURL(urlString: dataManager.universityPortalURL)
+            } else {
+                NotificationManager.shared.notify(
+                    title: localizationManager.text(it: "Portale non configurato", en: "Portal not configured"),
+                    message: localizationManager.text(it: "Configura l'URL nelle impostazioni", en: "Configure the URL in settings"),
+                    type: .info,
+                    icon: "globe"
+                )
+            }
+        case .focusTimer:
+            onOpenFocusTimer()
+        case .quickSearch:
+            onOpenQuickSearch()
+        case .newEntry:
+            onTriggerNew()
+        case .customShortcut:
+            if let custom = targetCustomShortcut, !custom.url.isEmpty {
+                AppSystemHelper.openWebURL(urlString: custom.url)
+            }
+        }
+    }
+}
+
+// MARK: - Refined Splash Screen (Ispirata a Mastro con vetro liquido e badge)
+struct UniSplashScreenView: View {
+    @ObservedObject var dataManager: DataManager
+    let isDarkMode: Bool
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(themeManager.accentColor.opacity(0.12))
+                    .frame(width: 76, height: 76)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1)
+                    )
+                
+                #if canImport(AppKit)
+                if let nsImg = NSImage(named: "AppIcon") {
+                    Image(nsImage: nsImg)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(width: 52, height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                } else {
+                    Image(systemName: "graduationcap.fill")
+                        .font(.system(size: 36))
+                        .foregroundStyle(themeManager.accentColor)
+                }
+                #else
+                Image(systemName: "graduationcap.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(themeManager.accentColor)
+                #endif
+            }
+            
+            VStack(spacing: 5) {
+                Text("uni")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .tracking(-0.6)
+                    .foregroundColor(isDarkMode ? .white : Color.black.opacity(0.88))
+                
+                Text(dataManager.universityName.isEmpty ? "Spazio di Studio Universitario" : dataManager.universityName)
+                    .font(UniFont.subheadline())
+                    .foregroundColor(.secondary)
+            }
+            
+            ProgressView()
+                .scaleEffect(0.85)
+                .padding(.top, 4)
+        }
+        .padding(36)
+        .frame(width: 320)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(isDarkMode ? Color.white.opacity(0.15) : Color.white.opacity(0.8), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.12), radius: 30, x: 0, y: 15)
+    }
+}
+
 
 #if DEBUG
 struct ContentView_Previews: PreviewProvider {

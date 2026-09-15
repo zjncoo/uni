@@ -26,6 +26,9 @@ public struct AppDataPayload: Codable {
     public var universityName: String?
     public var universityPortalURL: String?
     public var hasCompletedOnboarding: Bool?
+    public var quickShortcuts: [QuickShortcutLink]?
+    public var navbarQuickActionType: String?
+    public var navbarQuickActionCustomId: UUID?
 }
 
 // MARK: - University Data Manager
@@ -45,6 +48,11 @@ public class DataManager: ObservableObject {
     @Published public var universityName: String = ""
     @Published public var universityPortalURL: String = ""
     @Published public var hasCompletedOnboarding: Bool = false
+    
+    // Scorciatoie Home & Scelta Azione Rapida Barra di Navigazione
+    @Published public var quickShortcuts: [QuickShortcutLink] = []
+    @Published public var navbarQuickActionType: String = NavbarQuickActionOption.outlook.rawValue
+    @Published public var navbarQuickActionCustomId: UUID? = nil
     
     @Published public var isSyncingCalendar: Bool = false
     @Published public var syncErrorMessage: String? = nil
@@ -89,7 +97,10 @@ public class DataManager: ObservableObject {
             studentName: studentName,
             universityName: universityName,
             universityPortalURL: universityPortalURL,
-            hasCompletedOnboarding: hasCompletedOnboarding
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            quickShortcuts: quickShortcuts,
+            navbarQuickActionType: navbarQuickActionType,
+            navbarQuickActionCustomId: navbarQuickActionCustomId
         )
         
         do {
@@ -125,6 +136,11 @@ public class DataManager: ObservableObject {
                 self.universityName = payload.universityName ?? ""
                 self.universityPortalURL = payload.universityPortalURL ?? ""
                 self.hasCompletedOnboarding = payload.hasCompletedOnboarding ?? false
+                self.quickShortcuts = payload.quickShortcuts ?? []
+                self.navbarQuickActionType = payload.navbarQuickActionType ?? NavbarQuickActionOption.outlook.rawValue
+                self.navbarQuickActionCustomId = payload.navbarQuickActionCustomId
+                
+                self.ensureDefaultShortcutsExist()
                 self.repairSyncedEventTimeZonesIfNeeded()
                 // Sync widget data after load
                 WidgetDataProvider.shared.sync(from: self)
@@ -146,8 +162,70 @@ public class DataManager: ObservableObject {
         self.universityName = ""
         self.universityPortalURL = ""
         self.hasCompletedOnboarding = false
+        self.quickShortcuts = []
+        self.navbarQuickActionType = NavbarQuickActionOption.outlook.rawValue
+        self.navbarQuickActionCustomId = nil
+        self.ensureDefaultShortcutsExist()
         saveData()
     }
+    
+    // Inizializza le scorciatoie di default se la lista è vuota
+    public func ensureDefaultShortcutsExist() {
+        if quickShortcuts.isEmpty {
+            var defaults: [QuickShortcutLink] = []
+            if !universityPortalURL.isEmpty {
+                defaults.append(QuickShortcutLink(title: universityName.isEmpty ? "Portale Ateneo" : universityName, url: universityPortalURL, iconName: "globe"))
+            } else {
+                defaults.append(QuickShortcutLink(title: "Portale Ateneo", url: "https://", iconName: "globe"))
+            }
+            defaults.append(QuickShortcutLink(title: "Moodle / Piattaforma", url: "https://", iconName: "graduationcap.fill"))
+            defaults.append(QuickShortcutLink(title: "Microsoft Teams", url: "https://teams.microsoft.com", iconName: "video.fill"))
+            self.quickShortcuts = defaults
+        }
+    }
+    
+    // MARK: - Shortcut CRUD Operations
+    public func addQuickShortcut(title: String, url: String, iconName: String) {
+        var cleanUrl = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanUrl.isEmpty && !cleanUrl.contains("://") {
+            cleanUrl = "https://" + cleanUrl
+        }
+        let item = QuickShortcutLink(
+            title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            url: cleanUrl,
+            iconName: iconName
+        )
+        self.quickShortcuts.append(item)
+        saveData()
+    }
+    
+    public func updateQuickShortcut(id: UUID, title: String, url: String, iconName: String) {
+        guard let idx = self.quickShortcuts.firstIndex(where: { $0.id == id }) else { return }
+        var cleanUrl = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanUrl.isEmpty && !cleanUrl.contains("://") {
+            cleanUrl = "https://" + cleanUrl
+        }
+        self.quickShortcuts[idx].title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.quickShortcuts[idx].url = cleanUrl
+        self.quickShortcuts[idx].iconName = iconName
+        saveData()
+    }
+    
+    public func deleteQuickShortcut(id: UUID) {
+        self.quickShortcuts.removeAll { $0.id == id }
+        if navbarQuickActionCustomId == id {
+            self.navbarQuickActionCustomId = nil
+            self.navbarQuickActionType = NavbarQuickActionOption.outlook.rawValue
+        }
+        saveData()
+    }
+    
+    public func setNavbarQuickAction(option: NavbarQuickActionOption, customId: UUID? = nil) {
+        self.navbarQuickActionType = option.rawValue
+        self.navbarQuickActionCustomId = customId
+        saveData()
+    }
+
     
     // MARK: - Timezone Fix for Synced Feeds
     private func repairSyncedEventTimeZonesIfNeeded() {
