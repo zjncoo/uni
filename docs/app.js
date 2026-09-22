@@ -233,7 +233,7 @@ const i18n = {
     btn_back_home: "← Back to uni Homepage",
 
     pol_sec1_title: "1. Data Controller",
-    pol_sec1_desc: "This document describes the privacy practices of the website <strong>https://zjncoo.github.io/uni/</strong> and the macOS application <strong>uni</strong> with respect to the processing of personal data pursuant to the EU General Data Protection Regulation (GDPR 2016/679).",
+    pol_sec1_desc: "This document describes the privacy practices of the website <strong>https://uni.zinco.cc/</strong> and the macOS application <strong>uni</strong> with respect to the processing of personal data pursuant to the EU General Data Protection Regulation (GDPR 2016/679).",
     pol_sec1_owner: "The Data Controller is <strong>zinco.cc</strong> (<a href=\"https://zinco.cc\" target=\"_blank\" rel=\"noopener\">zinco.cc</a>), reachable via the official GitHub repository at <a href=\"https://github.com/zjncoo/uni\" target=\"_blank\" rel=\"noopener\">zjncoo/uni</a> or through contact channels on zinco.cc.",
 
     pol_sec2_title: "2. Privacy in the macOS Application \"uni\"",
@@ -253,7 +253,7 @@ const i18n = {
     pol_sec2_p6_desc: "uni contains zero advertising SDKs, tracking libraries, or analytics telemetry.",
 
     pol_sec3_title: "3. Website Data Processing",
-    pol_sec3_desc: "The website <strong>https://zjncoo.github.io/uni/</strong> is a static informational site hosted on <strong>GitHub Pages</strong> provided by GitHub Inc. (Microsoft Corporation).",
+    pol_sec3_desc: "The website <strong>https://uni.zinco.cc/</strong> is a static informational site hosted on <strong>GitHub Pages</strong> provided by GitHub Inc. (Microsoft Corporation).",
     pol_sec3_logs: "During visits, GitHub servers may automatically record standard technical access logs (IP address, timestamp, browser User-Agent, requested files) necessary to secure infrastructure and prevent abuse, governed by the GitHub General Privacy Statement.",
 
     pol_sec4_title: "4. Cookie Policy",

@@ -86,7 +86,7 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
     public static let shared = UpdateManager()
 
     // Primary: fast & public GitHub Pages CDN (works even when repo is private)
-    private let pagesURL = "https://zjncoo.github.io/uni/version.json"
+    private let pagesURL = "https://uni.zinco.cc/version.json"
     // Secondary: standard GitHub Releases API
     private let apiURL = "https://api.github.com/repos/zjncoo/uni/releases/latest"
 

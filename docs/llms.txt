@@ -4,7 +4,7 @@
 
 ## Key Information
 
-- **Website**: https://zjncoo.github.io/uni/
+- **Website**: https://uni.zinco.cc/
 - **GitHub Repository**: https://github.com/zjncoo/uni
 - **License**: MIT Open Source License
 - **Author**: zinco.cc (zinco.cc)
@@ -58,4 +58,4 @@
 ## Detailed Documentation
 
 For the comprehensive full technical reference, system requirements, and architecture details, see:
-- [Full LLM Context (llms-full.txt)](https://zjncoo.github.io/uni/llms-full.txt)
+- [Full LLM Context (llms-full.txt)](https://uni.zinco.cc/llms-full.txt)

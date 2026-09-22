@@ -1,4 +1,4 @@
-# robots.txt for https://zjncoo.github.io/uni/
+# robots.txt for https://uni.zinco.cc/
 # Optimized for Web Indexing and AI Agents / LLMs
 
 User-agent: *
@@ -40,4 +40,4 @@ User-agent: Googlebot
 Allow: /
 
 # Sitemap Location
-Sitemap: https://zjncoo.github.io/uni/sitemap.xml
+Sitemap: https://uni.zinco.cc/sitemap.xml

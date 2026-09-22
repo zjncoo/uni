@@ -9,7 +9,7 @@
 - **Binary Architecture**: Universal 2 (arm64 for Apple Silicon M1/M2/M3/M4/Pro/Max/Ultra and x86_64 for Intel Core Macs)
 - **Primary Languages**: Swift 5.9+, AppKit, SwiftUI, AppleScript, Objective-C bridges
 - **Repository**: https://github.com/zjncoo/uni
-- **Live Website**: https://zjncoo.github.io/uni/
+- **Live Website**: https://uni.zinco.cc/
 - **License**: MIT Open Source License
 - **Author**: zinco.cc (https://zinco.cc)
 
