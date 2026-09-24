@@ -262,8 +262,21 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
     }
 
     public func openDownloadedDMG() {
-        if let fileURL = downloadedFileURL {
-            NSWorkspace.shared.open(fileURL)
+        let downloadsFolder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        let fallback = downloadsFolder?.appendingPathComponent("uni.dmg")
+        let fileURL = downloadedFileURL ?? fallback
+
+        guard let url = fileURL, FileManager.default.fileExists(atPath: url.path) else {
+            downloadAndInstall()
+            return
+        }
+
+        DataManager.shared.saveData()
+        NSWorkspace.shared.open(url)
+
+        // Terminate app after a brief delay so Finder displays the disk image and releases the lock on /Applications/uni.app
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            NSApplication.shared.terminate(nil)
         }
     }
 
@@ -302,8 +315,8 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
                 self.isDownloading = false
                 self.isDownloaded = true
                 self.downloadedFileURL = destination
-                // Open DMG in Finder
-                NSWorkspace.shared.open(destination)
+                // Open DMG in Finder and close the app so macOS Finder allows replacing uni.app in /Applications
+                self.openDownloadedDMG()
             }
         } catch {
             Task { @MainActor in
@@ -489,7 +502,7 @@ public struct UpdateModalView: View {
                                 Text(localizationManager.text(it: "uni.dmg scaricato con successo!", en: "uni.dmg downloaded successfully!"))
                                     .font(UniFont.subheadline())
                                     .fontWeight(.semibold)
-                                Text(localizationManager.text(it: "L'immagine disco è stata aperta nel Finder: trascina uni.app in Applicazioni per completare.", en: "Disk image mounted in Finder: drag uni.app into Applications to complete."))
+                                Text(localizationManager.text(it: "L'installer si aprirà nel Finder e uni si chiuderà per consentire la sostituzione in Applicazioni.", en: "The installer will open in Finder and uni will quit to allow replacing in Applications."))
                                     .font(UniFont.caption())
                                     .foregroundStyle(.secondary)
                             }
@@ -497,7 +510,7 @@ public struct UpdateModalView: View {
                             Button {
                                 updateManager.openDownloadedDMG()
                             } label: {
-                                Text(localizationManager.text(it: "Riapri DMG", en: "Reopen DMG"))
+                                Text(localizationManager.text(it: "Apri & Chiudi uni", en: "Open & Quit uni"))
                                     .font(UniFont.caption())
                             }
                             .buttonStyle(.bordered)
@@ -556,7 +569,11 @@ public struct UpdateModalView: View {
                 .buttonStyle(.bordered)
 
                 Button {
-                    updateManager.downloadAndInstall()
+                    if updateManager.isDownloaded {
+                        updateManager.openDownloadedDMG()
+                    } else {
+                        updateManager.downloadAndInstall()
+                    }
                 } label: {
                     HStack(spacing: 6) {
                         if updateManager.isDownloading {
@@ -567,7 +584,7 @@ public struct UpdateModalView: View {
                             Image(systemName: "arrow.down.circle.fill")
                         }
                         Text(updateManager.isDownloaded
-                             ? localizationManager.text(it: "Riapri Installer", en: "Reopen Installer")
+                             ? localizationManager.text(it: "Apri Installer & Chiudi App", en: "Open Installer & Quit App")
                              : localizationManager.text(it: "Scarica & Installa", en: "Download & Install"))
                     }
                     .font(UniFont.headline())
