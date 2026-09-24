@@ -64,7 +64,7 @@ extension WidgetSnapshot {
             WidgetExamEntry(id: "e1", title: "Esame Ing. del Software", courseName: "Ingegneria del Software",
                             courseColorHex: "#FF6B6B", examDateISO: isoDate(daysFromNow: 21), typeRaw: "Scritto + Orale"),
         ],
-        studentName: "Francesco",
+        studentName: "Studente",
         updatedAt: isoDate(daysFromNow: 0)
     )
 

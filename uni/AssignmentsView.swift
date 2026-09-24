@@ -49,11 +49,8 @@ struct AssignmentsView: View {
                     subtitle: localizationManager.t(.assignmentsSubtitle(
                         dataManager.assignments.filter { !$0.isCompleted }.count,
                         dataManager.assignments.filter { $0.isCompleted }.count
-                    )),
-                    actionTitle: localizationManager.t(.newAssignmentAction)
-                ) {
-                    isPresentingNewAssignment = true
-                }
+                    ))
+                )
                 
                 // Filtri e Barra di Ricerca
                 if !dataManager.assignments.isEmpty {
@@ -69,15 +66,15 @@ struct AssignmentsView: View {
                         
                         Spacer()
                         
-                        // Search Bar
-                        HStack(spacing: 6) {
+                        // Search Bar (Glasslike)
+                        HStack(spacing: 7) {
                             Image(systemName: "magnifyingglass")
-                                .font(.system(size: 11))
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(.secondary)
                             TextField(localizationManager.text(it: "Cerca assignments...", en: "Search assignments..."), text: $searchText)
                                 .textFieldStyle(.plain)
                                 .font(UniFont.subheadline())
-                                .frame(width: 170)
+                                .frame(width: 180)
                             
                             if !searchText.isEmpty {
                                 Button {
@@ -90,10 +87,13 @@ struct AssignmentsView: View {
                                 .buttonStyle(.plain)
                             }
                         }
-                        .padding(.horizontal, 8)
-                        .background(Color.primary.opacity(0.04))
-                        .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                        .clipShape(Rectangle())
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                        )
                     }
                 }
                 
@@ -119,6 +119,7 @@ struct AssignmentsView: View {
                             AssignmentCardView(
                                 assignment: assignment,
                                 onToggleComplete: { toggleComplete(assignment) },
+                                onUpdateStatus: { newStatus in updateStatus(newStatus, for: assignment) },
                                 onEdit: { assignmentToEdit = assignment },
                                 onDelete: { deleteAssignment(assignment) },
                                 onPickFile: { pickLocalFile(for: assignment) },
@@ -191,6 +192,7 @@ struct AssignmentsView: View {
         if let idx = dataManager.assignments.firstIndex(where: { $0.id == assignment.id }) {
             dataManager.assignments[idx].isCompleted.toggle()
             let completed = dataManager.assignments[idx].isCompleted
+            dataManager.assignments[idx].status = completed ? .completed : .inProgress
             dataManager.saveData()
             
             if completed {
@@ -205,6 +207,22 @@ struct AssignmentsView: View {
                 type: completed ? .success : .info,
                 icon: completed ? "checkmark.circle.fill" : "circle",
                 postToSystem: true
+            )
+        }
+    }
+    
+    private func updateStatus(_ status: AssignmentStatus, for assignment: Assignment) {
+        if let idx = dataManager.assignments.firstIndex(where: { $0.id == assignment.id }) {
+            dataManager.assignments[idx].status = status
+            dataManager.assignments[idx].isCompleted = (status == .completed)
+            dataManager.saveData()
+            SoundManager.shared.play(status == .completed ? .success : .pop)
+            
+            NotificationManager.shared.notify(
+                title: status.localized(with: localizationManager),
+                message: assignment.title,
+                type: status == .completed ? .success : .info,
+                icon: status.iconName
             )
         }
     }
@@ -284,27 +302,35 @@ struct AssignmentCardView: View {
     @EnvironmentObject var localizationManager: LocalizationManager
     
     var onToggleComplete: () -> Void
+    var onUpdateStatus: (AssignmentStatus) -> Void
     var onEdit: () -> Void
     var onDelete: () -> Void
     var onPickFile: () -> Void
     var onRemoveFile: () -> Void
     var onAttachFileURL: (URL) -> Void
     
+    @State private var isExpanded = false
     @State private var isDropTargeted = false
+    
+    var isDueDateUrgent: Bool {
+        !assignment.isCompleted && assignment.dueDate < Date().addingTimeInterval(86400 * 2)
+    }
     
     var body: some View {
         UniCard(padding: 16) {
-            VStack(alignment: .leading, spacing: 12) {
-                // Riga Superiore
-                HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 10) {
+                // Riga Superiore: Checkbox, Titolo, Materia, Menu a tendina Stato, Freccina Espansione
+                HStack(alignment: .top, spacing: 12) {
                     Button(action: onToggleComplete) {
                         Image(systemName: assignment.isCompleted ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 18))
                             .foregroundStyle(assignment.isCompleted ? .green : .secondary)
                     }
                     .buttonStyle(.plain)
+                    .padding(.top, 2)
+                    .help(assignment.isCompleted ? localizationManager.text(it: "Segna come da completare", en: "Mark as incomplete") : localizationManager.text(it: "Segna come completato", en: "Mark as completed"))
                     
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
                             Text(assignment.title)
                                 .font(UniFont.headline())
@@ -312,6 +338,57 @@ struct AssignmentCardView: View {
                             
                             if let course = dataManager.courses.first(where: { $0.id == assignment.courseId }) {
                                 UniBadge(course.name, color: Color(hex: course.colorHex) ?? themeManager.accentColor)
+                            }
+                            
+                            // Menu a tendina per lo Stato (In corso / Non ancora iniziato / Completato)
+                            Menu {
+                                Button {
+                                    onUpdateStatus(.notStarted)
+                                } label: {
+                                    Label(localizationManager.text(it: "Non ancora iniziato", en: "Not Started"), systemImage: "circle.dashed")
+                                }
+                                
+                                Button {
+                                    onUpdateStatus(.inProgress)
+                                } label: {
+                                    Label(localizationManager.text(it: "In corso", en: "In Progress"), systemImage: "hourglass")
+                                }
+                                
+                                Button {
+                                    onUpdateStatus(.completed)
+                                } label: {
+                                    Label(localizationManager.text(it: "Completato", en: "Completed"), systemImage: "checkmark.circle.fill")
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: assignment.status.iconName)
+                                        .font(.system(size: 9, weight: .semibold))
+                                    Text(assignment.status.localized(with: localizationManager))
+                                        .font(UniFont.caption())
+                                        .fontWeight(.medium)
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 8))
+                                }
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(assignment.status.color.opacity(0.12), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .stroke(assignment.status.color.opacity(0.28), lineWidth: 1)
+                                )
+                                .foregroundStyle(assignment.status.color)
+                            }
+                            .menuStyle(.borderlessButton)
+                            
+                            if assignment.weightPercent > 0 {
+                                Text(localizationManager.text(it: "Peso: \(assignment.weightPercent)%", en: "Weight: \(assignment.weightPercent)%"))
+                                    .font(UniFont.caption())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(themeManager.accentColor.opacity(0.1))
+                                    .foregroundStyle(themeManager.accentColor)
+                                    .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
+                                    .clipShape(Rectangle())
                             }
                         }
                         
@@ -324,156 +401,252 @@ struct AssignmentCardView: View {
                     
                     Spacer()
                     
-                    HStack(spacing: 10) {
-                        if assignment.weightPercent > 0 {
-                            Text(localizationManager.text(it: "Peso: \(assignment.weightPercent)%", en: "Weight: \(assignment.weightPercent)%"))
-                                .font(UniFont.caption())
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
-                                .background(themeManager.accentColor.opacity(0.1))
-                                .foregroundStyle(themeManager.accentColor)
-                                .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
-                                .clipShape(Rectangle())
+                    // Freccina a destra per mostrare/nascondere allegati e azioni
+                    Button {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                            isExpanded.toggle()
                         }
-                        
-                        Menu {
-                            Button(localizationManager.text(it: "Modifica", en: "Edit"), action: onEdit)
-                            Button(localizationManager.text(it: "Elimina", en: "Delete"), role: .destructive, action: onDelete)
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 13))
-                                .foregroundStyle(.secondary)
-                        }
-                        .menuStyle(.borderlessButton)
-                        .frame(width: 18)
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                            .frame(width: 26, height: 26)
+                            .background(Color.primary.opacity(isExpanded ? 0.08 : 0.03), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                            )
                     }
+                    .buttonStyle(.plain)
+                    .help(isExpanded ? localizationManager.text(it: "Comprimi allegati", en: "Collapse attachments") : localizationManager.text(it: "Mostra allegati e azioni", en: "Show attachments and actions"))
                 }
                 
-                Divider()
+                // Data Scadenza (Ben visibile e posizionata SOPRA gli allegati)
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(formatDueDate(assignment.dueDate))
+                        .font(UniFont.caption())
+                        .fontWeight(.medium)
+                }
+                .foregroundStyle(isDueDateUrgent ? .red : .primary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background((isDueDateUrgent ? Color.red : Color.primary).opacity(0.05), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke((isDueDateUrgent ? Color.red : Color.primary).opacity(0.12), lineWidth: 1)
+                )
                 
-                // SEZIONE COLLEGAMENTO FILE LOCALE SUL MAC (Con Drag & Drop nativo)
-                HStack(spacing: 10) {
-                    if let fileName = assignment.localFileName, let filePath = assignment.localFilePath {
-                        // File collegato
-                        HStack(spacing: 8) {
-                            Image(systemName: "doc.text.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(themeManager.accentColor)
-                            
-                            VStack(alignment: .leading, spacing: 1) {
-                                HStack(spacing: 5) {
-                                    Text(fileName)
-                                        .font(UniFont.headline())
-                                        .lineLimit(1)
-                                    if let size = assignment.localFileSize {
-                                        Text("(\(size))")
+                // Sezione Espandibile: Allegati e righina con pulsanti Edit ed Elimina
+                if isExpanded {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Divider()
+                        
+                        Text(localizationManager.text(it: "ALLEGATI & RISORSE", en: "ATTACHMENTS & RESOURCES"))
+                            .font(UniFont.sectionLabel())
+                            .foregroundStyle(.secondary)
+                            .tracking(1.0)
+                        
+                        // SEZIONE COLLEGAMENTO FILE LOCALE SUL MAC (Con Drag & Drop nativo)
+                        HStack(spacing: 10) {
+                            if let fileName = assignment.localFileName, let filePath = assignment.localFilePath {
+                                // File collegato
+                                HStack(spacing: 8) {
+                                    Image(systemName: "doc.text.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(themeManager.accentColor)
+                                    
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        HStack(spacing: 5) {
+                                            Text(fileName)
+                                                .font(UniFont.headline())
+                                                .lineLimit(1)
+                                            if let size = assignment.localFileSize {
+                                                Text("(\(size))")
+                                                    .font(UniFont.caption())
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        Text(filePath)
                                             .font(UniFont.caption())
                                             .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
                                     }
                                 }
-                                Text(filePath)
+                                
+                                Spacer()
+                                
+                                HStack(spacing: 6) {
+                                    Button {
+                                        AppSystemHelper.openLocalFile(path: filePath)
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "arrow.up.forward.square")
+                                            Text(localizationManager.text(it: "Apri File", en: "Open File"))
+                                        }
+                                        .font(UniFont.caption())
+                                        .fontWeight(.medium)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(themeManager.accentColor)
+                                    .help(localizationManager.text(it: "Apre il file con l'applicazione di default di macOS", en: "Opens file with macOS default application"))
+                                    
+                                    Button {
+                                        AppSystemHelper.revealInFinder(path: filePath)
+                                    } label: {
+                                        Image(systemName: "folder")
+                                            .font(.system(size: 10))
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .help(localizationManager.text(it: "Mostra in Finder", en: "Reveal in Finder"))
+                                    
+                                    Button(action: onPickFile) {
+                                        Image(systemName: "arrow.triangle.2.circlepath")
+                                            .font(.system(size: 10))
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .help(localizationManager.text(it: "Sostituisci file", en: "Replace file"))
+                                    
+                                    Button(role: .destructive, action: onRemoveFile) {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 10))
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .help(localizationManager.text(it: "Scollega file", en: "Unlink file"))
+                                }
+                            } else {
+                                // Nessun file collegato - Dropzone interattiva
+                                HStack(spacing: 8) {
+                                    Image(systemName: isDropTargeted ? "arrow.down.doc.fill" : "paperclip")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(isDropTargeted ? themeManager.accentColor : .secondary)
+                                    
+                                    Text(isDropTargeted ? localizationManager.text(it: "Rilascia qui il file per collegarlo!", en: "Drop file here to link it!") : localizationManager.text(it: "Trascina qui un file dal Mac o selezionalo...", en: "Drag and drop a file from your Mac or browse..."))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(isDropTargeted ? themeManager.accentColor : .secondary)
+                                        .fontWeight(isDropTargeted ? .semibold : .regular)
+                                }
+                                
+                                Spacer()
+                                
+                                Button(action: onPickFile) {
+                                    HStack(spacing: 5) {
+                                        Image(systemName: "plus.square.dashed")
+                                        Text(localizationManager.text(it: "Sfoglia...", en: "Browse..."))
+                                    }
+                                    .font(UniFont.caption())
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                        .padding(10)
+                        .background(
+                            Rectangle()
+                                .fill(isDropTargeted ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.03))
+                        )
+                        .overlay(
+                            Rectangle()
+                                .strokeBorder(
+                                    isDropTargeted ? themeManager.accentColor : Color.primary.opacity(0.06),
+                                    style: StrokeStyle(lineWidth: isDropTargeted ? 2 : 1, dash: isDropTargeted ? [4] : [])
+                                )
+                        )
+                        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+                            guard let provider = providers.first else { return false }
+                            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                                if let url = url {
+                                    DispatchQueue.main.async {
+                                        onAttachFileURL(url)
+                                    }
+                                }
+                            }
+                            return true
+                        }
+                        
+                        // SEZIONE LINK WEB (Se presente)
+                        if let link = assignment.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            HStack(spacing: 8) {
+                                Image(systemName: "link")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(themeManager.accentColor)
+                                
+                                Text(link)
                                     .font(UniFont.caption())
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        HStack(spacing: 6) {
-                            Button {
-                                AppSystemHelper.openLocalFile(path: filePath)
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "arrow.up.forward.square")
-                                    Text(localizationManager.text(it: "Apri File", en: "Open File"))
+                                
+                                Spacer()
+                                
+                                Button {
+                                    AppSystemHelper.openWebURL(urlString: link)
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "arrow.up.forward.square")
+                                        Text(localizationManager.text(it: "Apri Link", en: "Open Link"))
+                                    }
+                                    .font(UniFont.caption())
+                                    .fontWeight(.medium)
                                 }
-                                .font(UniFont.caption())
-                                .fontWeight(.medium)
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .help(link)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(themeManager.accentColor)
-                            .help(localizationManager.text(it: "Apre il file con l'applicazione di default di macOS", en: "Opens file with macOS default application"))
-                            
-                            Button {
-                                AppSystemHelper.revealInFinder(path: filePath)
-                            } label: {
-                                Image(systemName: "folder")
-                                    .font(.system(size: 10))
-                            }
-                            .buttonStyle(.bordered)
-                            .help(localizationManager.text(it: "Mostra in Finder", en: "Reveal in Finder"))
-                            
-                            Button(action: onPickFile) {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                                    .font(.system(size: 10))
-                            }
-                            .buttonStyle(.bordered)
-                            .help(localizationManager.text(it: "Sostituisci file", en: "Replace file"))
-                            
-                            Button(role: .destructive, action: onRemoveFile) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 10))
-                            }
-                            .buttonStyle(.bordered)
-                            .help(localizationManager.text(it: "Scollega file", en: "Unlink file"))
+                            .padding(8)
+                            .background(Color.primary.opacity(0.03))
+                            .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                            .clipShape(Rectangle())
                         }
-                    } else {
-                        // Nessun file collegato - Dropzone interattiva
+                        
+                        // Righina con i pulsanti Modifica ed Elimina
                         HStack(spacing: 8) {
-                            Image(systemName: isDropTargeted ? "arrow.down.doc.fill" : "paperclip")
-                                .font(.system(size: 12))
-                                .foregroundStyle(isDropTargeted ? themeManager.accentColor : .secondary)
+                            Spacer()
                             
-                            Text(isDropTargeted ? localizationManager.text(it: "Rilascia qui il file per collegarlo!", en: "Drop file here to link it!") : localizationManager.text(it: "Trascina qui un file dal Mac o selezionalo...", en: "Drag and drop a file from your Mac or browse..."))
-                                .font(UniFont.caption())
-                                .foregroundStyle(isDropTargeted ? themeManager.accentColor : .secondary)
-                                .fontWeight(isDropTargeted ? .semibold : .regular)
-                        }
-                        
-                        Spacer()
-                        
-                        Button(action: onPickFile) {
-                            HStack(spacing: 5) {
-                                Image(systemName: "plus.square.dashed")
-                                Text(localizationManager.text(it: "Sfoglia...", en: "Browse..."))
+                            Button(action: onEdit) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 11))
+                                    Text(localizationManager.text(it: "Modifica", en: "Edit"))
+                                        .font(UniFont.caption())
+                                        .fontWeight(.medium)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                                )
                             }
-                            .font(UniFont.caption())
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                }
-                .padding(10)
-                .background(
-                    Rectangle()
-                        .fill(isDropTargeted ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.03))
-                )
-                .overlay(
-                    Rectangle()
-                        .strokeBorder(
-                            isDropTargeted ? themeManager.accentColor : Color.primary.opacity(0.06),
-                            style: StrokeStyle(lineWidth: isDropTargeted ? 2 : 1, dash: isDropTargeted ? [4] : [])
-                        )
-                )
-                .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
-                    guard let provider = providers.first else { return false }
-                    _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                        if let url = url {
-                            DispatchQueue.main.async {
-                                onAttachFileURL(url)
+                            .buttonStyle(.plain)
+                            .help(localizationManager.text(it: "Modifica assignment", en: "Edit assignment"))
+                            
+                            Button(role: .destructive, action: onDelete) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 11))
+                                    Text(localizationManager.text(it: "Elimina", en: "Delete"))
+                                        .font(UniFont.caption())
+                                        .fontWeight(.medium)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .stroke(Color.red.opacity(0.25), lineWidth: 1)
+                                )
+                                .foregroundStyle(.red)
                             }
+                            .buttonStyle(.plain)
+                            .help(localizationManager.text(it: "Elimina assignment", en: "Delete assignment"))
                         }
+                        .padding(.top, 4)
                     }
-                    return true
-                }
-                
-                // Data Scadenza
-                HStack {
-                    Label(formatDueDate(assignment.dueDate), systemImage: "clock")
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                    Spacer()
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
         }
@@ -506,6 +679,8 @@ struct AssignmentEditorSheet: View {
     @State private var dueDate: Date = Date().addingTimeInterval(86400 * 7)
     @State private var details: String = ""
     @State private var weightPercent: Int = 0
+    @State private var linkURL: String = ""
+    @State private var status: AssignmentStatus = .notStarted
     
     init(assignmentToEdit: Assignment?, onSave: @escaping (Assignment) -> Void) {
         self.assignmentToEdit = assignmentToEdit
@@ -515,6 +690,8 @@ struct AssignmentEditorSheet: View {
         _dueDate = State(initialValue: assignmentToEdit?.dueDate ?? Date().addingTimeInterval(86400 * 7))
         _details = State(initialValue: assignmentToEdit?.details ?? "")
         _weightPercent = State(initialValue: assignmentToEdit?.weightPercent ?? 0)
+        _linkURL = State(initialValue: assignmentToEdit?.linkURL ?? "")
+        _status = State(initialValue: assignmentToEdit?.status ?? .notStarted)
     }
     
     var body: some View {
@@ -557,8 +734,18 @@ struct AssignmentEditorSheet: View {
                         }
                     }
                     
+                    Picker(localizationManager.text(it: "Stato", en: "Status"), selection: $status) {
+                        ForEach(AssignmentStatus.allCases, id: \.self) { s in
+                            Text(s.localized(with: localizationManager)).tag(s)
+                        }
+                    }
+                    
                     DatePicker(localizationManager.text(it: "Data di Consegna", en: "Due Date"), selection: $dueDate)
                     Stepper(localizationManager.text(it: "Peso sul voto: \(weightPercent)%", en: "Grade Weight: \(weightPercent)%"), value: $weightPercent, in: 0...100, step: 5)
+                }
+                
+                Section(localizationManager.text(it: "Link & Risorse Web", en: "Link & Web Resources")) {
+                    TextField(localizationManager.text(it: "https://... (sito consegna, repository o specifiche)", en: "https://... (submission portal, repo or specs)"), text: $linkURL)
                 }
                 
                 Section(localizationManager.text(it: "Istruzioni / Note", en: "Instructions / Notes")) {
@@ -575,6 +762,7 @@ struct AssignmentEditorSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Spacer()
                 Button(localizationManager.text(it: "Salva", en: "Save")) {
+                    let cleanLink = linkURL.trimmingCharacters(in: .whitespacesAndNewlines)
                     let updated = Assignment(
                         id: assignmentToEdit?.id ?? UUID(),
                         title: title.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -582,10 +770,12 @@ struct AssignmentEditorSheet: View {
                         dueDate: dueDate,
                         details: details.trimmingCharacters(in: .whitespacesAndNewlines),
                         weightPercent: weightPercent,
-                        isCompleted: assignmentToEdit?.isCompleted ?? false,
+                        isCompleted: status == .completed,
+                        status: status,
                         localFilePath: assignmentToEdit?.localFilePath,
                         localFileName: assignmentToEdit?.localFileName,
-                        localFileSize: assignmentToEdit?.localFileSize
+                        localFileSize: assignmentToEdit?.localFileSize,
+                        linkURL: cleanLink.isEmpty ? nil : cleanLink
                     )
                     onSave(updated)
                     dismiss()
@@ -597,7 +787,7 @@ struct AssignmentEditorSheet: View {
             }
             .padding(16)
         }
-        .frame(width: 460, height: 440)
+        .frame(width: 480, height: 480)
         .onAppear {
             if assignmentToEdit == nil, let firstCourse = dataManager.courses.first {
                 courseId = firstCourse.id

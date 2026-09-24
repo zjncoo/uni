@@ -59,7 +59,7 @@ struct SettingsView: View {
                                         .font(UniFont.subheadline())
                                         .foregroundStyle(.secondary)
                                         .gridColumnAlignment(.trailing)
-                                    TextField(localizationManager.currentLanguage == .italian ? "Es. Francesco" : "e.g. Alex", text: $dataManager.studentName)
+                                    TextField(localizationManager.currentLanguage == .italian ? "Es. Marco" : "e.g. Alex", text: $dataManager.studentName)
                                         .textFieldStyle(.roundedBorder)
                                         .font(UniFont.body())
                                         .onChange(of: dataManager.studentName) { dataManager.saveData() }
@@ -112,86 +112,135 @@ struct SettingsView: View {
                     UniCard(padding: 18) {
                         VStack(alignment: .leading, spacing: 20) {
                             // 1. Scelta del Bottone Rapido nella Navbar
-                            VStack(alignment: .leading, spacing: 8) {
+                            // 1. Scorciatoie Rapide Barra di Navigazione (Fino a 3)
+                            VStack(alignment: .leading, spacing: 10) {
                                 HStack {
-                                    Text(localizationManager.currentLanguage == .italian ? "Bottone Rapido Barra di Navigazione" : "Navbar Quick Action Button")
-                                        .font(UniFont.headline())
-                                    Spacer()
-                                    UniBadge(dataManager.navbarQuickActionType.uppercased(), color: themeManager.accentColor)
-                                }
-                                
-                                Text(localizationManager.currentLanguage == .italian ? "Scegli quale azione rapida collocare in basso nella barra di navigazione laterale, accanto al tasto Impostazioni." : "Choose which quick action to place at the bottom of the sidebar navbar, next to the Settings button.")
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
-                                
-                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                                    ForEach(NavbarQuickActionOption.allCases) { opt in
-                                        let isSel = dataManager.navbarQuickActionType == opt.rawValue
-                                        Button {
-                                            withAnimation(.easeInOut(duration: 0.2)) {
-                                                dataManager.setNavbarQuickAction(option: opt, customId: dataManager.navbarQuickActionCustomId)
-                                            }
-                                        } label: {
-                                            HStack(spacing: 8) {
-                                                Image(systemName: opt.defaultIcon)
-                                                    .font(.system(size: 13, weight: isSel ? .bold : .medium))
-                                                    .foregroundStyle(isSel ? themeManager.accentColor : .secondary)
-                                                    .frame(width: 18)
-                                                
-                                                Text(opt.displayName(isItalian: localizationManager.currentLanguage == .italian))
-                                                    .font(UniFont.caption())
-                                                    .fontWeight(isSel ? .semibold : .regular)
-                                                    .foregroundStyle(isSel ? themeManager.accentColor : .primary)
-                                                    .lineLimit(1)
-                                                
-                                                Spacer(minLength: 0)
-                                                
-                                                if isSel {
-                                                    Image(systemName: "checkmark")
-                                                        .font(.system(size: 10, weight: .bold))
-                                                        .foregroundStyle(themeManager.accentColor)
-                                                }
-                                            }
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 8)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                    .fill(isSel ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
-                                            )
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                    .stroke(isSel ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.06), lineWidth: 1)
-                                            )
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                
-                                if dataManager.navbarQuickActionType == NavbarQuickActionOption.customShortcut.rawValue {
-                                    if dataManager.quickShortcuts.isEmpty {
-                                        Text(localizationManager.currentLanguage == .italian ? "Nessuna scorciatoia personalizzata configurata sotto. Aggiungine una prima!" : "No custom shortcuts configured below. Add one first!")
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(localizationManager.currentLanguage == .italian ? "Scorciatoie Rapide Barra di Navigazione" : "Navbar Quick Shortcuts")
+                                            .font(UniFont.headline())
+                                        Text(localizationManager.currentLanguage == .italian ? "Configura fino a 3 scorciatoie rapide in basso a sinistra accanto alle Impostazioni. Se sono 2 o 3, verranno mostrate come comode icone." : "Configure up to 3 quick shortcuts at the bottom next to Settings. If 2 or 3, they will appear as neat icons.")
                                             .font(UniFont.caption())
-                                            .foregroundStyle(.orange)
-                                            .padding(.top, 4)
-                                    } else {
-                                        HStack(spacing: 10) {
-                                            Text(localizationManager.currentLanguage == .italian ? "Seleziona Scorciatoia:" : "Select Shortcut:")
-                                                .font(UniFont.caption())
-                                                .foregroundStyle(.secondary)
-                                            
-                                            Picker("", selection: Binding(
-                                                get: { dataManager.navbarQuickActionCustomId ?? dataManager.quickShortcuts.first?.id ?? UUID() },
-                                                set: { newId in dataManager.setNavbarQuickAction(option: .customShortcut, customId: newId) }
-                                            )) {
-                                                ForEach(dataManager.quickShortcuts) { shortcut in
-                                                    Text(shortcut.title).tag(shortcut.id)
-                                                }
-                                            }
-                                            .labelsHidden()
-                                            .pickerStyle(.menu)
-                                        }
-                                        .padding(.top, 4)
+                                            .foregroundStyle(.secondary)
                                     }
+                                    Spacer()
+                                    UniBadge("\(dataManager.activeNavbarShortcuts.count)/3", color: themeManager.accentColor)
+                                }
+                                
+                                // Elenco delle scorciatoie attive correnti
+                                VStack(spacing: 8) {
+                                    ForEach(Array(dataManager.activeNavbarShortcuts.enumerated()), id: \.element.id) { index, item in
+                                        let opt = NavbarQuickActionOption(rawValue: item.actionType) ?? .outlook
+                                        let customShortcut = dataManager.quickShortcuts.first(where: { $0.id == item.customShortcutId })
+                                        
+                                        HStack(spacing: 10) {
+                                            Text("#\(index + 1)")
+                                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                                .foregroundStyle(.secondary)
+                                                .frame(width: 22)
+                                            
+                                            Image(systemName: (opt == .customShortcut && customShortcut != nil) ? (customShortcut!.iconName.isEmpty ? "link" : customShortcut!.iconName) : opt.defaultIcon)
+                                                .font(.system(size: 13, weight: .semibold))
+                                                .foregroundStyle(themeManager.accentColor)
+                                                .frame(width: 22)
+                                            
+                                            if opt == .customShortcut {
+                                                if dataManager.quickShortcuts.isEmpty {
+                                                    Text(localizationManager.currentLanguage == .italian ? "Nessuna scorciatoia creata" : "No custom shortcut created")
+                                                        .font(UniFont.subheadline())
+                                                        .foregroundStyle(.orange)
+                                                } else {
+                                                    Picker("", selection: Binding(
+                                                        get: { item.customShortcutId ?? dataManager.quickShortcuts.first?.id ?? UUID() },
+                                                        set: { newId in dataManager.updateNavbarShortcut(id: item.id, option: .customShortcut, customId: newId) }
+                                                    )) {
+                                                        ForEach(dataManager.quickShortcuts) { sc in
+                                                            Text(sc.title).tag(sc.id)
+                                                        }
+                                                    }
+                                                    .labelsHidden()
+                                                    .pickerStyle(.menu)
+                                                }
+                                            } else {
+                                                Text(opt.displayName(isItalian: localizationManager.currentLanguage == .italian))
+                                                    .font(UniFont.subheadline())
+                                                    .fontWeight(.medium)
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            if dataManager.activeNavbarShortcuts.count > 1 {
+                                                Button {
+                                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                                        dataManager.removeNavbarShortcut(id: item.id)
+                                                    }
+                                                } label: {
+                                                    Image(systemName: "xmark.circle.fill")
+                                                        .font(.system(size: 14))
+                                                        .foregroundStyle(.secondary)
+                                                }
+                                                .buttonStyle(.plain)
+                                                .help(localizationManager.currentLanguage == .italian ? "Rimuovi scorciatoia" : "Remove shortcut")
+                                            }
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                                        )
+                                    }
+                                }
+                                
+                                // Aggiungi nuova scorciatoia (se meno di 3)
+                                if dataManager.activeNavbarShortcuts.count < 3 {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(localizationManager.currentLanguage == .italian ? "+ Aggiungi un'altra scorciatoia rapida:" : "+ Add another quick shortcut:")
+                                            .font(UniFont.caption())
+                                            .foregroundStyle(.secondary)
+                                            .padding(.top, 4)
+                                        
+                                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                                            ForEach(NavbarQuickActionOption.allCases) { opt in
+                                                Button {
+                                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                                        dataManager.addNavbarShortcut(option: opt, customId: opt == .customShortcut ? dataManager.quickShortcuts.first?.id : nil)
+                                                    }
+                                                } label: {
+                                                    HStack(spacing: 7) {
+                                                        Image(systemName: opt.defaultIcon)
+                                                            .font(.system(size: 12))
+                                                            .foregroundStyle(themeManager.accentColor)
+                                                        Text(opt.displayName(isItalian: localizationManager.currentLanguage == .italian))
+                                                            .font(UniFont.caption())
+                                                            .lineLimit(1)
+                                                        Spacer(minLength: 0)
+                                                        Image(systemName: "plus")
+                                                            .font(.system(size: 10, weight: .bold))
+                                                            .foregroundStyle(.secondary)
+                                                    }
+                                                    .padding(.horizontal, 10)
+                                                    .padding(.vertical, 7)
+                                                    .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                                                    )
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.green)
+                                        Text(localizationManager.currentLanguage == .italian ? "Hai raggiunto il massimo di 3 scorciatoie. Rimuovine una per sostituirla." : "You have reached the maximum of 3 shortcuts. Remove one to replace it.")
+                                            .font(UniFont.caption())
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.top, 4)
                                 }
                             }
                             

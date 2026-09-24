@@ -29,6 +29,8 @@ public struct AppDataPayload: Codable {
     public var quickShortcuts: [QuickShortcutLink]?
     public var navbarQuickActionType: String?
     public var navbarQuickActionCustomId: UUID?
+    public var dashboardSectionsOrder: [String]?
+    public var navbarShortcutItems: [NavbarShortcutItem]?
 }
 
 // MARK: - University Data Manager
@@ -53,6 +55,19 @@ public class DataManager: ObservableObject {
     @Published public var quickShortcuts: [QuickShortcutLink] = []
     @Published public var navbarQuickActionType: String = NavbarQuickActionOption.outlook.rawValue
     @Published public var navbarQuickActionCustomId: UUID? = nil
+    
+    // Scorciatoie barra inferiore (fino a 3)
+    @Published public var navbarShortcutItems: [NavbarShortcutItem] = []
+    
+    public var activeNavbarShortcuts: [NavbarShortcutItem] {
+        if !navbarShortcutItems.isEmpty {
+            return Array(navbarShortcutItems.prefix(3))
+        }
+        return [NavbarShortcutItem(actionType: navbarQuickActionType, customShortcutId: navbarQuickActionCustomId)]
+    }
+    
+    // Ordine personalizzato degli elementi della pagina Overview
+    @Published public var dashboardSectionsOrder: [String] = []
     
     @Published public var isSyncingCalendar: Bool = false
     @Published public var syncErrorMessage: String? = nil
@@ -99,8 +114,10 @@ public class DataManager: ObservableObject {
             universityPortalURL: universityPortalURL,
             hasCompletedOnboarding: hasCompletedOnboarding,
             quickShortcuts: quickShortcuts,
-            navbarQuickActionType: navbarQuickActionType,
-            navbarQuickActionCustomId: navbarQuickActionCustomId
+            navbarQuickActionType: navbarShortcutItems.first?.actionType ?? navbarQuickActionType,
+            navbarQuickActionCustomId: navbarShortcutItems.first?.customShortcutId ?? navbarQuickActionCustomId,
+            dashboardSectionsOrder: dashboardSectionsOrder,
+            navbarShortcutItems: navbarShortcutItems
         )
         
         do {
@@ -139,6 +156,14 @@ public class DataManager: ObservableObject {
                 self.quickShortcuts = payload.quickShortcuts ?? []
                 self.navbarQuickActionType = payload.navbarQuickActionType ?? NavbarQuickActionOption.outlook.rawValue
                 self.navbarQuickActionCustomId = payload.navbarQuickActionCustomId
+                self.dashboardSectionsOrder = payload.dashboardSectionsOrder ?? []
+                
+                if let savedShortcuts = payload.navbarShortcutItems, !savedShortcuts.isEmpty {
+                    self.navbarShortcutItems = Array(savedShortcuts.prefix(3))
+                } else {
+                    let legacyType = payload.navbarQuickActionType ?? NavbarQuickActionOption.outlook.rawValue
+                    self.navbarShortcutItems = [NavbarShortcutItem(actionType: legacyType, customShortcutId: payload.navbarQuickActionCustomId)]
+                }
                 
                 self.ensureDefaultShortcutsExist()
                 self.repairSyncedEventTimeZonesIfNeeded()
@@ -165,8 +190,38 @@ public class DataManager: ObservableObject {
         self.quickShortcuts = []
         self.navbarQuickActionType = NavbarQuickActionOption.outlook.rawValue
         self.navbarQuickActionCustomId = nil
+        self.dashboardSectionsOrder = []
         self.ensureDefaultShortcutsExist()
         saveData()
+    }
+    
+    /// Restituisce l'ordine corrente delle sezioni della dashboard
+    public func getDashboardSections() -> [DashboardSection] {
+        let allDefaults: [DashboardSection] = [
+            .bentoGrid,
+            .motivationalQuote,
+            .todayLectures,
+            .upcomingDeadlines,
+            .activeCourses,
+            .assignments
+        ]
+        
+        if dashboardSectionsOrder.isEmpty {
+            return allDefaults
+        }
+        
+        var result: [DashboardSection] = []
+        for raw in dashboardSectionsOrder {
+            if let section = DashboardSection(rawValue: raw), !result.contains(section) {
+                result.append(section)
+            }
+        }
+        for section in allDefaults {
+            if !result.contains(section) {
+                result.append(section)
+            }
+        }
+        return result
     }
     
     // Inizializza le scorciatoie di default se la lista è vuota
@@ -217,13 +272,58 @@ public class DataManager: ObservableObject {
             self.navbarQuickActionCustomId = nil
             self.navbarQuickActionType = NavbarQuickActionOption.outlook.rawValue
         }
+        navbarShortcutItems.removeAll { $0.actionType == NavbarQuickActionOption.customShortcut.rawValue && $0.customShortcutId == id }
+        if navbarShortcutItems.isEmpty {
+            navbarShortcutItems = [NavbarShortcutItem(actionType: NavbarQuickActionOption.outlook.rawValue)]
+        }
         saveData()
     }
     
     public func setNavbarQuickAction(option: NavbarQuickActionOption, customId: UUID? = nil) {
         self.navbarQuickActionType = option.rawValue
         self.navbarQuickActionCustomId = customId
+        if !navbarShortcutItems.isEmpty {
+            navbarShortcutItems[0].actionType = option.rawValue
+            navbarShortcutItems[0].customShortcutId = customId
+        } else {
+            navbarShortcutItems = [NavbarShortcutItem(actionType: option.rawValue, customShortcutId: customId)]
+        }
         saveData()
+    }
+    
+    public func addNavbarShortcut(option: NavbarQuickActionOption, customId: UUID? = nil) {
+        guard navbarShortcutItems.count < 3 else { return }
+        let newItem = NavbarShortcutItem(actionType: option.rawValue, customShortcutId: customId)
+        navbarShortcutItems.append(newItem)
+        if let first = navbarShortcutItems.first {
+            self.navbarQuickActionType = first.actionType
+            self.navbarQuickActionCustomId = first.customShortcutId
+        }
+        saveData()
+    }
+    
+    public func removeNavbarShortcut(id: UUID) {
+        navbarShortcutItems.removeAll { $0.id == id }
+        if navbarShortcutItems.isEmpty {
+            navbarShortcutItems = [NavbarShortcutItem(actionType: NavbarQuickActionOption.outlook.rawValue)]
+        }
+        if let first = navbarShortcutItems.first {
+            self.navbarQuickActionType = first.actionType
+            self.navbarQuickActionCustomId = first.customShortcutId
+        }
+        saveData()
+    }
+    
+    public func updateNavbarShortcut(id: UUID, option: NavbarQuickActionOption, customId: UUID? = nil) {
+        if let idx = navbarShortcutItems.firstIndex(where: { $0.id == id }) {
+            navbarShortcutItems[idx].actionType = option.rawValue
+            navbarShortcutItems[idx].customShortcutId = customId
+            if idx == 0 {
+                self.navbarQuickActionType = option.rawValue
+                self.navbarQuickActionCustomId = customId
+            }
+            saveData()
+        }
     }
 
     

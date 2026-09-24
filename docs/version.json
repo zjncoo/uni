@@ -1,9 +1,9 @@
 {
-  "tag_name": "v1.2.0",
-  "version": "1.2.0",
-  "name": "uni 1.2.0 — Liquid Glass & Nuove Funzionalità",
-  "body": "Novità introdotte in uni v1.2.0:\n• Nuovo stile Liquid Glass con trasparenza ultraThinMaterial e riflessi dinamici\n• Pulsanti sidebar polished ispirati a Mastro con animazioni fluide\n• Caricamento iniziale elegante con Splash Screen dedicato e animazioni d'entrata\n• Riposizionamento delle Impostazioni nell'angolo inferiore sinistro della navbar\n• Bottone rapido personalizzabile nella barra laterale (Outlook, Timer Focus, Scadenze, Esami o Link)\n• Gestione completa dei link scorciatoia per la Home dalle Impostazioni\n• Quadrati spigolosi a 90° preservati per tutte le card della schermata Overview\n• Nuovo sistema di controllo aggiornamenti integrato nelle Impostazioni con finestra pop-up interattiva",
-  "html_url": "https://github.com/zjncoo/uni/releases/tag/v1.2.0",
-  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/v1.2.0/uni.dmg",
-  "pub_date": "2026-09-15T13:00:00Z"
+  "tag_name": "v1.3.0",
+  "version": "1.3.0",
+  "name": "uni 1.3.0 — Modal Rapidi, Riordino Overview & Gestione Avanzata",
+  "body": "Novità introdotte in uni v1.3.0:\n• Supporto ai link web cliccabili su compiti e scadenze con apertura immediata del browser\n• Finestra di scelta rapida (+) in Overview per creare al volo compiti, scadenze o esami\n• Modalità modifica e riordino per gli elementi e le sezioni della schermata Overview\n• Gestione di stato avanzata per gli assignment (Non iniziato / In corso / Completato) con cerchio di spunta rapida\n• Data di scadenza posizionata in evidenza e cassetto espandibile per allegati e pulsanti di modifica\n• Barra di ricerca rapida con finitura Liquid Glass coordinata\n• Simulatore GPA con possibilità di selezionare gli esami da includere e peso accurato dei crediti formativi (CFU)\n• Fino a 3 scorciatoie rapide personalizzabili nella barra di navigazione inferiore\n• Revisione completa delle traduzioni bilingue e totale sanificazione della privacy nel codice",
+  "html_url": "https://github.com/zjncoo/uni/releases/tag/v1.3.0",
+  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/v1.3.0/uni.dmg",
+  "pub_date": "2026-09-24T18:35:00Z"
 }

@@ -23,15 +23,29 @@ public struct PaletteItem: Identifiable, Hashable {
     public let action: () -> Void
     
     public enum Category: String, CaseIterable {
-        case all = "Tutti"
-        case courses = "Corsi"
-        case deadlines = "Scadenze"
-        case assignments = "Assignments"
-        case exams = "Esami"
-        case calendar = "Lezioni"
-        case actions = "Azioni"
+        case all = "all"
+        case courses = "courses"
+        case deadlines = "deadlines"
+        case assignments = "assignments"
+        case exams = "exams"
+        case calendar = "calendar"
+        case actions = "actions"
         
-        public var title: String { rawValue }
+        public var title: String {
+            localizedTitle(with: LocalizationManager.shared)
+        }
+        
+        public func localizedTitle(with lm: LocalizationManager) -> String {
+            switch self {
+            case .all: return lm.text(it: "Tutti", en: "All")
+            case .courses: return lm.text(it: "Corsi", en: "Courses")
+            case .deadlines: return lm.text(it: "Scadenze", en: "Deadlines")
+            case .assignments: return lm.text(it: "Assignments", en: "Assignments")
+            case .exams: return lm.text(it: "Esami", en: "Exams")
+            case .calendar: return lm.text(it: "Lezioni", en: "Lectures")
+            case .actions: return lm.text(it: "Azioni", en: "Actions")
+            }
+        }
         
         public var icon: String {
             switch self {
@@ -46,14 +60,18 @@ public struct PaletteItem: Identifiable, Hashable {
         }
         
         public var headerTitle: String {
+            localizedHeaderTitle(with: LocalizationManager.shared)
+        }
+        
+        public func localizedHeaderTitle(with lm: LocalizationManager) -> String {
             switch self {
-            case .all: return "TUTTI I RISULTATI"
-            case .courses: return "CORSI & MATERIE"
-            case .deadlines: return "SCADENZE & CONSEGNE"
-            case .assignments: return "ASSIGNMENTS & FILE"
-            case .exams: return "ESAMI & APPELLI"
-            case .calendar: return "LEZIONI & ORARI CALENDARIO"
-            case .actions: return "AZIONI RAPIDE & COMANDI"
+            case .all: return lm.text(it: "TUTTI I RISULTATI", en: "ALL RESULTS")
+            case .courses: return lm.text(it: "CORSI & MATERIE", en: "COURSES & SUBJECTS")
+            case .deadlines: return lm.text(it: "SCADENZE & CONSEGNE", en: "DEADLINES & DUE DATES")
+            case .assignments: return lm.text(it: "ASSIGNMENTS & FILE", en: "ASSIGNMENTS & FILES")
+            case .exams: return lm.text(it: "ESAMI & APPELLI", en: "EXAMS & SESSIONS")
+            case .calendar: return lm.text(it: "LEZIONI & ORARI CALENDARIO", en: "LECTURES & SCHEDULE")
+            case .actions: return lm.text(it: "AZIONI RAPIDE & COMANDI", en: "QUICK ACTIONS & COMMANDS")
             }
         }
     }
@@ -213,8 +231,8 @@ public struct QuickSearchPaletteView: View {
         // 2. Corsi & Materie
         for course in dataManager.courses {
             let color = Color(hex: course.colorHex) ?? themeManager.accentColor
-            let prof = course.professor.isEmpty ? "Docente N/D" : course.professor
-            let room = course.room.isEmpty ? "" : " • Aula \(course.room)"
+            let prof = course.professor.isEmpty ? localizationManager.text(it: "Docente N/D", en: "Instructor N/A") : course.professor
+            let room = course.room.isEmpty ? "" : " • " + localizationManager.text(it: "Aula ", en: "Room ") + course.room
             items.append(PaletteItem(
                 id: "course-\(course.id)",
                 title: course.name,
@@ -234,18 +252,20 @@ public struct QuickSearchPaletteView: View {
         
         // 3. Scadenze & Consegne
         for deadline in dataManager.deadlines {
-            let courseName = dataManager.courses.first(where: { $0.id == deadline.courseId })?.name ?? "Generale"
+            let courseName = dataManager.courses.first(where: { $0.id == deadline.courseId })?.name ?? localizationManager.text(it: "Generale", en: "General")
             let dateStr = DateFormatter.shortDate.string(from: deadline.dueDate)
             let isUrgent = !deadline.isCompleted && deadline.priority == .high
+            let dueText = localizationManager.text(it: "Scade il", en: "Due")
+            let linkText = (deadline.linkURL != nil && !deadline.linkURL!.isEmpty) ? " • Link" : ""
             items.append(PaletteItem(
                 id: "deadline-\(deadline.id)",
                 title: deadline.title,
-                subtitle: "\(courseName) • Scade il \(dateStr)",
+                subtitle: "\(courseName) • \(dueText) \(dateStr)\(linkText)",
                 category: .deadlines,
                 iconName: deadline.isCompleted ? "checkmark.circle.fill" : (isUrgent ? "exclamationmark.circle.fill" : "clock.fill"),
-                badgeText: deadline.isCompleted ? "Fatto" : deadline.priority.rawValue,
+                badgeText: deadline.isCompleted ? localizationManager.text(it: "Fatto", en: "Done") : deadline.priority.localizedName,
                 color: deadline.isCompleted ? .green : deadline.priority.color,
-                searchTerms: "scadenza scadenze deadline deadlines consegna consegne promemoria urgente task \(courseName) \(deadline.title) \(deadline.notes) \(deadline.priority.rawValue) \(deadline.isCompleted ? "fatto completata" : "da fare aperta")",
+                searchTerms: "scadenza scadenze deadline deadlines consegna consegne promemoria urgente task \(courseName) \(deadline.title) \(deadline.notes) \(deadline.priority.localizedName) \(deadline.isCompleted ? "fatto completata done" : "da fare aperta pending")",
                 action: {
                     selectedTab = "deadlines"
                     dataManager.selectedDeadlineId = deadline.id
@@ -256,17 +276,18 @@ public struct QuickSearchPaletteView: View {
         
         // 4. Assignments & File
         for assignment in dataManager.assignments {
-            let courseName = dataManager.courses.first(where: { $0.id == assignment.courseId })?.name ?? "Assignment"
+            let courseName = dataManager.courses.first(where: { $0.id == assignment.courseId })?.name ?? localizationManager.text(it: "Generale", en: "General")
             let fileInfo = assignment.localFileName.flatMap { " • File: \($0)" } ?? ""
+            let linkInfo = (assignment.linkURL != nil && !assignment.linkURL!.isEmpty) ? " • Link" : ""
             items.append(PaletteItem(
                 id: "assignment-\(assignment.id)",
                 title: assignment.title,
-                subtitle: "\(courseName)\(fileInfo)",
+                subtitle: "\(courseName)\(fileInfo)\(linkInfo)",
                 category: .assignments,
                 iconName: assignment.localFilePath != nil ? "doc.text.fill" : "doc.text",
-                badgeText: assignment.isCompleted ? "Completato" : (assignment.localFileName != nil ? "File" : nil),
+                badgeText: assignment.isCompleted ? localizationManager.text(it: "Completato", en: "Completed") : (assignment.localFileName != nil ? "File" : nil),
                 color: assignment.isCompleted ? .green : .blue,
-                searchTerms: "assignment assignments compito compiti progetto progetti relazione file documento pdf tesi homework consegna \(courseName) \(assignment.title) \(assignment.details) \(assignment.localFileName ?? "") \(assignment.isCompleted ? "fatto completato" : "in corso da fare")",
+                searchTerms: "assignment assignments compito compiti progetto progetti relazione file documento pdf tesi homework consegna \(courseName) \(assignment.title) \(assignment.details) \(assignment.localFileName ?? "") \(assignment.isCompleted ? "fatto completato completed done" : "in corso da fare pending")",
                 action: {
                     selectedTab = "assignments"
                     dataManager.selectedAssignmentId = assignment.id
@@ -277,24 +298,24 @@ public struct QuickSearchPaletteView: View {
         
         // 5. Esami & Appelli
         for exam in dataManager.exams {
-            let courseName = dataManager.courses.first(where: { $0.id == exam.courseId })?.name ?? "Esame"
+            let courseName = dataManager.courses.first(where: { $0.id == exam.courseId })?.name ?? localizationManager.text(it: "Esame", en: "Exam")
             let dateStr = DateFormatter.shortDate.string(from: exam.examDate)
-            let roomStr = exam.room.isEmpty ? "" : " • Aula \(exam.room)"
+            let roomStr = exam.room.isEmpty ? "" : " • " + localizationManager.text(it: "Aula ", en: "Room ") + exam.room
             let badge: String = {
                 if exam.status == .passed {
-                    return exam.grade.flatMap { "\($0)/30" } ?? "Superato"
+                    return exam.grade.flatMap { "\($0)/30" } ?? localizationManager.text(it: "Superato", en: "Passed")
                 }
-                return exam.status.rawValue
+                return exam.status.localizedName
             }()
             items.append(PaletteItem(
                 id: "exam-\(exam.id)",
                 title: exam.title,
-                subtitle: "\(courseName) • \(exam.type.rawValue) • \(dateStr)\(roomStr)",
+                subtitle: "\(courseName) • \(exam.type.localizedName) • \(dateStr)\(roomStr)",
                 category: .exams,
                 iconName: "graduationcap.fill",
                 badgeText: badge,
                 color: exam.status.badgeColor,
-                searchTerms: "esame esami exam exams appello appelli sessione prova voto cfu orale scritto \(courseName) \(exam.title) \(exam.type.rawValue) \(exam.room) \(exam.notes) \(exam.status.rawValue)",
+                searchTerms: "esame esami exam exams appello appelli sessione prova voto cfu orale scritto \(courseName) \(exam.title) \(exam.type.localizedName) \(exam.room) \(exam.notes) \(exam.status.localizedName)",
                 action: {
                     selectedTab = "exams"
                     dataManager.selectedExamId = exam.id
@@ -305,7 +326,7 @@ public struct QuickSearchPaletteView: View {
         
         // 6. Lezioni & Orari Calendario
         for event in dataManager.syncedEvents.prefix(80) {
-            let location = event.location.isEmpty ? "Aula N/D" : event.location
+            let location = event.location.isEmpty ? localizationManager.text(it: "Aula N/D", en: "Room N/A") : event.location
             let dateStr = DateFormatter.shortDateTime.string(from: event.startDate)
             items.append(PaletteItem(
                 id: "event-\(event.id)",
@@ -313,7 +334,7 @@ public struct QuickSearchPaletteView: View {
                 subtitle: "\(location) • \(dateStr)",
                 category: .calendar,
                 iconName: "calendar.badge.clock",
-                badgeText: "Lezione",
+                badgeText: localizationManager.text(it: "Lezione", en: "Lecture"),
                 color: .teal,
                 searchTerms: "lezione lezioni orario orari calendario aula calendar lecture event \(event.title) \(event.location) \(event.details)",
                 action: {
@@ -418,7 +439,7 @@ public struct QuickSearchPaletteView: View {
                                 HStack(spacing: 5) {
                                     Image(systemName: cat.icon)
                                         .font(.system(size: 10))
-                                    Text(cat.title)
+                                    Text(cat.localizedTitle(with: localizationManager))
                                     if count > 0 && cat != .all {
                                         Text("\(count)")
                                             .font(.system(size: 10, weight: .semibold))
@@ -476,7 +497,7 @@ public struct QuickSearchPaletteView: View {
                                                 HStack(spacing: 6) {
                                                     Image(systemName: category.icon)
                                                         .font(.system(size: 11, weight: .semibold))
-                                                    Text("\(category.headerTitle) (\(itemsInCategory.count))")
+                                                    Text("\(category.localizedHeaderTitle(with: localizationManager)) (\(itemsInCategory.count))")
                                                         .font(.system(size: 11, weight: .bold))
                                                         .tracking(0.8)
                                                 }
@@ -691,7 +712,7 @@ private struct PaletteRow: View {
 }
 
 // MARK: - DateFormatter Helper
-private extension DateFormatter {
+public extension DateFormatter {
     static let shortDate: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .short

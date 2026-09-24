@@ -65,11 +65,8 @@ struct DeadlinesView: View {
                 // Header
                 UniHeader(
                     localizationManager.t(.deadlinesTitle),
-                    subtitle: localizationManager.t(.deadlinesSubtitle(dataManager.deadlines.filter { !$0.isCompleted }.count)),
-                    actionTitle: localizationManager.t(.newDeadlineAction)
-                ) {
-                    isPresentingNewDeadline = true
-                }
+                    subtitle: localizationManager.t(.deadlinesSubtitle(dataManager.deadlines.filter { !$0.isCompleted }.count))
+                )
                 
                 // Filtri e Barra di Ricerca
                 if !dataManager.deadlines.isEmpty {
@@ -95,15 +92,15 @@ struct DeadlinesView: View {
                         
                         Spacer()
                         
-                        // Search Bar
-                        HStack(spacing: 6) {
+                        // Search Bar (Glasslike)
+                        HStack(spacing: 7) {
                             Image(systemName: "magnifyingglass")
-                                .font(.system(size: 11))
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(.secondary)
                             TextField(localizationManager.text(it: "Cerca scadenze...", en: "Search deadlines..."), text: $searchText)
                                 .textFieldStyle(.plain)
                                 .font(UniFont.subheadline())
-                                .frame(width: 170)
+                                .frame(width: 180)
                             
                             if !searchText.isEmpty {
                                 Button {
@@ -116,10 +113,13 @@ struct DeadlinesView: View {
                                 .buttonStyle(.plain)
                             }
                         }
-                        .padding(.horizontal, 8)
-                        .background(Color.primary.opacity(0.04))
-                        .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                        .clipShape(Rectangle())
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                        )
                     }
                 }
                 
@@ -142,60 +142,12 @@ struct DeadlinesView: View {
                 } else {
                     LazyVStack(spacing: 10) {
                         ForEach(filteredDeadlines) { deadline in
-                            UniCard(padding: 12) {
-                                HStack(alignment: .top, spacing: 12) {
-                                    Button {
-                                        toggleComplete(deadline)
-                                    } label: {
-                                        Image(systemName: deadline.isCompleted ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 17))
-                                            .foregroundStyle(deadline.isCompleted ? .green : .secondary)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .padding(.top, 1)
-                                    
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        HStack(spacing: 8) {
-                                            Text(deadline.title)
-                                                .font(UniFont.headline())
-                                                .strikethrough(deadline.isCompleted)
-                                            
-                                            if let course = dataManager.courses.first(where: { $0.id == deadline.courseId }) {
-                                                UniBadge(course.name, color: Color(hex: course.colorHex) ?? themeManager.accentColor)
-                                            }
-                                        }
-                                        
-                                        if !deadline.notes.isEmpty {
-                                            Text(deadline.notes)
-                                                .font(UniFont.subheadline())
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        
-                                        HStack(spacing: 8) {
-                                            Label(formatDueDate(deadline.dueDate), systemImage: "calendar")
-                                            Text("•")
-                                            Label(formatDueTime(deadline.dueDate), systemImage: "clock")
-                                        }
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(isUrgent(deadline.dueDate) ? .red : .secondary)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    UniBadge(deadline.priority.localizedName, color: deadline.priority.color)
-                                    
-                                    Menu {
-                                        Button(localizationManager.text(it: "Modifica", en: "Edit")) { deadlineToEdit = deadline }
-                                        Button(localizationManager.text(it: "Elimina", en: "Delete"), role: .destructive) { deleteDeadline(deadline) }
-                                    } label: {
-                                        Image(systemName: "ellipsis")
-                                            .font(.system(size: 13))
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .menuStyle(.borderlessButton)
-                                    .frame(width: 18)
-                                }
-                            }
+                            DeadlineCardView(
+                                deadline: deadline,
+                                onToggleComplete: { toggleComplete(deadline) },
+                                onEdit: { deadlineToEdit = deadline },
+                                onDelete: { deleteDeadline(deadline) }
+                            )
                         }
                     }
                 }
@@ -304,6 +256,217 @@ struct DeadlinesView: View {
     }
 }
 
+// MARK: - Deadline Card View
+struct DeadlineCardView: View {
+    let deadline: Deadline
+    var onToggleComplete: () -> Void
+    var onEdit: () -> Void
+    var onDelete: () -> Void
+    
+    @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var localizationManager: LocalizationManager
+    
+    @State private var isExpanded: Bool = false
+    
+    var isUrgent: Bool {
+        !deadline.isCompleted && deadline.dueDate < Date().addingTimeInterval(86400 * 2) && deadline.dueDate > Date()
+    }
+    
+    var body: some View {
+        UniCard(padding: 14) {
+            VStack(alignment: .leading, spacing: 10) {
+                // Riga Superiore: Checkbox, Titolo, Materia, Priorità, Freccina a destra
+                HStack(alignment: .top, spacing: 12) {
+                    Button(action: onToggleComplete) {
+                        Image(systemName: deadline.isCompleted ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 18))
+                            .foregroundStyle(deadline.isCompleted ? .green : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                    .help(deadline.isCompleted ? localizationManager.text(it: "Segna come incompleta", en: "Mark as incomplete") : localizationManager.text(it: "Segna come completata", en: "Mark as completed"))
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(deadline.title)
+                                .font(UniFont.headline())
+                                .strikethrough(deadline.isCompleted)
+                            
+                            if let course = dataManager.courses.first(where: { $0.id == deadline.courseId }) {
+                                UniBadge(course.name, color: Color(hex: course.colorHex) ?? themeManager.accentColor)
+                            }
+                            
+                            UniBadge(deadline.priority.localizedName, color: deadline.priority.color)
+                        }
+                        
+                        if !deadline.notes.isEmpty {
+                            Text(deadline.notes)
+                                .font(UniFont.subheadline())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    // Freccina a destra per mostrare/nascondere allegati e azioni
+                    Button {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                            isExpanded.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                            .frame(width: 26, height: 26)
+                            .background(Color.primary.opacity(isExpanded ? 0.08 : 0.03), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help(isExpanded ? localizationManager.text(it: "Comprimi allegati", en: "Collapse attachments") : localizationManager.text(it: "Mostra allegati e azioni", en: "Show attachments and actions"))
+                }
+                
+                // Scadenza Ben Visibile (SOPRA gli allegati)
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(formatDueDate(deadline.dueDate))
+                        .font(UniFont.caption())
+                        .fontWeight(.medium)
+                    Text("•")
+                        .foregroundStyle(.secondary)
+                    Text(formatDueTime(deadline.dueDate))
+                        .font(UniFont.caption())
+                        .fontWeight(.medium)
+                }
+                .foregroundStyle(isUrgent ? .red : .primary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background((isUrgent ? Color.red : Color.primary).opacity(0.05), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke((isUrgent ? Color.red : Color.primary).opacity(0.12), lineWidth: 1)
+                )
+                
+                // Sezione Espandibile: Allegati e righina con pulsanti Edit ed Elimina
+                if isExpanded {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Divider()
+                        
+                        Text(localizationManager.text(it: "ALLEGATI & LINK", en: "ATTACHMENTS & LINKS"))
+                            .font(UniFont.sectionLabel())
+                            .foregroundStyle(.secondary)
+                            .tracking(1.0)
+                        
+                        if let link = deadline.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            HStack(spacing: 8) {
+                                Image(systemName: "link")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(themeManager.accentColor)
+                                Text(link)
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                
+                                Spacer()
+                                
+                                Button {
+                                    AppSystemHelper.openWebURL(urlString: link)
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "arrow.up.forward.square")
+                                        Text(localizationManager.text(it: "Apri Link", en: "Open Link"))
+                                    }
+                                    .font(UniFont.caption())
+                                    .fontWeight(.medium)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .help(link)
+                            }
+                            .padding(8)
+                            .background(Color.primary.opacity(0.03))
+                            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                        } else {
+                            Text(localizationManager.text(it: "Nessun allegato o link collegato a questa scadenza.", en: "No attachments or links linked to this deadline."))
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Righina con i pulsanti Modifica ed Elimina
+                        HStack(spacing: 8) {
+                            Spacer()
+                            
+                            Button(action: onEdit) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 11))
+                                    Text(localizationManager.text(it: "Modifica", en: "Edit"))
+                                        .font(UniFont.caption())
+                                        .fontWeight(.medium)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .help(localizationManager.text(it: "Modifica scadenza", en: "Edit deadline"))
+                            
+                            Button(role: .destructive, action: onDelete) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 11))
+                                    Text(localizationManager.text(it: "Elimina", en: "Delete"))
+                                        .font(UniFont.caption())
+                                        .fontWeight(.medium)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .stroke(Color.red.opacity(0.25), lineWidth: 1)
+                                )
+                                .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.plain)
+                            .help(localizationManager.text(it: "Elimina scadenza", en: "Delete deadline"))
+                        }
+                        .padding(.top, 4)
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+        }
+    }
+    
+    private func formatDueDate(_ date: Date) -> String {
+        let f = DateFormatter()
+        let isEn = localizationManager.currentLanguage == .english
+        f.locale = isEn ? Locale(identifier: "en_US") : Locale(identifier: "it_IT")
+        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
+        f.dateFormat = isEn ? "EEEE, MMMM d, yyyy" : "EEEE d MMMM yyyy"
+        return f.string(from: date).capitalized
+    }
+    
+    private func formatDueTime(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
+        f.dateFormat = "HH:mm"
+        return "Ore \(f.string(from: date))"
+    }
+}
+
 // MARK: - Modal Editor Scadenza (Polished Sheet)
 struct DeadlineEditorSheet: View {
     @Environment(\.dismiss) var dismiss
@@ -319,6 +482,7 @@ struct DeadlineEditorSheet: View {
     @State private var dueDate: Date = Date().addingTimeInterval(86400 * 3)
     @State private var priority: Deadline.Priority = .medium
     @State private var notes: String = ""
+    @State private var linkURL: String = ""
     
     init(deadlineToEdit: Deadline?, initialDate: Date = Date(), onSave: @escaping (Deadline) -> Void) {
         self.deadlineToEdit = deadlineToEdit
@@ -328,6 +492,7 @@ struct DeadlineEditorSheet: View {
         _dueDate = State(initialValue: deadlineToEdit?.dueDate ?? initialDate)
         _priority = State(initialValue: deadlineToEdit?.priority ?? .medium)
         _notes = State(initialValue: deadlineToEdit?.notes ?? "")
+        _linkURL = State(initialValue: deadlineToEdit?.linkURL ?? "")
     }
     
     var body: some View {
@@ -378,6 +543,10 @@ struct DeadlineEditorSheet: View {
                     }
                 }
                 
+                Section(localizationManager.text(it: "Link & Risorse Web", en: "Link & Web Resources")) {
+                    TextField(localizationManager.text(it: "https://... (sito, portale consegna o link esterno)", en: "https://... (website, submission portal or link)"), text: $linkURL)
+                }
+                
                 Section(localizationManager.text(it: "Note", en: "Notes")) {
                     TextField(localizationManager.text(it: "Note aggiuntive (opzionale)", en: "Additional notes (optional)"), text: $notes)
                 }
@@ -391,6 +560,7 @@ struct DeadlineEditorSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Spacer()
                 Button(localizationManager.text(it: "Salva", en: "Save")) {
+                    let cleanLink = linkURL.trimmingCharacters(in: .whitespacesAndNewlines)
                     let updated = Deadline(
                         id: deadlineToEdit?.id ?? UUID(),
                         title: title.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -398,7 +568,8 @@ struct DeadlineEditorSheet: View {
                         dueDate: dueDate,
                         priority: priority,
                         isCompleted: deadlineToEdit?.isCompleted ?? false,
-                        notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
+                        notes: notes.trimmingCharacters(in: .whitespacesAndNewlines),
+                        linkURL: cleanLink.isEmpty ? nil : cleanLink
                     )
                     onSave(updated)
                     dismiss()
@@ -410,6 +581,6 @@ struct DeadlineEditorSheet: View {
             }
             .padding(16)
         }
-        .frame(width: 440, height: 400)
+        .frame(width: 460, height: 450)
     }
 }

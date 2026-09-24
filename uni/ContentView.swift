@@ -31,6 +31,7 @@ struct ContentView: View {
     @State private var isPresentingNewExamSheet = false
     @State private var isPresentingNewAssignmentSheet = false
     @State private var isPresentingNewCourseSheet = false
+    @State private var isShowingOverviewNewItemModal = false
     
     @Environment(\.colorScheme) private var systemColorScheme
     
@@ -233,6 +234,18 @@ struct ContentView: View {
                 .transition(.opacity)
                 .zIndex(1000)
             }
+            
+            // Overview New Item Modal Overlay (Triggered by + on Dashboard/Overview)
+            if isShowingOverviewNewItemModal {
+                OverviewNewItemModalView(
+                    isPresented: $isShowingOverviewNewItemModal,
+                    onSelectAssignment: { isPresentingNewAssignmentSheet = true },
+                    onSelectDeadline: { isPresentingNewDeadlineSheet = true },
+                    onSelectExam: { isPresentingNewExamSheet = true }
+                )
+                .transition(.opacity)
+                .zIndex(1001)
+            }
         }
         // In-App Toast HUD Modifier
         .toastHUD()
@@ -397,13 +410,6 @@ struct ContentView: View {
                 .help(localizationManager.text(it: "Ricerca globale e comandi rapidi (⌘F)", en: "Global search and quick commands (⌘F)"))
                 
                 Button {
-                    isShowingFocusTimer.toggle()
-                } label: {
-                    Label(localizationManager.text(it: "Focus Timer (⌘T)", en: "Focus Timer (⌘T)"), systemImage: "timer")
-                }
-                .help(localizationManager.text(it: "Avvia sessione di studio con Focus Timer (⌘T)", en: "Start a Focus Timer study session (⌘T)"))
-                
-                Button {
                     triggerContextualNew()
                 } label: {
                     Label(localizationManager.text(it: "Nuovo (⌘N)", en: "New (⌘N)"), systemImage: "plus")
@@ -502,8 +508,8 @@ struct ContentView: View {
     private var sidebarBottomActionBar: some View {
         VStack(spacing: 0) {
             Divider().opacity(isDarkMode ? 0.2 : 0.4)
-            HStack(spacing: 8) {
-                // Impostazioni con icona in basso a sinistra (come in Mastro)
+            HStack(spacing: 6) {
+                // Impostazioni con icona in basso a sinistra (32x32)
                 Button {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) {
                         selectedTab = "settings"
@@ -525,21 +531,28 @@ struct ContentView: View {
                 .buttonStyle(.plain)
                 .help(localizationManager.text(it: "Impostazioni Generali (⌘,)", en: "General Settings (⌘,)"))
                 
-                // Pulsante Rapido della Navbar (configurabile dall'utente)
-                NavbarQuickActionButton(
-                    isDarkMode: isDarkMode,
-                    onOpenFocusTimer: { isShowingFocusTimer = true },
-                    onOpenQuickSearch: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            isShowingQuickSearch = true
-                        }
-                    },
-                    onTriggerNew: { triggerContextualNew() }
-                )
+                // Scorciatoie Rapide della Navbar (fino a 3 elementi massimi)
+                let shortcuts = dataManager.activeNavbarShortcuts
+                let showOnlyIcons = shortcuts.count > 1
                 
-                Spacer()
+                ForEach(shortcuts) { item in
+                    NavbarQuickActionButton(
+                        item: item,
+                        showOnlyIcon: showOnlyIcons,
+                        isDarkMode: isDarkMode,
+                        onOpenFocusTimer: { isShowingFocusTimer = true },
+                        onOpenQuickSearch: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isShowingQuickSearch = true
+                            }
+                        },
+                        onTriggerNew: { triggerContextualNew() }
+                    )
+                }
+                
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 10)
             .padding(.vertical, 8)
         }
     }
@@ -552,9 +565,18 @@ struct ContentView: View {
             isPresentingNewExamSheet = true
         case "assignments":
             isPresentingNewAssignmentSheet = true
-        default:
-            // Per dashboard, calendar, deadlines
+        case "deadlines":
             isPresentingNewDeadlineSheet = true
+        case "calendar":
+            isPresentingNewDeadlineSheet = true
+        case "dashboard":
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                isShowingOverviewNewItemModal = true
+            }
+        default:
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                isShowingOverviewNewItemModal = true
+            }
         }
     }
 }
@@ -565,17 +587,19 @@ struct NavbarQuickActionButton: View {
     @EnvironmentObject var themeManager: ThemeManager
     @EnvironmentObject var localizationManager: LocalizationManager
     @EnvironmentObject var outlookManager: OutlookManager
+    let item: NavbarShortcutItem
+    let showOnlyIcon: Bool
     let isDarkMode: Bool
     let onOpenFocusTimer: () -> Void
     let onOpenQuickSearch: () -> Void
     let onTriggerNew: () -> Void
     
     var actionOption: NavbarQuickActionOption {
-        NavbarQuickActionOption(rawValue: dataManager.navbarQuickActionType) ?? .outlook
+        NavbarQuickActionOption(rawValue: item.actionType) ?? .outlook
     }
     
     var targetCustomShortcut: QuickShortcutLink? {
-        guard actionOption == .customShortcut, let customId = dataManager.navbarQuickActionCustomId else { return nil }
+        guard actionOption == .customShortcut, let customId = item.customShortcutId else { return nil }
         return dataManager.quickShortcuts.first(where: { $0.id == customId })
     }
     
@@ -599,19 +623,27 @@ struct NavbarQuickActionButton: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: buttonIcon)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(themeManager.accentColor)
                 
-                if let custom = targetCustomShortcut {
-                    Text(custom.title)
-                        .font(UniFont.caption())
-                        .fontWeight(.medium)
-                        .lineLimit(1)
-                        .foregroundStyle(.primary)
+                if !showOnlyIcon {
+                    if let custom = targetCustomShortcut {
+                        Text(custom.title)
+                            .font(UniFont.caption())
+                            .fontWeight(.medium)
+                            .lineLimit(1)
+                            .foregroundStyle(.primary)
+                    } else {
+                        Text(actionOption.displayName(isItalian: localizationManager.currentLanguage == .italian))
+                            .font(UniFont.caption())
+                            .fontWeight(.medium)
+                            .lineLimit(1)
+                            .foregroundStyle(.primary)
+                    }
                 }
             }
-            .padding(.horizontal, 8)
-            .frame(height: 32)
+            .padding(.horizontal, showOnlyIcon ? 0 : 8)
+            .frame(width: showOnlyIcon ? 32 : nil, height: 32)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(themeManager.accentColor.opacity(isDarkMode ? 0.14 : 0.09))

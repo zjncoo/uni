@@ -41,37 +41,39 @@ struct CoursesView: View {
             VStack(alignment: .leading, spacing: 12) {
                 UniHeader(
                     localizationManager.t(.coursesTitle),
-                    subtitle: "\(dataManager.courses.count) \(localizationManager.t(.navCourses).lowercased())",
-                    actionTitle: localizationManager.t(.newCourseAction)
-                ) {
-                    isPresentingNewCourseSheet = true
-                }
+                    subtitle: "\(dataManager.courses.count) \(localizationManager.t(.navCourses).lowercased())"
+                )
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 
-                // Barra di Ricerca
+                // Barra di Ricerca (Glasslike)
                 if !dataManager.courses.isEmpty {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 7) {
                         Image(systemName: "magnifyingglass")
-                            .font(.system(size: 12))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.secondary)
                         TextField(localizationManager.t(.searchCoursesPlaceholder), text: $searchText)
                             .textFieldStyle(.plain)
-                            .font(UniFont.body())
+                            .font(UniFont.subheadline())
                         
                         if !searchText.isEmpty {
                             Button {
                                 searchText = ""
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 11))
+                                    .font(.system(size: 10))
                                     .foregroundStyle(.secondary)
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(7)
-                    .background(Color.primary.opacity(0.04))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                    )
                     .padding(.horizontal, 16)
                 }
                 

@@ -212,6 +212,7 @@ public struct Deadline: Identifiable, Codable, Hashable {
     public var priority: Priority
     public var isCompleted: Bool
     public var notes: String
+    public var linkURL: String?
     
     public enum Priority: String, Codable, CaseIterable {
         case low = "Bassa"
@@ -234,7 +235,8 @@ public struct Deadline: Identifiable, Codable, Hashable {
         dueDate: Date = Date(),
         priority: Priority = .medium,
         isCompleted: Bool = false,
-        notes: String = ""
+        notes: String = "",
+        linkURL: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -243,6 +245,7 @@ public struct Deadline: Identifiable, Codable, Hashable {
         self.priority = priority
         self.isCompleted = isCompleted
         self.notes = notes
+        self.linkURL = linkURL
     }
 }
 
@@ -310,7 +313,41 @@ public struct Exam: Identifiable, Codable, Hashable {
     }
 }
 
-// MARK: - Assignment (Compito con collegamento a file locale)
+// MARK: - Assignment Status
+public enum AssignmentStatus: String, Codable, CaseIterable {
+    case notStarted = "notStarted"
+    case inProgress = "inProgress"
+    case completed = "completed"
+    
+    public func localized(with lm: LocalizationManager) -> String {
+        switch self {
+        case .notStarted:
+            return lm.text(it: "Non ancora iniziato", en: "Not Started")
+        case .inProgress:
+            return lm.text(it: "In corso", en: "In Progress")
+        case .completed:
+            return lm.text(it: "Completato", en: "Completed")
+        }
+    }
+    
+    public var iconName: String {
+        switch self {
+        case .notStarted: return "circle.dashed"
+        case .inProgress: return "hourglass"
+        case .completed: return "checkmark.circle.fill"
+        }
+    }
+    
+    public var color: Color {
+        switch self {
+        case .notStarted: return .secondary
+        case .inProgress: return .blue
+        case .completed: return .green
+        }
+    }
+}
+
+// MARK: - Assignment (Compito con collegamento a file locale o link esterno)
 public struct Assignment: Identifiable, Codable, Hashable {
     public var id: UUID
     public var title: String
@@ -319,11 +356,13 @@ public struct Assignment: Identifiable, Codable, Hashable {
     public var details: String
     public var weightPercent: Int // es. 20% del voto finale
     public var isCompleted: Bool
+    public var status: AssignmentStatus
     
     // Riferimento al file locale su Mac
     public var localFilePath: String? // Percorso su disco, es. /Users/nome/.../report.pdf
     public var localFileName: String? // "Relazione_Progetto.pdf"
     public var localFileSize: String? // "3.4 MB"
+    public var linkURL: String? // Link web opzionale per la consegna / specifiche
     
     public init(
         id: UUID = UUID(),
@@ -333,9 +372,11 @@ public struct Assignment: Identifiable, Codable, Hashable {
         details: String = "",
         weightPercent: Int = 0,
         isCompleted: Bool = false,
+        status: AssignmentStatus? = nil,
         localFilePath: String? = nil,
         localFileName: String? = nil,
-        localFileSize: String? = nil
+        localFileSize: String? = nil,
+        linkURL: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -344,9 +385,89 @@ public struct Assignment: Identifiable, Codable, Hashable {
         self.details = details
         self.weightPercent = weightPercent
         self.isCompleted = isCompleted
+        self.status = status ?? (isCompleted ? .completed : .notStarted)
         self.localFilePath = localFilePath
         self.localFileName = localFileName
         self.localFileSize = localFileSize
+        self.linkURL = linkURL
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        courseId = try container.decodeIfPresent(UUID.self, forKey: .courseId) ?? UUID()
+        dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate) ?? Date()
+        details = try container.decodeIfPresent(String.self, forKey: .details) ?? ""
+        weightPercent = try container.decodeIfPresent(Int.self, forKey: .weightPercent) ?? 0
+        let completed = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
+        isCompleted = completed
+        localFilePath = try container.decodeIfPresent(String.self, forKey: .localFilePath)
+        localFileName = try container.decodeIfPresent(String.self, forKey: .localFileName)
+        localFileSize = try container.decodeIfPresent(String.self, forKey: .localFileSize)
+        linkURL = try container.decodeIfPresent(String.self, forKey: .linkURL)
+        if let s = try container.decodeIfPresent(AssignmentStatus.self, forKey: .status) {
+            status = s
+        } else {
+            status = completed ? .completed : .notStarted
+        }
+    }
+}
+
+// MARK: - Dashboard Section for Overview Reordering
+public enum DashboardSection: String, CaseIterable, Identifiable, Codable {
+    case bentoGrid = "bentoGrid"
+    case motivationalQuote = "motivationalQuote"
+    case todayLectures = "todayLectures"
+    case upcomingDeadlines = "upcomingDeadlines"
+    case activeCourses = "activeCourses"
+    case assignments = "assignments"
+    
+    public var id: String { rawValue }
+    
+    public func localizedTitle(with lm: LocalizationManager) -> String {
+        switch self {
+        case .bentoGrid:
+            return lm.text(it: "Panoramica di Controllo (Bento 2x2)", en: "Control Overview (Bento 2x2)")
+        case .motivationalQuote:
+            return lm.text(it: "Frase Motivazionale", en: "Motivational Quote")
+        case .todayLectures:
+            return lm.text(it: "Lezioni di Oggi al Campus", en: "Today at Campus (Lectures)")
+        case .activeCourses:
+            return lm.text(it: "Materie & Corsi Attivi", en: "Active Courses & Subjects")
+        case .upcomingDeadlines:
+            return lm.text(it: "Scadenze & Consegne Imminenti", en: "Upcoming Deadlines")
+        case .assignments:
+            return lm.text(it: "Assignments & File di Progetto", en: "Assignments & Project Files")
+        }
+    }
+    
+    public func localizedSubtitle(with lm: LocalizationManager) -> String {
+        switch self {
+        case .bentoGrid:
+            return lm.text(it: "Card riassuntive su scadenza, appello, lezione e portale", en: "Summary cards for next deadline, exam, lecture, and portal")
+        case .motivationalQuote:
+            return lm.text(it: "Citazione ispirazionale accademica e di crescita", en: "Academic inspiration and growth quote")
+        case .todayLectures:
+            return lm.text(it: "Orari e aule delle lezioni previste nella giornata", en: "Class schedules and classrooms for today")
+        case .activeCourses:
+            return lm.text(it: "Accesso rapido ai corsi del semestre e a Notion", en: "Quick access to semester courses and Notion")
+        case .upcomingDeadlines:
+            return lm.text(it: "Prossimi compiti, promemoria ed adempimenti universitari", en: "Upcoming tasks, reminders, and deadlines")
+        case .assignments:
+            return lm.text(it: "Progetti, relazioni e link ai file locali o esterni", en: "Projects, papers, and links to local/external files")
+        }
+    }
+    
+    public var icon: String {
+        switch self {
+        case .bentoGrid: return "square.grid.2x2"
+        case .motivationalQuote: return "sparkles"
+        case .todayLectures: return "calendar.badge.clock"
+        case .activeCourses: return "book.closed"
+        case .upcomingDeadlines: return "clock"
+        case .assignments: return "doc.text"
+        }
     }
 }
 
@@ -663,6 +784,19 @@ public enum NavbarQuickActionOption: String, Codable, CaseIterable, Identifiable
         case .customShortcut:
             return isItalian ? "Scorciatoia Personalizzata" : "Custom Shortcut"
         }
+    }
+}
+
+// MARK: - Navbar Shortcut Item (Fino a 3 scorciatoie in basso nella barra laterale)
+public struct NavbarShortcutItem: Codable, Identifiable, Hashable {
+    public var id: UUID
+    public var actionType: String // NavbarQuickActionOption rawValue
+    public var customShortcutId: UUID?
+    
+    public init(id: UUID = UUID(), actionType: String, customShortcutId: UUID? = nil) {
+        self.id = id
+        self.actionType = actionType
+        self.customShortcutId = customShortcutId
     }
 }
 

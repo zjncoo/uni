@@ -63,11 +63,8 @@ struct ExamsView: View {
                 // Header
                 UniHeader(
                     localizationManager.t(.examsTitle),
-                    subtitle: localizationManager.t(.examsSubtitle),
-                    actionTitle: localizationManager.t(.planExamAction)
-                ) {
-                    isPresentingNewExam = true
-                }
+                    subtitle: localizationManager.t(.examsSubtitle)
+                )
                 
                 // Statistiche di Laurea & Media Architettoniche
                 HStack(spacing: 14) {
@@ -143,15 +140,15 @@ struct ExamsView: View {
                         
                         Spacer()
                         
-                        // Search Bar
-                        HStack(spacing: 6) {
+                        // Search Bar (Glasslike)
+                        HStack(spacing: 7) {
                             Image(systemName: "magnifyingglass")
-                                .font(.system(size: 11))
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(.secondary)
                             TextField(localizationManager.text(it: "Cerca esami...", en: "Search exams..."), text: $searchText)
                                 .textFieldStyle(.plain)
                                 .font(UniFont.subheadline())
-                                .frame(width: 170)
+                                .frame(width: 180)
                             
                             if !searchText.isEmpty {
                                 Button {
@@ -164,10 +161,13 @@ struct ExamsView: View {
                                 .buttonStyle(.plain)
                             }
                         }
-                        .padding(.horizontal, 8)
-                        .background(Color.primary.opacity(0.04))
-                        .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                        .clipShape(Rectangle())
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                        )
                     }
                 }
                 
@@ -622,8 +622,14 @@ struct WhatIfSimulatorCard: View {
     @EnvironmentObject var localizationManager: LocalizationManager
     
     @State private var isExpanded = false
+    @State private var selectedCourseId: UUID? = nil
     @State private var simulatedCFU = 6
     @State private var simulatedGrade = 28
+    
+    private var selectedCourse: Course? {
+        guard let id = selectedCourseId else { return nil }
+        return dataManager.courses.first(where: { $0.id == id })
+    }
     
     private var currentAcquiredPoints: Double {
         var points = 0.0
@@ -663,6 +669,11 @@ struct WhatIfSimulatorCard: View {
         return projectedGraduationBase - dataManager.estimatedGraduationGrade
     }
     
+    private var cfuWeightPercentage: Double {
+        guard simulatedTotalCFU > 0 else { return 0.0 }
+        return (Double(simulatedCFU) / simulatedTotalCFU) * 100.0
+    }
+    
     var body: some View {
         UniCard(padding: 14) {
             VStack(alignment: .leading, spacing: 12) {
@@ -687,7 +698,7 @@ struct WhatIfSimulatorCard: View {
                                 .font(UniFont.headline())
                                 .foregroundStyle(.primary)
                             Text(isExpanded 
-                                ? localizationManager.text(it: "Configura CFU e voto ipotetico per calcolare l'impatto istantaneo", en: "Set credits and hypothetical grade to calculate instant impact")
+                                ? localizationManager.text(it: "Scegli un corso dai tuoi per simulare il suo peso reale in CFU sulla media", en: "Pick one of your courses to simulate its real CFU weight on your GPA")
                                 : localizationManager.text(it: "Clicca per simulare il voto del prossimo esame", en: "Click to simulate your next exam grade"))
                                 .font(UniFont.caption())
                                 .foregroundStyle(.secondary)
@@ -705,6 +716,44 @@ struct WhatIfSimulatorCard: View {
                 if isExpanded {
                     Divider()
                     
+                    // Selettore Corso dai Propri Corsi
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(localizationManager.text(it: "CORSO DA SIMULARE:", en: "COURSE TO SIMULATE:"))
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
+                                .tracking(0.6)
+                            
+                            Spacer()
+                            
+                            if let course = selectedCourse {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color(hex: course.colorHex) ?? themeManager.accentColor)
+                                        .frame(width: 7, height: 7)
+                                    Text("\(course.cfu) CFU")
+                                        .font(UniFont.caption())
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(themeManager.accentColor)
+                                }
+                            }
+                        }
+                        
+                        Picker("", selection: $selectedCourseId) {
+                            if !dataManager.courses.isEmpty {
+                                ForEach(dataManager.courses) { course in
+                                    let passed = dataManager.exams.contains(where: { $0.courseId == course.id && $0.status == .passed })
+                                    let prefix = passed ? "✓ " : ""
+                                    Text("\(prefix)\(course.name) (\(course.cfu) CFU)").tag(UUID?.some(course.id))
+                                }
+                            }
+                            Text(localizationManager.text(it: "Personalizzato (CFU manuali)", en: "Custom (Manual CFU)")).tag(UUID?.none)
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.vertical, 2)
+                    
                     // Controlli Simulatore
                     HStack(spacing: 20) {
                         // CFU
@@ -714,15 +763,29 @@ struct WhatIfSimulatorCard: View {
                                 .foregroundStyle(.secondary)
                                 .tracking(0.6)
                             
-                            Picker("", selection: $simulatedCFU) {
-                                Text("3 CFU").tag(3)
-                                Text("6 CFU").tag(6)
-                                Text("9 CFU").tag(9)
-                                Text("12 CFU").tag(12)
-                                Text("15 CFU").tag(15)
+                            if selectedCourse == nil {
+                                Picker("", selection: $simulatedCFU) {
+                                    ForEach([1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 14, 15, 18, 20, 24, 30], id: \.self) { cfu in
+                                        Text("\(cfu) CFU").tag(cfu)
+                                    }
+                                }
+                                .labelsHidden()
+                                .frame(maxWidth: 130)
+                            } else {
+                                HStack(spacing: 6) {
+                                    Text("\(simulatedCFU) CFU")
+                                        .font(UniFont.headline())
+                                        .foregroundStyle(themeManager.accentColor)
+                                    Text(localizationManager.text(it: "(da piano)", en: "(course plan)"))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 6)
+                                .padding(.horizontal, 10)
+                                .background(Color.primary.opacity(0.04))
+                                .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                                .clipShape(Rectangle())
                             }
-                            .labelsHidden()
-                            .frame(maxWidth: 130)
                         }
                         
                         // Voto Ipotetico
@@ -747,6 +810,22 @@ struct WhatIfSimulatorCard: View {
                         }
                     }
                     .padding(.vertical, 4)
+                    
+                    // Nota informativa sul peso percentuale del corso sulla carriera
+                    HStack(spacing: 6) {
+                        Image(systemName: "chart.bar.xaxis")
+                            .font(.system(size: 11))
+                            .foregroundStyle(themeManager.accentColor)
+                        
+                        let courseName = selectedCourse?.name ?? localizationManager.text(it: "Esame", en: "Exam")
+                        Text(localizationManager.text(
+                            it: "\(courseName) pesa \(simulatedCFU) CFU su \(Int(simulatedTotalCFU)) CFU totali (\(String(format: "%.1f", cfuWeightPercentage))% dell'impatto sulla media)",
+                            en: "\(courseName) weighs \(simulatedCFU) CFU out of \(Int(simulatedTotalCFU)) total CFU (\(String(format: "%.1f", cfuWeightPercentage))% impact on GPA)"
+                        ))
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 2)
                     
                     // Risultati Simulazione
                     HStack(spacing: 12) {
@@ -810,6 +889,27 @@ struct WhatIfSimulatorCard: View {
                         .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
                         .clipShape(Rectangle())
                     }
+                }
+            }
+        }
+        .onAppear {
+            if selectedCourseId == nil {
+                if let firstPending = dataManager.courses.first(where: { course in
+                    !dataManager.exams.contains(where: { $0.courseId == course.id && $0.status == .passed })
+                }) ?? dataManager.courses.first {
+                    selectedCourseId = firstPending.id
+                    simulatedCFU = firstPending.cfu
+                    if let target = dataManager.exams.first(where: { $0.courseId == firstPending.id && $0.targetGrade != nil })?.targetGrade {
+                        simulatedGrade = target
+                    }
+                }
+            }
+        }
+        .onChange(of: selectedCourseId) { _, newId in
+            if let course = dataManager.courses.first(where: { $0.id == newId }) {
+                simulatedCFU = course.cfu
+                if let target = dataManager.exams.first(where: { $0.courseId == course.id && $0.targetGrade != nil })?.targetGrade {
+                    simulatedGrade = target
                 }
             }
         }

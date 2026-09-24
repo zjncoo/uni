@@ -15,6 +15,43 @@ struct DashboardView: View {
     
     @Binding var selectedTab: String
     @State private var isShowingEditPortalSheet = false
+    @State private var isShowingCustomizeOverviewSheet = false
+    
+    private struct DashboardLayoutRow: Identifiable {
+        let id: String
+        let sections: [DashboardSection]
+    }
+    
+    private func computeLayoutRows(isWide: Bool) -> [DashboardLayoutRow] {
+        let sections = dataManager.getDashboardSections()
+        if !isWide {
+            return sections.map { DashboardLayoutRow(id: $0.rawValue, sections: [$0]) }
+        }
+        var rows: [DashboardLayoutRow] = []
+        var pendingHalf: DashboardSection? = nil
+        
+        for section in sections {
+            let isFull = (section == .bentoGrid || section == .motivationalQuote)
+            if isFull {
+                if let half = pendingHalf {
+                    rows.append(DashboardLayoutRow(id: half.rawValue, sections: [half]))
+                    pendingHalf = nil
+                }
+                rows.append(DashboardLayoutRow(id: section.rawValue, sections: [section]))
+            } else {
+                if let half = pendingHalf {
+                    rows.append(DashboardLayoutRow(id: "\(half.rawValue)_\(section.rawValue)", sections: [half, section]))
+                    pendingHalf = nil
+                } else {
+                    pendingHalf = section
+                }
+            }
+        }
+        if let half = pendingHalf {
+            rows.append(DashboardLayoutRow(id: half.rawValue, sections: [half]))
+        }
+        return rows
+    }
     
     var body: some View {
         GeometryReader { proxy in
@@ -89,48 +126,52 @@ struct DashboardView: View {
                     }
                     .padding(.bottom, 4)
                     
-                    // Griglia Bento 2x2 Principale
-                    bentoGridSection
+                    // Elementi Ordinabili Dinamicamente
+                    let isWide = proxy.size.width > 720
+                    let rows = computeLayoutRows(isWide: isWide)
                     
-                    // Banner Frase Motivazionale Minimale con spigoli vivi a 90°
-                    UniCard(padding: 12, cornerRadius: 0, style: .surface) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(themeManager.accentColor)
-                            
-                            Text("“\(quoteManager.currentQuote)”")
-                                .font(UniFont.body())
-                                .foregroundStyle(.primary)
-                                .lineLimit(2)
-                            
-                            Spacer()
-                            
-                            Button {
-                                quoteManager.nextQuote()
-                            } label: {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary)
+                    ForEach(rows) { row in
+                        if row.sections.count == 2 {
+                            HStack(alignment: .top, spacing: 18) {
+                                sectionView(for: row.sections[0])
+                                    .frame(maxWidth: .infinity)
+                                sectionView(for: row.sections[1])
+                                    .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.plain)
-                            .help(localizationManager.text(it: "Mostra un'altra frase motivazionale", en: "Show another motivational quote"))
+                        } else if let single = row.sections.first {
+                            sectionView(for: single)
                         }
                     }
                     
-                    // Layout Responsivo: 2 Colonne su schermi ampi, 1 Colonna su schermi compatti
-                    if proxy.size.width > 720 {
-                        HStack(alignment: .top, spacing: 18) {
-                            leftColumn
-                                .frame(maxWidth: .infinity)
-                            rightColumn
-                                .frame(maxWidth: .infinity)
+                    // Pulsante Modifica Layout Overview in fondo alla pagina
+                    VStack(spacing: 12) {
+                        Divider()
+                            .padding(.top, 10)
+                        
+                        HStack {
+                            Spacer()
+                            Button {
+                                isShowingCustomizeOverviewSheet = true
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "arrow.up.arrow.down")
+                                        .font(.system(size: 12, weight: .semibold))
+                                    Text(localizationManager.text(it: "Modifica Ordine Elementi", en: "Reorder Overview Elements"))
+                                        .font(UniFont.subheadline())
+                                        .fontWeight(.medium)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.primary.opacity(0.05))
+                                .foregroundStyle(.primary)
+                                .overlay(Rectangle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
+                                .clipShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .help(localizationManager.text(it: "Personalizza e riordina i riquadri della pagina Overview", en: "Customize and reorder sections of the Overview page"))
+                            Spacer()
                         }
-                    } else {
-                        VStack(alignment: .leading, spacing: 20) {
-                            leftColumn
-                            rightColumn
-                        }
+                        .padding(.bottom, 16)
                     }
                 }
                 .padding(24)
@@ -139,10 +180,60 @@ struct DashboardView: View {
         .sheet(isPresented: $isShowingEditPortalSheet) {
             EditUniversityPortalSheet()
         }
+        .sheet(isPresented: $isShowingCustomizeOverviewSheet) {
+            CustomizeOverviewSheet()
+        }
     }
     
-    // MARK: - Colonna Sinistra (Lezioni & Corsi)
-    private var leftColumn: some View {
+    // MARK: - Dispatcher Viste Sezioni
+    @ViewBuilder
+    private func sectionView(for section: DashboardSection) -> some View {
+        switch section {
+        case .bentoGrid:
+            bentoGridSection
+        case .motivationalQuote:
+            motivationalQuoteSection
+        case .todayLectures:
+            todayLecturesSection
+        case .upcomingDeadlines:
+            upcomingDeadlinesSection
+        case .activeCourses:
+            activeCoursesSection
+        case .assignments:
+            assignmentsSection
+        }
+    }
+    
+    // MARK: - Banner Frase Motivazionale
+    private var motivationalQuoteSection: some View {
+        UniCard(padding: 12, cornerRadius: 0, style: .surface) {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(themeManager.accentColor)
+                
+                Text("“\(quoteManager.currentQuote)”")
+                    .font(UniFont.body())
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                
+                Spacer()
+                
+                Button {
+                    quoteManager.nextQuote()
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(localizationManager.text(it: "Mostra un'altra frase motivazionale", en: "Show another motivational quote"))
+            }
+        }
+    }
+
+    // MARK: - Sezione Lezioni di Oggi
+    private var todayLecturesSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(localizationManager.t(.todayAtUni).uppercased())
@@ -199,72 +290,74 @@ struct DashboardView: View {
                     }
                 }
             }
-            
-            // Materie Attive
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text(localizationManager.t(.activeCourses).uppercased())
-                        .font(UniFont.sectionLabel())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.4)
-                    Spacer()
-                    Button(localizationManager.t(.viewAll)) {
-                        selectedTab = "courses"
-                    }
-                    .font(UniFont.caption())
-                    .foregroundStyle(themeManager.accentColor)
-                    .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Sezione Materie Attive
+    private var activeCoursesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(localizationManager.t(.activeCourses).uppercased())
+                    .font(UniFont.sectionLabel())
+                    .foregroundStyle(.secondary)
+                    .tracking(1.4)
+                Spacer()
+                Button(localizationManager.t(.viewAll)) {
+                    selectedTab = "courses"
                 }
-                
-                if dataManager.courses.isEmpty {
-                    UniEmptyStateView(
-                        icon: "book.closed",
-                        title: localizationManager.t(.noCoursesEmptyTitle),
-                        subtitle: localizationManager.t(.noCoursesEmptyDesc),
-                        buttonTitle: localizationManager.t(.addCourseButton)
-                    ) {
-                        selectedTab = "courses"
-                    }
-                } else {
-                    VStack(spacing: 8) {
-                        ForEach(dataManager.courses.prefix(4)) { course in
-                            UniCard(padding: 12) {
-                                HStack {
-                                    Circle()
-                                        .fill(Color(hex: course.colorHex) ?? themeManager.accentColor)
-                                        .frame(width: 7, height: 7)
-                                    
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(course.name)
-                                            .font(UniFont.headline())
-                                            .lineLimit(1)
-                                        Text("\(course.code.isEmpty ? localizationManager.text(it: "Corso", en: "Course") : course.code) • \(course.cfu) CFU\(course.professor.isEmpty ? "" : " • " + course.professor)")
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    if !course.notionURL.isEmpty {
-                                        Button {
-                                            AppSystemHelper.openNotionPage(urlString: course.notionURL)
-                                        } label: {
-                                            HStack(spacing: 4) {
-                                                Image(systemName: "arrow.up.forward.app")
-                                                    .font(.system(size: 10))
-                                                Text("Notion")
-                                                    .font(UniFont.caption())
-                                            }
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(Color.primary.opacity(0.06))
-                                            .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                                            .clipShape(Rectangle())
+                .font(UniFont.caption())
+                .foregroundStyle(themeManager.accentColor)
+                .buttonStyle(.plain)
+            }
+            
+            if dataManager.courses.isEmpty {
+                UniEmptyStateView(
+                    icon: "book.closed",
+                    title: localizationManager.t(.noCoursesEmptyTitle),
+                    subtitle: localizationManager.t(.noCoursesEmptyDesc),
+                    buttonTitle: localizationManager.t(.addCourseButton)
+                ) {
+                    selectedTab = "courses"
+                }
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(dataManager.courses.prefix(4)) { course in
+                        UniCard(padding: 12) {
+                            HStack {
+                                Circle()
+                                    .fill(Color(hex: course.colorHex) ?? themeManager.accentColor)
+                                    .frame(width: 7, height: 7)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(course.name)
+                                        .font(UniFont.headline())
+                                        .lineLimit(1)
+                                    Text("\(course.code.isEmpty ? localizationManager.text(it: "Corso", en: "Course") : course.code) • \(course.cfu) CFU\(course.professor.isEmpty ? "" : " • " + course.professor)")
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                                
+                                Spacer()
+                                
+                                if !course.notionURL.isEmpty {
+                                    Button {
+                                        AppSystemHelper.openNotionPage(urlString: course.notionURL)
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "arrow.up.forward.app")
+                                                .font(.system(size: 10))
+                                            Text("Notion")
+                                                .font(UniFont.caption())
                                         }
-                                        .buttonStyle(.plain)
-                                        .help(localizationManager.text(it: "Apri nell'app Notion", en: "Open in Notion app"))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.primary.opacity(0.06))
+                                        .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                                        .clipShape(Rectangle())
                                     }
+                                    .buttonStyle(.plain)
+                                    .help(localizationManager.text(it: "Apri nell'app Notion", en: "Open in Notion app"))
                                 }
                             }
                         }
@@ -274,8 +367,8 @@ struct DashboardView: View {
         }
     }
     
-    // MARK: - Colonna Destra (Scadenze & Assignments)
-    private var rightColumn: some View {
+    // MARK: - Sezione Prossime Scadenze (Con Link opening)
+    private var upcomingDeadlinesSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(localizationManager.t(.upcomingDeadlines).uppercased())
@@ -333,87 +426,140 @@ struct DashboardView: View {
                                         Text(formatDueDate(deadline.dueDate))
                                             .font(UniFont.caption())
                                             .foregroundStyle(isDueDateUrgent(deadline.dueDate) ? .red : .secondary)
+                                        
+                                        if let link = deadline.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                            Text("•")
+                                                .foregroundStyle(.secondary)
+                                            Button {
+                                                AppSystemHelper.openWebURL(urlString: link)
+                                            } label: {
+                                                HStack(spacing: 3) {
+                                                    Image(systemName: "arrow.up.forward.square")
+                                                        .font(.system(size: 10))
+                                                    Text(localizationManager.text(it: "Link", en: "Link"))
+                                                        .font(UniFont.caption())
+                                                }
+                                                .foregroundStyle(themeManager.accentColor)
+                                            }
+                                            .buttonStyle(.plain)
+                                            .help(link)
+                                        }
                                     }
                                 }
                                 
                                 Spacer()
                                 
-                                UniBadge(deadline.priority.rawValue, color: deadline.priority.color)
+                                UniBadge(deadline.priority.localizedName, color: deadline.priority.color)
                             }
                         }
                     }
                 }
             }
-            
-            // Assignments
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text(localizationManager.t(.assignmentsAndFiles).uppercased())
-                        .font(UniFont.sectionLabel())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.4)
-                    Spacer()
-                    Button(localizationManager.t(.allCount(dataManager.assignments.count))) {
-                        selectedTab = "assignments"
-                    }
-                    .font(UniFont.caption())
-                    .foregroundStyle(themeManager.accentColor)
-                    .buttonStyle(.plain)
+        }
+    }
+    
+    // MARK: - Sezione Assignments & File (Con Link opening)
+    private var assignmentsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(localizationManager.t(.assignmentsAndFiles).uppercased())
+                    .font(UniFont.sectionLabel())
+                    .foregroundStyle(.secondary)
+                    .tracking(1.4)
+                Spacer()
+                Button(localizationManager.t(.allCount(dataManager.assignments.count))) {
+                    selectedTab = "assignments"
                 }
-                
-                let activeAssignments = dataManager.assignments.filter { !$0.isCompleted }
-                if activeAssignments.isEmpty {
-                    UniEmptyStateView(
-                        icon: "doc.text",
-                        title: localizationManager.text(it: "Nessun assignment in corso", en: "No active assignments"),
-                        subtitle: localizationManager.text(it: "Aggiungi progetti o relazioni e collega direttamente i file memorizzati sul tuo Mac.", en: "Add projects or papers and link files directly from your Mac."),
-                        buttonTitle: localizationManager.text(it: "Nuovo Assignment", en: "New Assignment")
-                    ) {
-                        selectedTab = "assignments"
-                    }
-                } else {
-                    VStack(spacing: 8) {
-                        ForEach(activeAssignments.prefix(3)) { assignment in
-                            UniCard(padding: 12) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text(assignment.title)
-                                            .font(UniFont.headline())
-                                            .lineLimit(1)
-                                        Spacer()
-                                        if assignment.weightPercent > 0 {
-                                            Text("\(assignment.weightPercent)%")
-                                                .font(UniFont.caption())
-                                                .foregroundStyle(themeManager.accentColor)
-                                        }
-                                    }
-                                    
-                                    if let fileName = assignment.localFileName, let filePath = assignment.localFilePath {
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "doc.fill")
-                                                .font(.system(size: 11))
-                                                .foregroundStyle(themeManager.accentColor)
-                                            Text(fileName)
-                                                .font(UniFont.caption())
-                                                .lineLimit(1)
-                                            if let size = assignment.localFileSize {
-                                                Text("(\(size))")
-                                                    .font(UniFont.caption())
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                            Spacer()
-                                            Button(localizationManager.text(it: "Apri File", en: "Open File")) {
-                                                AppSystemHelper.openLocalFile(path: filePath)
-                                            }
+                .font(UniFont.caption())
+                .foregroundStyle(themeManager.accentColor)
+                .buttonStyle(.plain)
+            }
+            
+            let activeAssignments = dataManager.assignments.filter { !$0.isCompleted }
+            if activeAssignments.isEmpty {
+                UniEmptyStateView(
+                    icon: "doc.text",
+                    title: localizationManager.text(it: "Nessun assignment in corso", en: "No active assignments"),
+                    subtitle: localizationManager.text(it: "Aggiungi progetti o relazioni e collega direttamente i file memorizzati sul tuo Mac.", en: "Add projects or papers and link files directly from your Mac."),
+                    buttonTitle: localizationManager.text(it: "Nuovo Assignment", en: "New Assignment")
+                ) {
+                    selectedTab = "assignments"
+                }
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(activeAssignments.prefix(3)) { assignment in
+                        UniCard(padding: 12) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text(assignment.title)
+                                        .font(UniFont.headline())
+                                        .lineLimit(1)
+                                    Spacer()
+                                    if assignment.weightPercent > 0 {
+                                        Text("\(assignment.weightPercent)%")
                                             .font(UniFont.caption())
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                        }
-                                        .padding(5)
-                                        .background(Color.primary.opacity(0.03))
-                                        .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
-                                        .clipShape(Rectangle())
+                                            .foregroundStyle(themeManager.accentColor)
                                     }
+                                }
+                                
+                                HStack(spacing: 5) {
+                                    Image(systemName: "calendar.badge.clock")
+                                        .font(.system(size: 10))
+                                    Text(DateFormatter.shortDate.string(from: assignment.dueDate))
+                                        .font(UniFont.caption())
+                                        .fontWeight(.medium)
+                                }
+                                .foregroundStyle(assignment.dueDate < Date().addingTimeInterval(86400 * 2) ? Color.red : Color.secondary)
+                                
+                                if let fileName = assignment.localFileName, let filePath = assignment.localFilePath {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "doc.fill")
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(themeManager.accentColor)
+                                        Text(fileName)
+                                            .font(UniFont.caption())
+                                            .lineLimit(1)
+                                        if let size = assignment.localFileSize {
+                                            Text("(\(size))")
+                                                .font(UniFont.caption())
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Button(localizationManager.text(it: "Apri File", en: "Open File")) {
+                                            AppSystemHelper.openLocalFile(path: filePath)
+                                        }
+                                        .font(UniFont.caption())
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                    }
+                                    .padding(5)
+                                    .background(Color.primary.opacity(0.03))
+                                    .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                                    .clipShape(Rectangle())
+                                }
+                                
+                                if let link = assignment.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "link")
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(themeManager.accentColor)
+                                        Text(link)
+                                            .font(UniFont.caption())
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                        Spacer()
+                                        Button(localizationManager.text(it: "Apri Link", en: "Open Link")) {
+                                            AppSystemHelper.openWebURL(urlString: link)
+                                        }
+                                        .font(UniFont.caption())
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                    }
+                                    .padding(5)
+                                    .background(Color.primary.opacity(0.03))
+                                    .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                                    .clipShape(Rectangle())
                                 }
                             }
                         }
@@ -1003,7 +1149,7 @@ struct EditUniversityPortalSheet: View {
                 }
                 
                 Section(localizationManager.text(it: "Profilo Studente", en: "Student Profile")) {
-                    TextField(localizationManager.text(it: "Il tuo nome (es. Francesco)", en: "Your name (e.g. Alex)"), text: $studentName)
+                    TextField(localizationManager.text(it: "Il tuo nome (es. Marco)", en: "Your name (e.g. Alex)"), text: $studentName)
                 }
             }
             .formStyle(.grouped)
@@ -1064,3 +1210,165 @@ struct EditUniversityPortalSheet: View {
         }
     }
 }
+
+// MARK: - Customize Overview Sheet
+struct CustomizeOverviewSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var localizationManager: LocalizationManager
+    
+    @State private var sections: [DashboardSection] = []
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack(spacing: 12) {
+                ZStack {
+                    Rectangle()
+                        .fill(themeManager.accentColor.opacity(0.12))
+                        .frame(width: 36, height: 36)
+                        .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 16))
+                        .foregroundStyle(themeManager.accentColor)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(localizationManager.text(it: "Personalizza Layout Overview", en: "Customize Overview Layout"))
+                        .font(UniFont.title())
+                        .fontWeight(.semibold)
+                    Text(localizationManager.text(it: "Usa le frecce per riordinare gli elementi della schermata principale", en: "Use arrows to reorder elements on your main overview screen"))
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(20)
+            
+            Divider()
+            
+            // Lista Sezioni con pulsanti Su/Giù
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
+                        UniCard(padding: 12) {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Rectangle()
+                                        .fill(themeManager.accentColor.opacity(0.1))
+                                        .frame(width: 32, height: 32)
+                                        .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.25), lineWidth: 1))
+                                    Image(systemName: section.icon)
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(themeManager.accentColor)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text("\(index + 1).")
+                                            .font(UniFont.caption())
+                                            .foregroundStyle(.secondary)
+                                        Text(section.localizedTitle(with: localizationManager))
+                                            .font(UniFont.headline())
+                                    }
+                                    Text(section.localizedSubtitle(with: localizationManager))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                                
+                                Spacer()
+                                
+                                HStack(spacing: 4) {
+                                    Button {
+                                        moveUp(index: index)
+                                    } label: {
+                                        Image(systemName: "chevron.up")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .frame(width: 26, height: 26)
+                                            .background(Color.primary.opacity(0.05))
+                                            .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                                            .clipShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(index == 0)
+                                    .opacity(index == 0 ? 0.3 : 1.0)
+                                    
+                                    Button {
+                                        moveDown(index: index)
+                                    } label: {
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .frame(width: 26, height: 26)
+                                            .background(Color.primary.opacity(0.05))
+                                            .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                                            .clipShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(index == sections.count - 1)
+                                    .opacity(index == sections.count - 1 ? 0.3 : 1.0)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(16)
+            }
+            .frame(height: 340)
+            
+            Divider()
+            
+            // Footer
+            HStack {
+                Button(localizationManager.text(it: "Ripristina Predefinito", en: "Reset Default")) {
+                    resetToDefault()
+                }
+                .buttonStyle(.bordered)
+                
+                Spacer()
+                
+                Button(localizationManager.text(it: "Salva", en: "Save")) {
+                    dataManager.dashboardSectionsOrder = sections.map { $0.rawValue }
+                    dataManager.saveData()
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(themeManager.accentColor)
+                .keyboardShortcut(.defaultAction)
+            }
+            .padding(16)
+        }
+        .frame(width: 520, height: 490)
+        .onAppear {
+            sections = dataManager.getDashboardSections()
+        }
+    }
+    
+    private func moveUp(index: Int) {
+        guard index > 0 else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            sections.swapAt(index, index - 1)
+        }
+    }
+    
+    private func moveDown(index: Int) {
+        guard index < sections.count - 1 else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            sections.swapAt(index, index + 1)
+        }
+    }
+    
+    private func resetToDefault() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            sections = [
+                .bentoGrid,
+                .motivationalQuote,
+                .todayLectures,
+                .upcomingDeadlines,
+                .activeCourses,
+                .assignments
+            ]
+        }
+    }
+}
+

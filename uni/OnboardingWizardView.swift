@@ -260,7 +260,7 @@ public struct OnboardingWizardView: View {
                         .foregroundStyle(.secondary)
                         .tracking(1.4)
                     
-                    TextField(localizationManager.text(it: "es. Francesco", en: "e.g. Alex"), text: $studentName)
+                    TextField(localizationManager.text(it: "es. Marco", en: "e.g. Alex"), text: $studentName)
                         .textFieldStyle(.roundedBorder)
                         .font(UniFont.body())
                 }

@@ -579,6 +579,21 @@ struct CalendarView: View {
                                                         Label(Self.timeRangeFormatter.string(from: deadline.dueDate), systemImage: "clock")
                                                             .font(UniFont.caption())
                                                             .foregroundStyle(.secondary)
+                                                        
+                                                        if let link = deadline.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                                            Button {
+                                                                AppSystemHelper.openWebURL(urlString: link)
+                                                            } label: {
+                                                                HStack(spacing: 3) {
+                                                                    Image(systemName: "arrow.up.forward.square")
+                                                                    Text("Link")
+                                                                }
+                                                                .font(UniFont.caption())
+                                                                .foregroundStyle(themeManager.accentColor)
+                                                            }
+                                                            .buttonStyle(.plain)
+                                                            .help(link)
+                                                        }
                                                     }
                                                     
                                                     if !deadline.notes.isEmpty {
@@ -645,6 +660,21 @@ struct CalendarView: View {
                                                         Label(Self.timeRangeFormatter.string(from: assignment.dueDate), systemImage: "clock")
                                                             .font(UniFont.caption())
                                                             .foregroundStyle(.secondary)
+                                                        
+                                                        if let link = assignment.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                                            Button {
+                                                                AppSystemHelper.openWebURL(urlString: link)
+                                                            } label: {
+                                                                HStack(spacing: 3) {
+                                                                    Image(systemName: "arrow.up.forward.square")
+                                                                    Text("Link")
+                                                                }
+                                                                .font(UniFont.caption())
+                                                                .foregroundStyle(themeManager.accentColor)
+                                                            }
+                                                            .buttonStyle(.plain)
+                                                            .help(link)
+                                                        }
                                                     }
                                                     
                                                     if !assignment.details.isEmpty {
