@@ -1,9 +1,9 @@
 {
-  "tag_name": "v1.3.0",
-  "version": "1.3.0",
-  "name": "uni 1.3.0 — Modal Rapidi, Riordino Overview & Gestione Avanzata",
-  "body": "Novità introdotte in uni v1.3.0:\n• Supporto ai link web cliccabili su compiti e scadenze con apertura immediata del browser\n• Finestra di scelta rapida (+) in Overview per creare al volo compiti, scadenze o esami\n• Modalità modifica e riordino per gli elementi e le sezioni della schermata Overview\n• Gestione di stato avanzata per gli assignment (Non iniziato / In corso / Completato) con cerchio di spunta rapida\n• Data di scadenza posizionata in evidenza e cassetto espandibile per allegati e pulsanti di modifica\n• Barra di ricerca rapida con finitura Liquid Glass coordinata\n• Simulatore GPA con possibilità di selezionare gli esami da includere e peso accurato dei crediti formativi (CFU)\n• Fino a 3 scorciatoie rapide personalizzabili nella barra di navigazione inferiore\n• Revisione completa delle traduzioni bilingue e totale sanificazione della privacy nel codice",
-  "html_url": "https://github.com/zjncoo/uni/releases/tag/v1.3.0",
-  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/v1.3.0/uni.dmg",
-  "pub_date": "2026-09-24T18:35:00Z"
+  "tag_name": "v1.4.0",
+  "version": "1.4.0",
+  "name": "uni 1.4.0 — Calendar Hub, Daily Cards & Refined Launch Experience",
+  "body": "Novità introdotte in uni v1.4.0:\n• Gestione Calendari: importa feed iCal/webcal e sincronizza o duplica tutti i calendari del tuo Mac (Google, Outlook, iCloud) con controllo visibilità e separazione lezioni/personale\n• Impegni del Giorno in Cards: visualizzazione chiara ad orari in risalto per lezioni ed esami, con schede 'Prossimi Giorni' a 3, 7 e 20 giorni\n• Nuova Schermata d'Avvio: splash screen pulita con logo senza bordi, cerchio di caricamento moderno, supporto al font personalizzato e nome studente\n• Overview Potenziata: ripristinato il Bento Grid di controllo (prossima scadenza, lezione, esame e scorciatoie) e widget colpo d'occhio rapido\n• Piena traduzione bilingue (Italiano e Inglese) e ottimizzazioni di stabilità",
+  "html_url": "https://github.com/zjncoo/uni/releases/tag/v1.4.0",
+  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/v1.4.0/uni.dmg",
+  "pub_date": "2026-09-28T18:55:00Z"
 }

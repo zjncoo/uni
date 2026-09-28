@@ -9,28 +9,30 @@ import Foundation
 import SwiftUI
 import Combine
 import WidgetKit
+import EventKit
 #if canImport(AppKit)
 import AppKit
 #endif
 
 // MARK: - App Data Container for Persistence
-public struct AppDataPayload: Codable {
+public struct AppDataPayload: nonisolated Codable, Sendable {
     public var courses: [Course]
     public var deadlines: [Deadline]
     public var exams: [Exam]
     public var assignments: [Assignment]
     public var syncedEvents: [CalendarEventItem]
     public var calendarFeedURL: String
-    public var lastSyncDate: Date?
-    public var studentName: String?
-    public var universityName: String?
-    public var universityPortalURL: String?
-    public var hasCompletedOnboarding: Bool?
-    public var quickShortcuts: [QuickShortcutLink]?
-    public var navbarQuickActionType: String?
-    public var navbarQuickActionCustomId: UUID?
-    public var dashboardSectionsOrder: [String]?
-    public var navbarShortcutItems: [NavbarShortcutItem]?
+    public var lastSyncDate: Date? = nil
+    public var studentName: String? = nil
+    public var universityName: String? = nil
+    public var universityPortalURL: String? = nil
+    public var hasCompletedOnboarding: Bool? = nil
+    public var quickShortcuts: [QuickShortcutLink]? = nil
+    public var navbarQuickActionType: String? = nil
+    public var navbarQuickActionCustomId: UUID? = nil
+    public var dashboardSectionsOrder: [String]? = nil
+    public var navbarShortcutItems: [NavbarShortcutItem]? = nil
+    public var calendarSources: [CalendarSource]? = nil
 }
 
 // MARK: - University Data Manager
@@ -42,6 +44,7 @@ public class DataManager: ObservableObject {
     @Published public var exams: [Exam] = []
     @Published public var assignments: [Assignment] = []
     @Published public var syncedEvents: [CalendarEventItem] = []
+    @Published public var calendarSources: [CalendarSource] = []
     @Published public var calendarFeedURL: String = ""
     @Published public var lastSyncDate: Date? = nil
     
@@ -117,17 +120,20 @@ public class DataManager: ObservableObject {
             navbarQuickActionType: navbarShortcutItems.first?.actionType ?? navbarQuickActionType,
             navbarQuickActionCustomId: navbarShortcutItems.first?.customShortcutId ?? navbarQuickActionCustomId,
             dashboardSectionsOrder: dashboardSectionsOrder,
-            navbarShortcutItems: navbarShortcutItems
+            navbarShortcutItems: navbarShortcutItems,
+            calendarSources: calendarSources
         )
         
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(payload)
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            print("Errore durante il salvataggio dei dati: \(error.localizedDescription)")
+        let targetURL = self.fileURL
+        DispatchQueue.global(qos: .utility).async {
+            do {
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                let data = try encoder.encode(payload)
+                try data.write(to: targetURL, options: .atomic)
+            } catch {
+                print("Errore durante il salvataggio dei dati: \(error.localizedDescription)")
+            }
         }
         // Push lightweight snapshot to shared App Group for WidgetKit
         WidgetDataProvider.shared.sync(from: self)
@@ -165,6 +171,26 @@ public class DataManager: ObservableObject {
                     self.navbarShortcutItems = [NavbarShortcutItem(actionType: legacyType, customShortcutId: payload.navbarQuickActionCustomId)]
                 }
                 
+                // Caricamento e migrazione sorgenti multiple calendari
+                if let sources = payload.calendarSources, !sources.isEmpty {
+                    self.calendarSources = sources
+                } else if !payload.calendarFeedURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let defaultSource = CalendarSource(
+                        id: UUID(),
+                        title: "Feed Universitario",
+                        url: payload.calendarFeedURL,
+                        colorHex: "#4F46E5",
+                        isAcademic: true,
+                        isEnabled: true,
+                        sourceType: .webcal,
+                        lastSyncDate: payload.lastSyncDate,
+                        eventCount: payload.syncedEvents.count
+                    )
+                    self.calendarSources = [defaultSource]
+                } else {
+                    self.calendarSources = []
+                }
+                
                 self.ensureDefaultShortcutsExist()
                 self.repairSyncedEventTimeZonesIfNeeded()
                 // Sync widget data after load
@@ -181,6 +207,7 @@ public class DataManager: ObservableObject {
         self.exams = []
         self.assignments = []
         self.syncedEvents = []
+        self.calendarSources = []
         self.calendarFeedURL = ""
         self.lastSyncDate = nil
         self.studentName = ""
@@ -199,11 +226,11 @@ public class DataManager: ObservableObject {
     public func getDashboardSections() -> [DashboardSection] {
         let allDefaults: [DashboardSection] = [
             .bentoGrid,
+            .assignments,
+            .upcomingDeadlines,
             .motivationalQuote,
             .todayLectures,
-            .upcomingDeadlines,
-            .activeCourses,
-            .assignments
+            .activeCourses
         ]
         
         if dashboardSectionsOrder.isEmpty {
@@ -216,12 +243,198 @@ public class DataManager: ObservableObject {
                 result.append(section)
             }
         }
-        for section in allDefaults {
-            if !result.contains(section) {
-                result.append(section)
+        return result.isEmpty ? allDefaults : result
+    }
+    
+    /// Restituisce tutti gli impegni (lezioni, esami, scadenze, compiti, eventi) per la data di oggi
+    public func getTodayCommitments() -> [CalendarCommitmentItem] {
+        var items: [CalendarCommitmentItem] = []
+        let cal = Calendar.current
+        let enabledSources = Set(calendarSources.filter { $0.isEnabled }.map { $0.id })
+        
+        // 1. Eventi sincronizzati dal calendario
+        let validEvents = syncedEvents.filter { event in
+            if let sId = event.sourceId, !calendarSources.isEmpty && !enabledSources.contains(sId) {
+                return false
+            }
+            return true
+        }
+        
+        for ev in validEvents {
+            if cal.isDateInToday(ev.startDate) {
+                let type: CalendarCommitmentItem.CommitmentType = {
+                    switch ev.category {
+                    case .exam: return .exam
+                    case .deadline: return .deadline
+                    case .lecture: return .lecture
+                    case .personal, .other: return ev.isAcademic ? .lecture : .other
+                    }
+                }()
+                
+                items.append(CalendarCommitmentItem(
+                    id: "event-\(ev.id)-\(Int(ev.startDate.timeIntervalSince1970))",
+                    title: ev.title,
+                    date: ev.startDate,
+                    endDate: ev.endDate,
+                    isAllDay: ev.startDate == ev.endDate || (cal.component(.hour, from: ev.startDate) == 0 && cal.component(.minute, from: ev.startDate) == 0 && cal.component(.hour, from: ev.endDate) == 0),
+                    type: type,
+                    categoryName: ev.category.rawValue,
+                    colorHex: ev.calendarColorHex,
+                    isCompleted: false,
+                    courseName: ev.details.isEmpty ? nil : ev.details
+                ))
             }
         }
-        return result
+        
+        // 2. Scadenze odierne
+        for dl in deadlines where cal.isDateInToday(dl.dueDate) {
+            let course = courses.first(where: { $0.id == dl.courseId })?.name
+            items.append(CalendarCommitmentItem(
+                id: "deadline-\(dl.id)",
+                title: dl.title,
+                date: dl.dueDate,
+                endDate: nil,
+                isAllDay: false,
+                type: .deadline,
+                categoryName: "Deadline",
+                colorHex: nil,
+                isCompleted: dl.isCompleted,
+                courseName: course
+            ))
+        }
+        
+        // 3. Esami odierni
+        for ex in exams where cal.isDateInToday(ex.examDate) {
+            let course = courses.first(where: { $0.id == ex.courseId })?.name
+            items.append(CalendarCommitmentItem(
+                id: "exam-\(ex.id)",
+                title: ex.title,
+                date: ex.examDate,
+                endDate: nil,
+                isAllDay: false,
+                type: .exam,
+                categoryName: "Exam",
+                colorHex: nil,
+                isCompleted: ex.status == .passed,
+                courseName: course
+            ))
+        }
+        
+        // 4. Assignments odierni
+        for asg in assignments where cal.isDateInToday(asg.dueDate) {
+            let course = courses.first(where: { $0.id == asg.courseId })?.name
+            items.append(CalendarCommitmentItem(
+                id: "asg-\(asg.id)",
+                title: asg.title,
+                date: asg.dueDate,
+                endDate: nil,
+                isAllDay: false,
+                type: .assignment,
+                categoryName: "Assignment",
+                colorHex: nil,
+                isCompleted: asg.isCompleted,
+                courseName: course
+            ))
+        }
+        
+        return items.sorted(by: { $0.date < $1.date })
+    }
+    
+    /// Restituisce tutti gli impegni per l'orizzonte futuro (es. 3, 7, 20 giorni)
+    public func getUpcomingCommitments(forDays days: Int) -> [CalendarCommitmentItem] {
+        var items: [CalendarCommitmentItem] = []
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        guard let tomorrow = cal.date(byAdding: .day, value: 1, to: today),
+              let horizonEnd = cal.date(byAdding: .day, value: days + 1, to: today) else {
+            return []
+        }
+        
+        let range = tomorrow..<horizonEnd
+        let enabledSources = Set(calendarSources.filter { $0.isEnabled }.map { $0.id })
+        
+        let validEvents = syncedEvents.filter { event in
+            if let sId = event.sourceId, !calendarSources.isEmpty && !enabledSources.contains(sId) {
+                return false
+            }
+            return true
+        }
+        
+        for ev in validEvents {
+            if range.contains(ev.startDate) {
+                let type: CalendarCommitmentItem.CommitmentType = {
+                    switch ev.category {
+                    case .exam: return .exam
+                    case .deadline: return .deadline
+                    case .lecture: return .lecture
+                    case .personal, .other: return ev.isAcademic ? .lecture : .other
+                    }
+                }()
+                
+                items.append(CalendarCommitmentItem(
+                    id: "up-ev-\(ev.id)-\(Int(ev.startDate.timeIntervalSince1970))",
+                    title: ev.title,
+                    date: ev.startDate,
+                    endDate: ev.endDate,
+                    isAllDay: ev.startDate == ev.endDate,
+                    type: type,
+                    categoryName: ev.category.rawValue,
+                    colorHex: ev.calendarColorHex,
+                    isCompleted: false,
+                    courseName: ev.details.isEmpty ? nil : ev.details
+                ))
+            }
+        }
+        
+        for dl in deadlines where range.contains(dl.dueDate) {
+            let course = courses.first(where: { $0.id == dl.courseId })?.name
+            items.append(CalendarCommitmentItem(
+                id: "up-dl-\(dl.id)",
+                title: dl.title,
+                date: dl.dueDate,
+                endDate: nil,
+                isAllDay: false,
+                type: .deadline,
+                categoryName: "Deadline",
+                colorHex: nil,
+                isCompleted: dl.isCompleted,
+                courseName: course
+            ))
+        }
+        
+        for ex in exams where range.contains(ex.examDate) {
+            let course = courses.first(where: { $0.id == ex.courseId })?.name
+            items.append(CalendarCommitmentItem(
+                id: "up-ex-\(ex.id)",
+                title: ex.title,
+                date: ex.examDate,
+                endDate: nil,
+                isAllDay: false,
+                type: .exam,
+                categoryName: "Exam",
+                colorHex: nil,
+                isCompleted: ex.status == .passed,
+                courseName: course
+            ))
+        }
+        
+        for asg in assignments where range.contains(asg.dueDate) {
+            let course = courses.first(where: { $0.id == asg.courseId })?.name
+            items.append(CalendarCommitmentItem(
+                id: "up-asg-\(asg.id)",
+                title: asg.title,
+                date: asg.dueDate,
+                endDate: nil,
+                isAllDay: false,
+                type: .assignment,
+                categoryName: "Assignment",
+                colorHex: nil,
+                isCompleted: asg.isCompleted,
+                courseName: course
+            ))
+        }
+        
+        return items.sorted(by: { $0.date < $1.date })
     }
     
     // Inizializza le scorciatoie di default se la lista è vuota
@@ -403,16 +616,134 @@ public class DataManager: ObservableObject {
         return (avg / 30.0) * 110.0
     }
     
-    // MARK: - Calendar Feed Sync (.ics / webcal)
+    // MARK: - Calendar Feed & Multi-Calendar Sync
     @MainActor
     public func syncCalendarFeed() async {
-        guard !calendarFeedURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        await syncAllCalendars()
+    }
+    
+    @MainActor
+    public func syncAllCalendars() async {
+        // Se non ci sono sorgenti ma c'è un calendarFeedURL legacy, inizializza la prima sorgente
+        let trimmedURL = calendarFeedURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        if calendarSources.isEmpty && !trimmedURL.isEmpty {
+            let initialSource = CalendarSource(
+                id: UUID(),
+                title: "Feed Universitario",
+                url: trimmedURL,
+                colorHex: "#4F46E5",
+                isAcademic: true,
+                isEnabled: true,
+                sourceType: .webcal
+            )
+            calendarSources.append(initialSource)
+        }
+        
+        guard !calendarSources.isEmpty else {
+            syncErrorMessage = "Nessun calendario collegato da sincronizzare"
+            return
+        }
         
         isSyncingCalendar = true
         syncErrorMessage = nil
         syncSuccessMessage = nil
         
-        var cleanURLStr = calendarFeedURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        var allEvents: [CalendarEventItem] = []
+        var syncErrors: [String] = []
+        var syncedCount = 0
+        
+        for idx in 0..<calendarSources.count {
+            guard calendarSources[idx].isEnabled else { continue }
+            let source = calendarSources[idx]
+            
+            switch source.sourceType {
+            case .webcal:
+                do {
+                    let events = try await fetchWebcalEvents(source: source)
+                    allEvents.append(contentsOf: events)
+                    calendarSources[idx].lastSyncDate = Date()
+                    calendarSources[idx].eventCount = events.count
+                    syncedCount += 1
+                } catch {
+                    syncErrors.append("\(source.title): \(error.localizedDescription)")
+                }
+                
+            case .appleCalendar:
+                if let identifier = source.appleCalendarIdentifier {
+                    if AppleCalendarManager.shared.authorizationStatus != .fullAccess {
+                        let ok = await AppleCalendarManager.shared.requestAccess()
+                        if !ok {
+                            syncErrors.append("\(source.title): " + (LocalizationManager.shared.text(it: "Accesso non autorizzato a Calendario PC", en: "Unauthorized access to PC Calendar")))
+                            continue
+                        }
+                    }
+                    
+                    let now = Date()
+                    let start = Calendar.current.date(byAdding: .month, value: -3, to: now) ?? now
+                    let end = Calendar.current.date(byAdding: .month, value: 12, to: now) ?? now
+                    
+                    let events = await AppleCalendarManager.shared.fetchEvents(
+                        fromCalendarIdentifiers: [identifier],
+                        startDate: start,
+                        endDate: end,
+                        sourceId: source.id,
+                        sourceTitle: source.title,
+                        sourceColorHex: source.colorHex,
+                        isAcademic: source.isAcademic
+                    )
+                    allEvents.append(contentsOf: events)
+                    calendarSources[idx].lastSyncDate = Date()
+                    calendarSources[idx].eventCount = events.count
+                    syncedCount += 1
+                }
+                
+            case .localFile:
+                if !source.url.isEmpty {
+                    let fileURL = URL(fileURLWithPath: source.url)
+                    if let stringData = try? String(contentsOf: fileURL, encoding: .utf8) {
+                        let parsed = parseICS(content: stringData, source: source)
+                        allEvents.append(contentsOf: parsed)
+                        calendarSources[idx].lastSyncDate = Date()
+                        calendarSources[idx].eventCount = parsed.count
+                        syncedCount += 1
+                    }
+                }
+            }
+        }
+        
+        // Estrai e sincronizza i corsi universitari unicamente dagli eventi accademici
+        let academicEvents = allEvents.filter { $0.isAcademic }
+        let syncedAcademic = self.extractAndSyncCourses(from: academicEvents)
+        
+        var finalEvents: [CalendarEventItem] = syncedAcademic
+        for ev in allEvents where !ev.isAcademic {
+            finalEvents.append(ev)
+        }
+        
+        self.syncedEvents = finalEvents
+        self.lastSyncDate = Date()
+        
+        if syncErrors.isEmpty {
+            self.syncSuccessMessage = "\(finalEvents.count) eventi sincronizzati da \(syncedCount) calendari"
+        } else {
+            self.syncErrorMessage = syncErrors.joined(separator: " • ")
+            if !finalEvents.isEmpty {
+                self.syncSuccessMessage = "\(finalEvents.count) eventi sincronizzati (\(syncErrors.count) avvisi)"
+            }
+        }
+        
+        self.saveData()
+        NotificationManager.shared.scheduleAllReminders(
+            deadlines: self.deadlines,
+            exams: self.exams,
+            courses: self.courses,
+            assignments: self.assignments
+        )
+        self.isSyncingCalendar = false
+    }
+    
+    private func fetchWebcalEvents(source: CalendarSource) async throws -> [CalendarEventItem] {
+        var cleanURLStr = source.url.trimmingCharacters(in: .whitespacesAndNewlines)
         if cleanURLStr.starts(with: "webcal://") {
             cleanURLStr = "https://" + cleanURLStr.dropFirst("webcal://".count)
         } else if !cleanURLStr.hasPrefix("http://") && !cleanURLStr.hasPrefix("https://") {
@@ -420,53 +751,114 @@ public class DataManager: ObservableObject {
         }
         
         guard let url = URL(string: cleanURLStr) else {
-            syncErrorMessage = "URL del calendario non valido"
-            isSyncingCalendar = false
-            return
+            throw NSError(domain: "uni", code: 400, userInfo: [NSLocalizedDescriptionKey: "URL non valido"])
         }
         
-        do {
-            var request = URLRequest(url: url)
-            request.timeoutInterval = 30
-            request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)", forHTTPHeaderField: "User-Agent")
-            request.setValue("text/calendar, text/plain, */*", forHTTPHeaderField: "Accept")
-            
-            let (data, response) = try await URLSession.shared.data(for: request)
-            if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
-                syncErrorMessage = "Errore server (\(httpResponse.statusCode)): impossibile scaricare il feed"
-                isSyncingCalendar = false
-                return
-            }
-            
-            guard let icsString = String(data: data, encoding: .utf8) ??
-                                  String(data: data, encoding: .isoLatin1) ??
-                                  String(data: data, encoding: .windowsCP1252) else {
-                syncErrorMessage = "Formato testo del file .ics non riconosciuto"
-                isSyncingCalendar = false
-                return
-            }
-            
-            let parsedEvents = parseICS(content: icsString)
-            if parsedEvents.isEmpty {
-                syncErrorMessage = "Feed scaricato ma nessun evento trovato. Verifica che il link contenga eventi (.ics)."
-            } else {
-                let updatedEvents = self.extractAndSyncCourses(from: parsedEvents)
-                self.syncedEvents = updatedEvents
-                self.lastSyncDate = Date()
-                self.syncSuccessMessage = "\(parsedEvents.count) eventi sincronizzati e corsi aggiornati"
-                self.saveData()
-                NotificationManager.shared.scheduleAllReminders(
-                    deadlines: self.deadlines,
-                    exams: self.exams,
-                    courses: self.courses,
-                    assignments: self.assignments
-                )
-            }
-            self.isSyncingCalendar = false
-        } catch {
-            self.syncErrorMessage = "Errore connessione: \(error.localizedDescription)"
-            self.isSyncingCalendar = false
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 30
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)", forHTTPHeaderField: "User-Agent")
+        request.setValue("text/calendar, text/plain, */*", forHTTPHeaderField: "Accept")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
+            throw NSError(domain: "uni", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Errore server (\(httpResponse.statusCode))"])
         }
+        
+        guard let icsString = String(data: data, encoding: .utf8) ??
+                              String(data: data, encoding: .isoLatin1) ??
+                              String(data: data, encoding: .windowsCP1252) else {
+            throw NSError(domain: "uni", code: 422, userInfo: [NSLocalizedDescriptionKey: "Formato testo .ics non riconosciuto"])
+        }
+        
+        return parseICS(content: icsString, source: source)
+    }
+    
+    // MARK: - Calendar Sources Management
+    public func addCalendarSource(
+        title: String,
+        url: String = "",
+        colorHex: String = "#4F46E5",
+        isAcademic: Bool = true,
+        sourceType: CalendarSource.SourceType = .webcal,
+        appleCalendarIdentifier: String? = nil
+    ) {
+        let newSource = CalendarSource(
+            id: UUID(),
+            title: title.isEmpty ? (sourceType == .appleCalendar ? (LocalizationManager.shared.text(it: "Calendario PC", en: "PC Calendar")) : (LocalizationManager.shared.text(it: "Nuovo Calendario", en: "New Calendar"))) : title,
+            url: url,
+            colorHex: colorHex,
+            isAcademic: isAcademic,
+            isEnabled: true,
+            sourceType: sourceType,
+            appleCalendarIdentifier: appleCalendarIdentifier
+        )
+        calendarSources.append(newSource)
+        if sourceType == .webcal && calendarFeedURL.isEmpty {
+            calendarFeedURL = url
+        }
+        saveData()
+    }
+    
+    public func removeCalendarSource(id: UUID) {
+        calendarSources.removeAll { $0.id == id }
+        syncedEvents.removeAll { $0.sourceId == id }
+        saveData()
+    }
+    
+    public func toggleCalendarSource(id: UUID) {
+        if let idx = calendarSources.firstIndex(where: { $0.id == id }) {
+            calendarSources[idx].isEnabled.toggle()
+            saveData()
+        }
+    }
+    
+    public func toggleSourceAcademic(id: UUID) {
+        if let idx = calendarSources.firstIndex(where: { $0.id == id }) {
+            calendarSources[idx].isAcademic.toggle()
+            let newIsAcademic = calendarSources[idx].isAcademic
+            for i in 0..<syncedEvents.count {
+                if syncedEvents[i].sourceId == id {
+                    syncedEvents[i].isAcademic = newIsAcademic
+                    syncedEvents[i].isFromCourseFeed = newIsAcademic
+                }
+            }
+            saveData()
+        }
+    }
+    
+    @MainActor
+    public func importAllMacCalendars() async -> Int {
+        let granted = await AppleCalendarManager.shared.requestAccess()
+        guard granted else {
+            self.syncErrorMessage = LocalizationManager.shared.text(it: "Permesso di accesso ai calendari del PC non concesso", en: "Access permission to PC calendars not granted")
+            return 0
+        }
+        
+        let macCals = AppleCalendarManager.shared.getAvailableMacCalendars()
+        var addedCount = 0
+        
+        for macCal in macCals {
+            if let existingIdx = calendarSources.firstIndex(where: { $0.appleCalendarIdentifier == macCal.id }) {
+                calendarSources[existingIdx].title = macCal.title
+                calendarSources[existingIdx].colorHex = macCal.colorHex
+            } else {
+                let newSource = CalendarSource(
+                    id: UUID(),
+                    title: "\(macCal.title) (\(macCal.sourceTitle))",
+                    url: "",
+                    colorHex: macCal.colorHex,
+                    isAcademic: macCal.isAcademic,
+                    isEnabled: true,
+                    sourceType: .appleCalendar,
+                    appleCalendarIdentifier: macCal.id
+                )
+                calendarSources.append(newSource)
+                addedCount += 1
+            }
+        }
+        
+        await syncAllCalendars()
+        return addedCount
     }
     
     // MARK: - Import Local ICS File
@@ -491,12 +883,37 @@ public class DataManager: ObservableObject {
                 return
             }
             
-            let parsedEvents = parseICS(content: icsString)
+            let fileName = url.deletingPathExtension().lastPathComponent
+            let sourceId = UUID()
+            let source = CalendarSource(
+                id: sourceId,
+                title: fileName.isEmpty ? "File .ics" : fileName,
+                url: url.path,
+                colorHex: "#10B981",
+                isAcademic: true,
+                isEnabled: true,
+                sourceType: .localFile
+            )
+            
+            let parsedEvents = parseICS(content: icsString, source: source)
             if parsedEvents.isEmpty {
                 syncErrorMessage = "Nessun evento trovato nel file .ics selezionato"
             } else {
-                let updatedEvents = self.extractAndSyncCourses(from: parsedEvents)
-                self.syncedEvents = updatedEvents
+                var updatedSource = source
+                updatedSource.eventCount = parsedEvents.count
+                updatedSource.lastSyncDate = Date()
+                self.calendarSources.append(updatedSource)
+                
+                let academicEvents = parsedEvents.filter { $0.isAcademic }
+                let updatedAcademic = self.extractAndSyncCourses(from: academicEvents)
+                
+                var final = self.syncedEvents
+                final.append(contentsOf: updatedAcademic)
+                for ev in parsedEvents where !ev.isAcademic {
+                    final.append(ev)
+                }
+                
+                self.syncedEvents = final
                 self.lastSyncDate = Date()
                 self.syncSuccessMessage = "\(parsedEvents.count) lezioni importate e corsi aggiornati"
                 self.saveData()
@@ -514,8 +931,12 @@ public class DataManager: ObservableObject {
 
     
     // MARK: - RFC 5545 iCalendar Parser with RRULE & Unfolding
-    private func parseICS(content: String) -> [CalendarEventItem] {
+    private func parseICS(content: String, source: CalendarSource? = nil) -> [CalendarEventItem] {
         var items: [CalendarEventItem] = []
+        let isAcademic = source?.isAcademic ?? true
+        let sourceColor = source?.colorHex
+        let sourceTitle = source?.title
+        let sourceId = source?.id
         
         // 1. Unfolding RFC 5545: rimuovi CRLF / LF seguiti da spazio o tab
         let unfoldedContent = content
@@ -555,9 +976,14 @@ public class DataManager: ObservableObject {
                 inEvent = false
                 if let start = dtStart {
                     let duration = dtEnd?.timeIntervalSince(start) ?? (3600 * 2) // default 2h
-                    let category: CalendarEventItem.EventCategory = (summary.localizedCaseInsensitiveContains("esame") || summary.localizedCaseInsensitiveContains("appello")) ? .exam : .lecture
+                    let category: CalendarEventItem.EventCategory
+                    if isAcademic {
+                        category = (summary.localizedCaseInsensitiveContains("esame") || summary.localizedCaseInsensitiveContains("appello")) ? .exam : .lecture
+                    } else {
+                        category = .personal
+                    }
                     
-                    let cleanTitle = summary.isEmpty ? "Lezione" : summary
+                    let cleanTitle = summary.isEmpty ? (isAcademic ? "Lezione" : "Impegno") : summary
                     
                     // Se c'è un RRULE (ricorrenza settimanale/giornaliera tipica dei corsi universitari), espandila
                     if let rule = rrule {
@@ -571,8 +997,12 @@ public class DataManager: ObservableObject {
                                 location: location,
                                 startDate: occStart,
                                 endDate: occEnd,
-                                isFromCourseFeed: true,
-                                category: category
+                                isFromCourseFeed: isAcademic,
+                                category: category,
+                                sourceId: sourceId,
+                                calendarTitle: sourceTitle,
+                                calendarColorHex: sourceColor,
+                                isAcademic: isAcademic
                             )
                             items.append(item)
                         }
@@ -585,8 +1015,12 @@ public class DataManager: ObservableObject {
                             location: location,
                             startDate: start,
                             endDate: end,
-                            isFromCourseFeed: true,
-                            category: category
+                            isFromCourseFeed: isAcademic,
+                            category: category,
+                            sourceId: sourceId,
+                            calendarTitle: sourceTitle,
+                            calendarColorHex: sourceColor,
+                            isAcademic: isAcademic
                         )
                         items.append(item)
                     }
@@ -648,11 +1082,35 @@ public class DataManager: ObservableObject {
             return TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
         }
         if lower.contains("utc") || lower.contains("gmt") || lower.contains("zulu") {
-            return TimeZone(secondsFromGMT: 0)!
+            return TimeZone(secondsFromGMT: 0) ?? TimeZone.current
         }
         
         return TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
     }
+    
+    // MARK: - Pre-allocated High Performance ICS Formatters
+    private static let icsRomeTimeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
+    private static let icsPosixLocale = Locale(identifier: "en_US_POSIX")
+    
+    private static let icsDatePatterns: [(String, Bool)] = [
+        ("yyyyMMdd'T'HHmmss'Z'", true),
+        ("yyyyMMdd'T'HHmmss", false),
+        ("yyyyMMdd'T'HHmm'Z'", true),
+        ("yyyyMMdd'T'HHmm", false),
+        ("yyyyMMdd", false)
+    ]
+    
+    private static let icsDefaultFormatters: [String: DateFormatter] = {
+        var dict: [String: DateFormatter] = [:]
+        for (format, _) in icsDatePatterns {
+            let f = DateFormatter()
+            f.dateFormat = format.replacingOccurrences(of: "'Z'", with: "")
+            f.locale = icsPosixLocale
+            f.timeZone = icsRomeTimeZone
+            dict[format] = f
+        }
+        return dict
+    }()
     
     private func extractDateFromICSLine(_ line: String) -> Date? {
         guard let colonIndex = line.firstIndex(of: ":") else { return nil }
@@ -672,50 +1130,28 @@ public class DataManager: ObservableObject {
             }
         }
         
-        let formatters: [(String, Bool)] = [
-            ("yyyyMMdd'T'HHmmss'Z'", true),
-            ("yyyyMMdd'T'HHmmss", false),
-            ("yyyyMMdd'T'HHmm'Z'", true),
-            ("yyyyMMdd'T'HHmm", false),
-            ("yyyyMMdd", false)
-        ]
-        
         let hasZ = dateString.hasSuffix("Z")
-        // Rimuovi la 'Z' finale prima di parsare con il fuso italiano,
-        // altrimenti DateFormatter non riesce a parsare il formato non-UTC
         let cleanDateString = hasZ ? String(dateString.dropLast()) : dateString
         
-        for (format, isUTCFormat) in formatters {
-            let formatter = DateFormatter()
-            // Usa sempre il formato senza 'Z' se stiamo forzando il fuso italiano
-            let effectiveFormat: String
-            if (hasZ || isUTCFormat) && specifiedTimeZone == nil {
-                // Rimuovi la 'Z' dal pattern per parsare come orario locale
-                effectiveFormat = format.replacingOccurrences(of: "'Z'", with: "")
-            } else {
-                effectiveFormat = format
+        // Se non c'è TZID esplicito (caso comune nel 99% dei feed), usa i formatters pre-allocati
+        if specifiedTimeZone == nil {
+            for (format, isUTCFormat) in Self.icsDatePatterns {
+                if let formatter = Self.icsDefaultFormatters[format] {
+                    let targetStr = (hasZ || isUTCFormat) ? cleanDateString : dateString
+                    if let d = formatter.date(from: targetStr) {
+                        return d
+                    }
+                }
             }
-            formatter.dateFormat = effectiveFormat
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            
-            if let tz = specifiedTimeZone {
-                // TZID esplicito nel campo (es. DTSTART;TZID=Europe/Rome:20260923T091500)
+            return nil
+        }
+        
+        if let tz = specifiedTimeZone {
+            for (format, _) in Self.icsDatePatterns {
+                let formatter = DateFormatter()
+                formatter.dateFormat = format
+                formatter.locale = Self.icsPosixLocale
                 formatter.timeZone = tz
-                if let date = formatter.date(from: dateString) {
-                    return date
-                }
-            } else if (hasZ || isUTCFormat) {
-                // I feed universitari italiani (PoliMi, Esse3, EasyAcademy) esportano orari
-                // di lezione in ora locale italiana marcandoli erroneamente con 'Z'.
-                // Trattiamo i componenti orari come wall-clock Italian time (Europe/Rome),
-                // esattamente come fa Apple Calendar.
-                formatter.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
-                if let date = formatter.date(from: cleanDateString) {
-                    return date
-                }
-            } else {
-                // Floating Time RFC 5545: nessun fuso esplicito → locale italiano
-                formatter.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
                 if let date = formatter.date(from: dateString) {
                     return date
                 }
@@ -730,6 +1166,11 @@ public class DataManager: ObservableObject {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale(identifier: "it_IT")
         calendar.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
+        
+        let timeFormatter = DateFormatter()
+        timeFormatter.locale = Locale(identifier: "it_IT")
+        timeFormatter.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
+        timeFormatter.dateFormat = "HH:mm"
         
         let palette = [
             "#0D5BFF", "#10B981", "#8B5CF6", "#F59E0B",
@@ -764,10 +1205,6 @@ public class DataManager: ObservableObject {
             }
             
             var detectedSchedules: [CourseSchedule] = []
-            let timeFormatter = DateFormatter()
-            timeFormatter.locale = Locale(identifier: "it_IT")
-            timeFormatter.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
-            timeFormatter.dateFormat = "HH:mm"
             
             for ev in courseEvents {
                 let weekday = calendar.component(.weekday, from: ev.startDate)

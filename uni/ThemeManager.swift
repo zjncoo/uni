@@ -373,13 +373,13 @@ public struct UniCard<Content: View>: View {
     private var backgroundFill: Color {
         switch style {
         case .liquidGlass:
-            return colorScheme == .dark ? Color(hex: "#151618")!.opacity(0.85) : Color.white.opacity(0.85)
+            return colorScheme == .dark ? (Color(hex: "#151618") ?? Color.black).opacity(0.85) : Color.white.opacity(0.85)
         case .accentHero:
             return themeManager.accentColor
         case .surface:
-            return colorScheme == .dark ? Color(hex: "#151618")! : Color.white
+            return colorScheme == .dark ? (Color(hex: "#151618") ?? Color.black) : Color.white
         case .secondary:
-            return colorScheme == .dark ? Color(hex: "#1C1D21")! : Color(hex: "#F2F3F5")!
+            return colorScheme == .dark ? (Color(hex: "#1C1D21") ?? Color.gray) : (Color(hex: "#F2F3F5") ?? Color.white)
         case .outline:
             return Color.clear
         }
@@ -641,7 +641,7 @@ public struct UniBlockProgress: View {
             ZStack(alignment: .leading) {
                 // Sfondo barra neutro scuro
                 Rectangle()
-                    .fill(colorScheme == .dark ? Color(hex: "#2C2C2E")! : Color(hex: "#E5E5EA")!)
+                    .fill(colorScheme == .dark ? (Color(hex: "#2C2C2E") ?? Color.gray) : (Color(hex: "#E5E5EA") ?? Color.gray))
                 
                 // Blocco riempito pieno
                 Rectangle()

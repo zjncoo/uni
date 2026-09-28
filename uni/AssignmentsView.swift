@@ -21,6 +21,22 @@ struct AssignmentsView: View {
     @State private var isPresentingNewAssignment = false
     @State private var assignmentToEdit: Assignment? = nil
     
+    fileprivate static let dueFormatterIT: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
+        f.dateFormat = "EEEE d MMMM yyyy, 'ore' HH:mm"
+        return f
+    }()
+    
+    fileprivate static let dueFormatterEN: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
+        f.dateFormat = "EEEE, MMMM d, yyyy 'at' HH:mm"
+        return f
+    }()
+    
     var filteredAssignments: [Assignment] {
         let base = dataManager.assignments
             .filter { filterCompleted ? $0.isCompleted : !$0.isCompleted }
@@ -653,11 +669,8 @@ struct AssignmentCardView: View {
     }
     
     private func formatDueDate(_ date: Date) -> String {
-        let f = DateFormatter()
         let isEn = localizationManager.currentLanguage == .english
-        f.locale = isEn ? Locale(identifier: "en_US") : Locale(identifier: "it_IT")
-        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
-        f.dateFormat = isEn ? "EEEE, MMMM d, yyyy 'at' HH:mm" : "EEEE d MMMM yyyy, 'ore' HH:mm"
+        let f = isEn ? AssignmentsView.dueFormatterEN : AssignmentsView.dueFormatterIT
         let prefix = isEn ? "Due: " : "Scadenza: "
         return "\(prefix)\(f.string(from: date).capitalized)"
     }

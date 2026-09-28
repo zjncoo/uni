@@ -471,7 +471,168 @@ public enum DashboardSection: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-// MARK: - Calendar Feed Event (Eventi da .ics o generati)
+// MARK: - Calendar Commitment Item (A colpo d'occhio per Oggi e Prossimi Giorni)
+public struct CalendarCommitmentItem: Identifiable {
+    public let id: String
+    public let title: String
+    public let date: Date
+    public let endDate: Date?
+    public let isAllDay: Bool
+    public let type: CommitmentType
+    public let categoryName: String?
+    public let colorHex: String?
+    public let isCompleted: Bool
+    public let courseName: String?
+    
+    public init(
+        id: String,
+        title: String,
+        date: Date,
+        endDate: Date? = nil,
+        isAllDay: Bool = false,
+        type: CommitmentType,
+        categoryName: String? = nil,
+        colorHex: String? = nil,
+        isCompleted: Bool = false,
+        courseName: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.date = date
+        self.endDate = endDate
+        self.isAllDay = isAllDay
+        self.type = type
+        self.categoryName = categoryName
+        self.colorHex = colorHex
+        self.isCompleted = isCompleted
+        self.courseName = courseName
+    }
+    
+    public enum CommitmentType {
+        case lecture
+        case exam
+        case deadline
+        case assignment
+        case other
+        
+        public func localizedName(using lm: LocalizationManager) -> String {
+            switch self {
+            case .lecture: return lm.text(it: "Lezione", en: "Lecture")
+            case .exam: return lm.text(it: "Esame", en: "Exam")
+            case .deadline: return lm.text(it: "Scadenza", en: "Deadline")
+            case .assignment: return lm.text(it: "Compito", en: "Assignment")
+            case .other: return lm.text(it: "Evento", en: "Event")
+            }
+        }
+        
+        public var icon: String {
+            switch self {
+            case .lecture: return "book.closed"
+            case .exam: return "graduationcap"
+            case .deadline: return "clock"
+            case .assignment: return "doc.text"
+            case .other: return "calendar"
+            }
+        }
+        
+        public func color(theme: ThemeManager) -> Color {
+            switch self {
+            case .lecture: return theme.accentColor
+            case .exam: return .red
+            case .deadline: return .orange
+            case .assignment: return .purple
+            case .other: return .blue
+            }
+        }
+    }
+}
+
+// MARK: - Calendar Source (Feed iCal, File Locale o Calendario Mac)
+public struct CalendarSource: Identifiable, Codable, Hashable {
+    public var id: UUID
+    public var title: String
+    public var url: String
+    public var colorHex: String
+    public var isAcademic: Bool
+    public var isEnabled: Bool
+    public var sourceType: SourceType
+    public var appleCalendarIdentifier: String?
+    public var lastSyncDate: Date?
+    public var eventCount: Int
+    
+    public enum SourceType: String, Codable, CaseIterable {
+        case webcal = "webcal"
+        case localFile = "file"
+        case appleCalendar = "appleCalendar"
+        
+        public var icon: String {
+            switch self {
+            case .webcal: return "link"
+            case .localFile: return "doc.text"
+            case .appleCalendar: return "calendar.badge.clock"
+            }
+        }
+        
+        public func localizedTitle(using lm: LocalizationManager) -> String {
+            switch self {
+            case .webcal: return lm.text(it: "Feed iCal / Webcal", en: "iCal / Webcal Feed")
+            case .localFile: return lm.text(it: "File .ics Locale", en: "Local .ics File")
+            case .appleCalendar: return lm.text(it: "Calendario PC", en: "PC Calendar")
+            }
+        }
+        
+        public var title: String {
+            switch self {
+            case .webcal: return "Feed iCal / Webcal"
+            case .localFile: return "File .ics Locale"
+            case .appleCalendar: return "Calendario PC"
+            }
+        }
+    }
+    
+    public init(
+        id: UUID = UUID(),
+        title: String,
+        url: String = "",
+        colorHex: String = "#4F46E5",
+        isAcademic: Bool = true,
+        isEnabled: Bool = true,
+        sourceType: SourceType = .webcal,
+        appleCalendarIdentifier: String? = nil,
+        lastSyncDate: Date? = nil,
+        eventCount: Int = 0
+    ) {
+        self.id = id
+        self.title = title
+        self.url = url
+        self.colorHex = colorHex
+        self.isAcademic = isAcademic
+        self.isEnabled = isEnabled
+        self.sourceType = sourceType
+        self.appleCalendarIdentifier = appleCalendarIdentifier
+        self.lastSyncDate = lastSyncDate
+        self.eventCount = eventCount
+    }
+}
+
+// MARK: - Scope Filter for Calendar View
+public enum CalendarScopeFilter: Hashable, Equatable {
+    case all
+    case academicOnly
+    case nonAcademicOnly
+    case source(UUID)
+    
+    public var id: String {
+        switch self {
+        case .all: return "all"
+        case .academicOnly: return "academic"
+        case .nonAcademicOnly: return "nonAcademic"
+        case .source(let uuid): return uuid.uuidString
+        }
+    }
+}
+
+// MARK: - Calendar Feed Event (Eventi da .ics, Calendario Mac o generati)
 public struct CalendarEventItem: Identifiable, Codable, Hashable {
     public var id: String
     public var title: String
@@ -482,11 +643,16 @@ public struct CalendarEventItem: Identifiable, Codable, Hashable {
     public var isFromCourseFeed: Bool
     public var category: EventCategory
     public var courseId: UUID?
+    public var sourceId: UUID?
+    public var calendarTitle: String?
+    public var calendarColorHex: String?
+    public var isAcademic: Bool
     
     public enum EventCategory: String, Codable {
         case lecture = "Lezione"
         case exam = "Esame"
         case deadline = "Scadenza"
+        case personal = "Personale"
         case other = "Evento"
     }
     
@@ -499,7 +665,11 @@ public struct CalendarEventItem: Identifiable, Codable, Hashable {
         endDate: Date,
         isFromCourseFeed: Bool = false,
         category: EventCategory = .other,
-        courseId: UUID? = nil
+        courseId: UUID? = nil,
+        sourceId: UUID? = nil,
+        calendarTitle: String? = nil,
+        calendarColorHex: String? = nil,
+        isAcademic: Bool = true
     ) {
         self.id = id
         self.title = title
@@ -510,6 +680,31 @@ public struct CalendarEventItem: Identifiable, Codable, Hashable {
         self.isFromCourseFeed = isFromCourseFeed
         self.category = category
         self.courseId = courseId
+        self.sourceId = sourceId
+        self.calendarTitle = calendarTitle
+        self.calendarColorHex = calendarColorHex
+        self.isAcademic = isAcademic
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        details = try container.decodeIfPresent(String.self, forKey: .details) ?? ""
+        location = try container.decodeIfPresent(String.self, forKey: .location) ?? ""
+        startDate = try container.decode(Date.self, forKey: .startDate)
+        endDate = try container.decode(Date.self, forKey: .endDate)
+        isFromCourseFeed = try container.decodeIfPresent(Bool.self, forKey: .isFromCourseFeed) ?? false
+        category = try container.decodeIfPresent(EventCategory.self, forKey: .category) ?? .other
+        courseId = try container.decodeIfPresent(UUID.self, forKey: .courseId)
+        sourceId = try container.decodeIfPresent(UUID.self, forKey: .sourceId)
+        calendarTitle = try container.decodeIfPresent(String.self, forKey: .calendarTitle)
+        calendarColorHex = try container.decodeIfPresent(String.self, forKey: .calendarColorHex)
+        if let ac = try container.decodeIfPresent(Bool.self, forKey: .isAcademic) {
+            isAcademic = ac
+        } else {
+            isAcademic = isFromCourseFeed || category == .lecture || category == .exam
+        }
     }
 }
 
@@ -719,6 +914,7 @@ extension CalendarEventItem.EventCategory {
         case .lecture: return isEn ? "Lecture" : "Lezione"
         case .exam: return isEn ? "Exam" : "Esame"
         case .deadline: return isEn ? "Deadline" : "Scadenza"
+        case .personal: return isEn ? "Personal" : "Personale"
         case .other: return isEn ? "Event" : "Altro"
         }
     }

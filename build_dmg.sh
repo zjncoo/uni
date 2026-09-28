@@ -74,7 +74,7 @@ FINAL_DMG="$RELEASE_DIR/uni.dmg"
 rm -f "$TEMP_DMG" "$FINAL_DMG"
 
 # Create temporary image with enough space
-hdiutil create -srcfolder "$STAGING_DIR" -volname "uni" -fs HFS+ -fsargs "-c c=64,a=16,e=16" -format UDRW -size 45m "$TEMP_DMG"
+hdiutil create -srcfolder "$STAGING_DIR" -volname "uni" -fs HFS+ -fsargs "-c c=64,a=16,e=16" -format UDRW -size 90m "$TEMP_DMG"
 
 echo "=== 4. Attaching RW Image to configure Finder layout ==="
 # Detach any existing /Volumes/uni if present

@@ -319,21 +319,43 @@ public struct OnboardingWizardView: View {
             }
             
             UniCard(padding: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "calendar.badge.clock")
-                        .font(.system(size: 22, weight: .light))
-                        .foregroundStyle(themeManager.accentColor)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "desktopcomputer.and.arrow.down")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(themeManager.accentColor)
+                        
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(localizationManager.text(it: "Replica con 1 Click i Calendari del PC", en: "1-Click Replicate PC Calendars"))
+                                .font(UniFont.headline())
+                            Text(localizationManager.text(
+                                it: "Puoi importare in un istante tutti i calendari del tuo computer (Google Calendar, Outlook, iCloud). uni riconosce automaticamente le lezioni universitarie e le distingue dagli eventi personali.",
+                                en: "Instantly import all calendars from your computer (Google Calendar, Outlook, iCloud). uni automatically separates academic lectures from personal events."
+                            ))
+                            .font(UniFont.caption())
+                            .foregroundStyle(.secondary)
+                            .lineSpacing(2)
+                        }
+                    }
                     
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(localizationManager.text(it: "Cos'è il link iCal / Webcal?", en: "What is an iCal / Webcal link?"))
-                            .font(UniFont.headline())
-                        Text(localizationManager.text(
-                            it: "La maggior parte degli atenei fornisce un link .ics o webcal:// con l'orario delle tue lezioni e le aule. Incollandolo qui, uni sincronizzerà le lezioni nel tuo calendario.",
-                            en: "Most universities provide an .ics or webcal:// feed URL with lecture times and classrooms. Pasting it here syncs your schedule into uni."
-                        ))
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .lineSpacing(2)
+                    Divider()
+                    
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(Color.orange)
+                        
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(localizationManager.text(it: "Oggi a Colpo d'Occhio & Orizzonte 3, 7, 20 Giorni", en: "Today at a Glance & 3, 7, 20 Days Horizon"))
+                                .font(UniFont.headline())
+                            Text(localizationManager.text(
+                                it: "Nel Calendario trovi sempre le attività di oggi in evidenza con orario e aula, oltre a una comoda tendina per visualizzare gli impegni dei prossimi 3, 7 o 20 giorni.",
+                                en: "In Calendar you will always see today's lectures and rooms highlighted, plus a handy dropdown to preview the next 3, 7, or 20 days."
+                            ))
+                            .font(UniFont.caption())
+                            .foregroundStyle(.secondary)
+                            .lineSpacing(2)
+                        }
                     }
                 }
             }
@@ -474,12 +496,17 @@ public struct OnboardingWizardView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(localizationManager.text(it: "Guida Rapida & Superpoteri", en: "Quick Start & Shortcuts"))
                     .font(UniFont.largeTitle())
-                Text(localizationManager.text(it: "Ecco cosa puoi fare fin da subito con uni sul tuo Mac:", en: "Here is what you can do right away with uni on your Mac:"))
+                Text(localizationManager.text(it: "Ecco cosa puoi fare fin da subito con uni:", en: "Here is what you can do right away with uni:"))
                     .font(UniFont.subheadline())
                     .foregroundStyle(.secondary)
             }
             
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 10) {
+                tutorialCard(
+                    badge: "CAL",
+                    title: localizationManager.text(it: "Calendario & Impegni", en: "Calendar & Schedule"),
+                    desc: localizationManager.text(it: "Impegni di oggi, tendina 3/7/20 giorni, replica PC in 1 click e separazione lezioni.", en: "Today's commitments, 3/7/20 days horizon, 1-click PC replicate, and academic separation.")
+                )
                 tutorialCard(
                     badge: "⌘F",
                     title: localizationManager.text(it: "Ricerca Spotlight", en: "Spotlight Search"),

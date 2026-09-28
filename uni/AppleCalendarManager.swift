@@ -165,4 +165,129 @@ public class AppleCalendarManager: ObservableObject {
             saveEventMap()
         } catch { print("[AppleCalendarManager] Remove error: \(error)") }
     }
+    
+    // MARK: - Mac System Calendars Discovery (EventKit Read & Replica)
+    public struct MacCalendarInfo: Identifiable, Hashable {
+        public var id: String // calendarIdentifier
+        public var title: String
+        public var sourceTitle: String
+        public var colorHex: String
+        public var isAcademic: Bool
+        public var isSelected: Bool
+        
+        public init(
+            id: String,
+            title: String,
+            sourceTitle: String,
+            colorHex: String,
+            isAcademic: Bool,
+            isSelected: Bool = true
+        ) {
+            self.id = id
+            self.title = title
+            self.sourceTitle = sourceTitle
+            self.colorHex = colorHex
+            self.isAcademic = isAcademic
+            self.isSelected = isSelected
+        }
+    }
+    
+    public func getAvailableMacCalendars() -> [MacCalendarInfo] {
+        let allCalendars = store.calendars(for: .event)
+        var list: [MacCalendarInfo] = []
+        
+        for cal in allCalendars {
+            // Escludi il calendario dedicato "uni 📚" esportato dall'app per evitare duplicazioni
+            if cal.title == calendarTitle { continue }
+            
+            let hex = hexFromCGColor(cal.cgColor)
+            let lower = cal.title.lowercased()
+            let isAcademic = lower.contains("uni") ||
+                             lower.contains("lezion") ||
+                             lower.contains("corso") ||
+                             lower.contains("esami") ||
+                             lower.contains("studio") ||
+                             lower.contains("scuola") ||
+                             lower.contains("didattica") ||
+                             lower.contains("politecnico")
+            
+            let info = MacCalendarInfo(
+                id: cal.calendarIdentifier,
+                title: cal.title,
+                sourceTitle: cal.source?.title ?? "Mac",
+                colorHex: hex,
+                isAcademic: isAcademic,
+                isSelected: true
+            )
+            list.append(info)
+        }
+        
+        return list.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+    }
+    
+    public func fetchEvents(
+        fromCalendarIdentifiers identifiers: [String],
+        startDate: Date,
+        endDate: Date,
+        sourceId: UUID? = nil,
+        sourceTitle: String? = nil,
+        sourceColorHex: String? = nil,
+        isAcademic: Bool = true
+    ) async -> [CalendarEventItem] {
+        guard authorizationStatus == .fullAccess else { return [] }
+        
+        let targetCals = store.calendars(for: .event).filter { identifiers.contains($0.calendarIdentifier) }
+        guard !targetCals.isEmpty else { return [] }
+        
+        let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: targetCals)
+        let ekEvents = store.events(matching: predicate)
+        
+        var results: [CalendarEventItem] = []
+        for ev in ekEvents {
+            let cleanTitle = ev.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !cleanTitle.isEmpty else { continue }
+            
+            let calColor = sourceColorHex ?? hexFromCGColor(ev.calendar.cgColor)
+            let calTitle = sourceTitle ?? ev.calendar.title
+            
+            let category: CalendarEventItem.EventCategory
+            if isAcademic {
+                if cleanTitle.localizedCaseInsensitiveContains("esame") || cleanTitle.localizedCaseInsensitiveContains("appello") {
+                    category = .exam
+                } else {
+                    category = .lecture
+                }
+            } else {
+                category = .personal
+            }
+            
+            let item = CalendarEventItem(
+                id: "mac-\(ev.calendarItemIdentifier)-\(Int(ev.startDate.timeIntervalSince1970))",
+                title: cleanTitle,
+                details: ev.notes ?? "",
+                location: ev.location ?? "",
+                startDate: ev.startDate,
+                endDate: ev.endDate,
+                isFromCourseFeed: isAcademic,
+                category: category,
+                courseId: nil,
+                sourceId: sourceId,
+                calendarTitle: calTitle,
+                calendarColorHex: calColor,
+                isAcademic: isAcademic
+            )
+            results.append(item)
+        }
+        return results
+    }
+    
+    public func hexFromCGColor(_ cgColor: CGColor?) -> String {
+        guard let cgColor = cgColor, let components = cgColor.components, components.count >= 3 else {
+            return "#4F46E5"
+        }
+        let r = Int(round(components[0] * 255.0))
+        let g = Int(round(components[1] * 255.0))
+        let b = Int(round(components[2] * 255.0))
+        return String(format: "#%02X%02X%02X", max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+    }
 }

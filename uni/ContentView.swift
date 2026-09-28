@@ -25,6 +25,7 @@ struct ContentView: View {
     @State private var isShowingQuickSearch = false
     @State private var isShowingFocusTimer = false
     @State private var isShowingOnboarding = false
+    @State private var isShowingWhatsNew = false
     
     // Global Contextual Creation Sheets (⌘N)
     @State private var isPresentingNewDeadlineSheet = false
@@ -61,6 +62,8 @@ struct ContentView: View {
             
             if isLoading {
                 UniSplashScreenView(dataManager: dataManager, isDarkMode: isDarkMode)
+                    .environmentObject(themeManager)
+                    .environmentObject(localizationManager)
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     .zIndex(500)
             } else {
@@ -350,9 +353,19 @@ struct ContentView: View {
                 .environmentObject(themeManager)
                 .environmentObject(localizationManager)
         }
+        .sheet(isPresented: $isShowingWhatsNew) {
+            WhatsNewModalView()
+                .environmentObject(themeManager)
+                .environmentObject(localizationManager)
+        }
         .onAppear {
             if !dataManager.hasCompletedOnboarding {
                 isShowingOnboarding = true
+            } else {
+                let lastSeen = UserDefaults.standard.string(forKey: "uni_last_seen_release_notes")
+                if lastSeen != "1.4.0" {
+                    isShowingWhatsNew = true
+                }
             }
             NotificationManager.shared.requestAuthorization()
             NotificationManager.shared.scheduleAllReminders(
@@ -363,9 +376,9 @@ struct ContentView: View {
             AppleCalendarManager.shared.refreshStatus()
         }
         .task {
-            // 1. Caricamento iniziale SplashScreen con badge logo
-            try? await Task.sleep(for: .milliseconds(1100))
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+            // 1. Caricamento iniziale SplashScreen con ritardo per trasmettere valore
+            try? await Task.sleep(for: .milliseconds(1850))
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.82)) {
                 isLoading = false
             }
             // 2. Animazione d'ingresso a cascata dell'interfaccia
@@ -568,7 +581,9 @@ struct ContentView: View {
         case "deadlines":
             isPresentingNewDeadlineSheet = true
         case "calendar":
-            isPresentingNewDeadlineSheet = true
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                isShowingOverviewNewItemModal = true
+            }
         case "dashboard":
             withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
                 isShowingOverviewNewItemModal = true
@@ -686,66 +701,116 @@ struct NavbarQuickActionButton: View {
     }
 }
 
-// MARK: - Refined Splash Screen (Ispirata a Mastro con vetro liquido e badge)
+// MARK: - Custom Arc Loading Spinner (Ispirato allo screenshot allegato)
+struct UniLoadingSpinnerView: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    let isDarkMode: Bool
+    var size: CGFloat = 34
+    var lineWidth: CGFloat = 3.5
+    
+    @State private var isSpinning = false
+    
+    var body: some View {
+        ZStack {
+            // Traccia circolare di fondo neutrale e discreta
+            Circle()
+                .stroke(
+                    isDarkMode ? Color.white.opacity(0.12) : Color.black.opacity(0.08),
+                    lineWidth: lineWidth
+                )
+            
+            // Arco di caricamento attivo con estremità arrotondate
+            Circle()
+                .trim(from: 0.0, to: 0.38)
+                .stroke(
+                    themeManager.accentColor,
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                )
+                .rotationEffect(.degrees(isSpinning ? 360 : 0))
+        }
+        .frame(width: size, height: size)
+        .onAppear {
+            withAnimation(.linear(duration: 0.95).repeatForever(autoreverses: false)) {
+                isSpinning = true
+            }
+        }
+    }
+}
+
+// MARK: - Refined Splash Screen (Logo senza contorni, font personalizzato e info versione)
 struct UniSplashScreenView: View {
     @ObservedObject var dataManager: DataManager
     let isDarkMode: Bool
     @EnvironmentObject var themeManager: ThemeManager
     
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.0"
+    }
+    
+    #if canImport(AppKit)
+    private var appIconImage: NSImage? {
+        if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "png"),
+           let img = NSImage(contentsOf: iconURL) {
+            return img
+        }
+        return NSImage(named: "AppIcon")
+    }
+    #endif
+    
     var body: some View {
-        VStack(spacing: 20) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(themeManager.accentColor.opacity(0.12))
-                    .frame(width: 76, height: 76)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1)
-                    )
-                
+        ZStack {
+            // Contenuto centrale del caricamento
+            VStack(spacing: 20) {
+                // 1. Logo dell'app senza contorni o box esterni
                 #if canImport(AppKit)
-                if let nsImg = NSImage(named: "AppIcon") {
-                    Image(nsImage: nsImg)
+                if let icon = appIconImage {
+                    Image(nsImage: icon)
                         .resizable()
                         .interpolation(.high)
                         .scaledToFit()
-                        .frame(width: 52, height: 52)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .frame(width: 76, height: 76)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .shadow(color: Color.black.opacity(isDarkMode ? 0.35 : 0.12), radius: 18, x: 0, y: 8)
                 } else {
                     Image(systemName: "graduationcap.fill")
-                        .font(.system(size: 36))
+                        .font(.system(size: 48))
                         .foregroundStyle(themeManager.accentColor)
                 }
                 #else
                 Image(systemName: "graduationcap.fill")
-                    .font(.system(size: 36))
+                    .font(.system(size: 48))
                     .foregroundStyle(themeManager.accentColor)
                 #endif
-            }
-            
-            VStack(spacing: 5) {
-                Text("uni")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .tracking(-0.6)
-                    .foregroundColor(isDarkMode ? .white : Color.black.opacity(0.88))
                 
-                Text(dataManager.universityName.isEmpty ? "Spazio di Studio Universitario" : dataManager.universityName)
-                    .font(UniFont.subheadline())
-                    .foregroundColor(.secondary)
+                // 2. Titolo "uni" con font personalizzato scelto dall'utente e nome studente
+                VStack(spacing: 6) {
+                    Text("uni")
+                        .font(UniFont.display(34, weight: .bold))
+                        .tracking(-0.6)
+                        .foregroundColor(isDarkMode ? .white : Color.black.opacity(0.88))
+                    
+                    let studentName = dataManager.studentName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    Text(studentName.isEmpty ? "Spazio di Studio" : studentName)
+                        .font(UniFont.subheadline())
+                        .foregroundColor(.secondary)
+                }
+                
+                // 3. Cerchio di caricamento circolare
+                UniLoadingSpinnerView(isDarkMode: isDarkMode, size: 34, lineWidth: 3.5)
+                    .padding(.top, 10)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             
-            ProgressView()
-                .scaleEffect(0.85)
-                .padding(.top, 4)
+            // 4. In basso al centro in piccolo la versione dell'app e zinco.cc
+            VStack {
+                Spacer()
+                Text("v\(appVersion) • zinco.cc")
+                    .font(UniFont.caption())
+                    .foregroundColor(isDarkMode ? Color.white.opacity(0.4) : Color.black.opacity(0.38))
+                    .padding(.bottom, 28)
+            }
         }
-        .padding(36)
-        .frame(width: 320)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(isDarkMode ? Color.white.opacity(0.15) : Color.white.opacity(0.8), lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(0.12), radius: 30, x: 0, y: 15)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

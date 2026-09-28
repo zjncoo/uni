@@ -18,6 +18,26 @@ struct ExamsView: View {
     @State private var examToEdit: Exam? = nil
     @State private var examToRegisterGrade: Exam? = nil
     
+    fileprivate static let examDayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d"
+        return f
+    }()
+    
+    fileprivate static let examMonthFormatterIT: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.dateFormat = "MMM"
+        return f
+    }()
+    
+    fileprivate static let examMonthFormatterEN: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "MMM"
+        return f
+    }()
+    
     enum ExamFilter: String, CaseIterable {
         case all = "all"
         case planned = "planned"
@@ -383,15 +403,11 @@ struct ExamRowView: View {
     }
     
     private func formatExamDay(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "d"
-        return f.string(from: date)
+        ExamsView.examDayFormatter.string(from: date)
     }
     
     private func formatExamMonth(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "it_IT")
-        f.dateFormat = "MMM"
+        let f = localizationManager.currentLanguage == .italian ? ExamsView.examMonthFormatterIT : ExamsView.examMonthFormatterEN
         return f.string(from: date).uppercased()
     }
 }

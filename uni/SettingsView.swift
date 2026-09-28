@@ -30,6 +30,7 @@ struct SettingsView: View {
     // Gestione Scorciatoie Home & Bottone Rapido Navbar
     @State private var isShowingAddShortcutSheet = false
     @State private var editingShortcut: QuickShortcutLink? = nil
+    @State private var isShowingCalendarManager: Bool = false
     
     var body: some View {
         ScrollView {
@@ -837,6 +838,65 @@ struct SettingsView: View {
                     }
                 }
                 
+                // SEZIONE: GESTIONE MULTI-CALENDARIO & SINCRONIZZAZIONE PC
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(localizationManager.currentLanguage == .italian ? "CALENDARI & SINCRONIZZAZIONE PC" : "CALENDARS & PC SYNC")
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                        .tracking(1.2)
+                    
+                    UniCard(padding: 20) {
+                        HStack(spacing: 16) {
+                            Circle()
+                                .fill(themeManager.accentColor.opacity(0.12))
+                                .frame(width: 48, height: 48)
+                                .overlay(
+                                    Image(systemName: "calendar.badge.clock")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(themeManager.accentColor)
+                                )
+                            
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 8) {
+                                    Text(localizationManager.currentLanguage == .italian ? "Gestione Multi-Calendario & Replica PC" : "Multi-Calendar & PC Replicate")
+                                        .font(UniFont.headline())
+                                    
+                                    let activeCount = dataManager.calendarSources.filter { $0.isEnabled }.count
+                                    Text("\(activeCount) " + (localizationManager.currentLanguage == .italian ? "attivi" : "active"))
+                                        .font(.system(size: 10, weight: .bold))
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 2)
+                                        .background(themeManager.accentColor.opacity(0.15))
+                                        .foregroundStyle(themeManager.accentColor)
+                                        .clipShape(Capsule())
+                                }
+                                
+                                Text(localizationManager.currentLanguage == .italian 
+                                    ? "Collega più feed iCal/webcal, file .ics o replica in 1 click tutti i calendari del tuo PC (iCloud, Google, Exchange), distinguendo lezioni ed eventi personali." 
+                                    : "Connect multiple iCal/webcal feeds, .ics files or replicate all PC calendars in 1-click, separating academic from personal events.")
+                                    .font(UniFont.subheadline())
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button {
+                                isShowingCalendarManager = true
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "slider.horizontal.3")
+                                    Text(localizationManager.currentLanguage == .italian ? "Gestisci Calendari" : "Manage Calendars")
+                                }
+                                .font(UniFont.headline())
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(themeManager.accentColor)
+                        }
+                    }
+                }
+                
                 // SEZIONE 6: GUIDA, SETUP & TUTORIAL
                 VStack(alignment: .leading, spacing: 14) {
                     Text(localizationManager.currentLanguage == .italian ? "SETUP INIZIALE & GUIDA" : "INITIAL SETUP & TUTORIAL")
@@ -1252,6 +1312,9 @@ struct SettingsView: View {
         .sheet(item: $editingShortcut) { shortcut in
             QuickShortcutEditorSheet(existingShortcut: shortcut)
         }
+        .sheet(isPresented: $isShowingCalendarManager) {
+            CalendarManagerModalView()
+        }
         .alert(localizationManager.t(.clearConfirmTitle), isPresented: $showingClearAlert) {
             Button(localizationManager.t(.cancel), role: .cancel) {}
             Button(localizationManager.t(.delete), role: .destructive) {
@@ -1284,7 +1347,8 @@ struct SettingsView: View {
                 studentName: dataManager.studentName,
                 universityName: dataManager.universityName,
                 universityPortalURL: dataManager.universityPortalURL,
-                hasCompletedOnboarding: dataManager.hasCompletedOnboarding
+                hasCompletedOnboarding: dataManager.hasCompletedOnboarding,
+                calendarSources: dataManager.calendarSources
             )
             
             do {
@@ -1327,6 +1391,9 @@ struct SettingsView: View {
                 dataManager.universityName = payload.universityName ?? ""
                 dataManager.universityPortalURL = payload.universityPortalURL ?? ""
                 dataManager.hasCompletedOnboarding = payload.hasCompletedOnboarding ?? true
+                if let sources = payload.calendarSources {
+                    dataManager.calendarSources = sources
+                }
                 dataManager.saveData()
             } catch {
                 print("Errore importazione backup: \(error)")
@@ -1335,17 +1402,25 @@ struct SettingsView: View {
         #endif
     }
     
-    private func dateStamp() -> String {
+    private static let dateStampFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: Date())
-    }
+        return f
+    }()
     
-    private func formatCheckDate(_ date: Date) -> String {
+    private static let checkDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .short
         f.timeStyle = .short
-        return f.string(from: date)
+        return f
+    }()
+    
+    private func dateStamp() -> String {
+        Self.dateStampFormatter.string(from: Date())
+    }
+    
+    private func formatCheckDate(_ date: Date) -> String {
+        Self.checkDateFormatter.string(from: date)
     }
     
     private func modeTitle(for mode: AppThemeMode) -> String {

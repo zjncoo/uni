@@ -17,6 +17,76 @@ struct DashboardView: View {
     @State private var isShowingEditPortalSheet = false
     @State private var isShowingCustomizeOverviewSheet = false
     
+    private static let shortDayFormatterIT: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.dateFormat = "EEE d MMM"
+        return f
+    }()
+    
+    private static let shortDayFormatterEN: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "EEE, MMM d"
+        return f
+    }()
+    
+    private static let timeRangeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+    
+    private static let todayFormatterIT: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.dateFormat = "EEEE d MMMM yyyy"
+        return f
+    }()
+    
+    private static let todayFormatterEN: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "EEEE, MMMM d, yyyy"
+        return f
+    }()
+    
+    private static let timeOnlyFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+    
+    private static let dayMonthFormatterIT: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.dateFormat = "d MMM"
+        return f
+    }()
+    
+    private static let dayMonthFormatterEN: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "d MMM"
+        return f
+    }()
+    
+    private static let examDateFormatterIT: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.dateFormat = "d MMM yyyy"
+        return f
+    }()
+    
+    private static let examDateFormatterEN: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "d MMM yyyy"
+        return f
+    }()
+    
     private struct DashboardLayoutRow: Identifiable {
         let id: String
         let sections: [DashboardSection]
@@ -117,12 +187,8 @@ struct DashboardView: View {
                         
                         Spacer()
                         
-                        // Numero Monumentale in Filigrana
-                        Text("\(dataManager.courses.count > 0 ? dataManager.courses.count : 1)")
-                            .font(.system(size: 110, weight: .bold, design: .default))
-                            .foregroundStyle(Color.primary.opacity(0.06))
-                            .lineLimit(1)
-                            .padding(.trailing, 8)
+                        // Widget Impegni del Giorno Odierno in alto a destra
+                        topHeaderTodayWidget
                     }
                     .padding(.bottom, 4)
                     
@@ -154,9 +220,9 @@ struct DashboardView: View {
                                 isShowingCustomizeOverviewSheet = true
                             } label: {
                                 HStack(spacing: 8) {
-                                    Image(systemName: "arrow.up.arrow.down")
+                                    Image(systemName: "plus.square.dashed")
                                         .font(.system(size: 12, weight: .semibold))
-                                    Text(localizationManager.text(it: "Modifica Ordine Elementi", en: "Reorder Overview Elements"))
+                                    Text(localizationManager.text(it: "Personalizza Blocchi & Layout", en: "Customize Blocks & Layout"))
                                         .font(UniFont.subheadline())
                                         .fontWeight(.medium)
                                 }
@@ -262,10 +328,11 @@ struct DashboardView: View {
             } else {
                 VStack(spacing: 8) {
                     ForEach(todayEvents) { item in
+                        let calColor = Color(hex: item.calendarColorHex ?? "") ?? (item.isAcademic ? themeManager.accentColor : Color.purple)
                         UniCard(padding: 12) {
                             HStack(spacing: 12) {
                                 Rectangle()
-                                    .fill(themeManager.accentColor)
+                                    .fill(calColor)
                                     .frame(width: 3)
                                 
                                 VStack(alignment: .leading, spacing: 3) {
@@ -273,7 +340,11 @@ struct DashboardView: View {
                                         Text(item.title)
                                             .font(UniFont.headline())
                                         Spacer()
-                                        UniBadge(item.category.rawValue, color: item.category == .exam ? .red : themeManager.accentColor)
+                                        if let calTitle = item.calendarTitle, !calTitle.isEmpty {
+                                            UniBadge(calTitle, color: calColor)
+                                        } else {
+                                            UniBadge(item.isAcademic ? item.category.rawValue : localizationManager.text(it: "Personale", en: "Personal"), color: item.category == .exam ? .red : calColor)
+                                        }
                                     }
                                     
                                     HStack(spacing: 10) {
@@ -635,8 +706,12 @@ struct DashboardView: View {
     private func getTodayEvents() -> [CalendarEventItem] {
         let cal = Calendar.current
         let today = Date()
+        let enabledSources = Set(dataManager.calendarSources.filter { $0.isEnabled }.map { $0.id })
         return dataManager.syncedEvents.filter {
-            cal.isDate($0.startDate, inSameDayAs: today)
+            if let sId = $0.sourceId, !dataManager.calendarSources.isEmpty && !enabledSources.contains(sId) {
+                return false
+            }
+            return cal.isDate($0.startDate, inSameDayAs: today)
         }.sorted { $0.startDate < $1.startDate }
     }
     
@@ -648,22 +723,13 @@ struct DashboardView: View {
     }
     
     private func todayDateFormatted() -> String {
-        let f = DateFormatter()
-        if localizationManager.currentLanguage == .italian {
-            f.locale = Locale(identifier: "it_IT")
-            f.dateFormat = "EEEE d MMMM yyyy"
-        } else {
-            f.locale = Locale(identifier: "en_US")
-            f.dateFormat = "EEEE, MMMM d, yyyy"
-        }
+        let f = localizationManager.currentLanguage == .italian ? Self.todayFormatterIT : Self.todayFormatterEN
         return f.string(from: Date()).capitalized
     }
     
     private func formatDueDate(_ date: Date) -> String {
         let cal = Calendar.current
-        let fTime = DateFormatter()
-        fTime.dateFormat = "HH:mm"
-        let timeStr = fTime.string(from: date)
+        let timeStr = Self.timeOnlyFormatter.string(from: date)
         
         if cal.isDateInToday(date) {
             return localizationManager.text(it: "Oggi alle \(timeStr)", en: "Today at \(timeStr)")
@@ -671,9 +737,7 @@ struct DashboardView: View {
         if cal.isDateInTomorrow(date) {
             return localizationManager.text(it: "Domani alle \(timeStr)", en: "Tomorrow at \(timeStr)")
         }
-        let f = DateFormatter()
-        f.locale = localizationManager.currentLanguage == .italian ? Locale(identifier: "it_IT") : Locale(identifier: "en_US")
-        f.dateFormat = "d MMM"
+        let f = localizationManager.currentLanguage == .italian ? Self.dayMonthFormatterIT : Self.dayMonthFormatterEN
         return "\(f.string(from: date)) • \(timeStr)"
     }
     
@@ -682,10 +746,9 @@ struct DashboardView: View {
     }
     
     private func formatTimeRange(start: Date, end: Date) -> String {
-        let f = DateFormatter()
-        f.locale = localizationManager.currentLanguage == .italian ? Locale(identifier: "it_IT") : Locale(identifier: "en_US")
-        f.dateFormat = "HH:mm"
-        return "\(f.string(from: start)) - \(f.string(from: end))"
+        let s = Self.timeOnlyFormatter.string(from: start)
+        let e = Self.timeOnlyFormatter.string(from: end)
+        return "\(s) - \(e)"
     }
     
     private func formatLectureWhen(_ lecture: CalendarEventItem) -> String {
@@ -697,28 +760,30 @@ struct DashboardView: View {
         if cal.isDateInTomorrow(lecture.startDate) {
             return localizationManager.text(it: "Domani • \(timeRange)", en: "Tomorrow • \(timeRange)")
         }
-        let f = DateFormatter()
-        f.locale = localizationManager.currentLanguage == .italian ? Locale(identifier: "it_IT") : Locale(identifier: "en_US")
-        f.dateFormat = "EEE d MMM"
+        let f = localizationManager.currentLanguage == .italian ? Self.shortDayFormatterIT : Self.shortDayFormatterEN
         return "\(f.string(from: lecture.startDate)) • \(timeRange)"
     }
     
     private func formatExamDate(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = localizationManager.currentLanguage == .italian ? Locale(identifier: "it_IT") : Locale(identifier: "en_US")
-        f.dateFormat = "d MMM yyyy"
+        let f = localizationManager.currentLanguage == .italian ? Self.examDateFormatterIT : Self.examDateFormatterEN
         return f.string(from: date)
     }
     
     private var nextUpcomingLecture: CalendarEventItem? {
         let now = Date()
+        let enabledSources = Set(dataManager.calendarSources.filter { $0.isEnabled }.map { $0.id })
         return dataManager.syncedEvents
-            .filter { $0.endDate >= now }
+            .filter {
+                if let sId = $0.sourceId, !dataManager.calendarSources.isEmpty && !enabledSources.contains(sId) {
+                    return false
+                }
+                return $0.endDate >= now && $0.isAcademic
+            }
             .sorted { $0.startDate < $1.startDate }
             .first
     }
     
-    // MARK: - Sezione Bento 2x2 Modulare
+    // MARK: - Sezione Bento 2x2 Modulare (Panoramica di Controllo)
     private var bentoGridSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
@@ -1099,6 +1164,165 @@ struct DashboardView: View {
             .frame(minHeight: 145)
         }
     }
+    
+    private func formatCommitmentTime(_ item: CalendarCommitmentItem) -> String {
+        if item.isAllDay {
+            return localizationManager.text(it: "Tutto il giorno", en: "All day")
+        }
+        let cal = Calendar.current
+        let hour = cal.component(.hour, from: item.date)
+        let min = cal.component(.minute, from: item.date)
+        if hour == 0 && min == 0 && item.endDate == nil {
+            return localizationManager.text(it: "Tutto il giorno", en: "All day")
+        }
+        if let end = item.endDate, end > item.date {
+            return "\(Self.timeRangeFormatter.string(from: item.date)) - \(Self.timeRangeFormatter.string(from: end))"
+        }
+        return Self.timeRangeFormatter.string(from: item.date)
+    }
+    
+    // MARK: - Header Top-Right Today Commitments Widget
+    private var topHeaderTodayWidget: some View {
+        let todayItems = dataManager.getTodayCommitments()
+        
+        return HStack(alignment: .center, spacing: 10) {
+            if todayItems.isEmpty {
+                Button {
+                    selectedTab = "calendar"
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(themeManager.accentColor)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(localizationManager.text(it: "Nessun impegno oggi", en: "No events today"))
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.primary)
+                            
+                            Text(localizationManager.text(it: "Apri calendario →", en: "Open calendar →"))
+                                .font(.system(size: 9.5))
+                                .foregroundStyle(themeManager.accentColor)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.primary.opacity(0.03))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .help(localizationManager.text(it: "Vai al calendario", en: "Go to calendar"))
+            } else {
+                let maxCards = 2
+                let displayed = Array(todayItems.prefix(maxCards))
+                let remaining = todayItems.count - displayed.count
+                
+                HStack(spacing: 8) {
+                    ForEach(displayed) { item in
+                        topHeaderTodayCard(item)
+                    }
+                    
+                    if remaining > 0 {
+                        Button {
+                            selectedTab = "calendar"
+                        } label: {
+                            VStack(spacing: 3) {
+                                Image(systemName: "ellipsis.circle.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(themeManager.accentColor)
+                                
+                                Text(localizationManager.text(it: "+\(remaining) altro", en: "+\(remaining) more"))
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(themeManager.accentColor)
+                                
+                                Text(localizationManager.text(it: "mostra altro", en: "more"))
+                                    .font(.system(size: 8.5, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(width: 78, height: 76)
+                            .background(themeManager.accentColor.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(themeManager.accentColor.opacity(0.25), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .help(localizationManager.text(it: "Mostra tutti gli impegni nel calendario", en: "Show all events in calendar"))
+                    } else {
+                        Button {
+                            selectedTab = "calendar"
+                        } label: {
+                            VStack(spacing: 3) {
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(themeManager.accentColor)
+                                Text(localizationManager.text(it: "mostra altro", en: "more"))
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundStyle(themeManager.accentColor)
+                            }
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                        .help(localizationManager.text(it: "Apri la pagina calendario", en: "Open calendar page"))
+                    }
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func topHeaderTodayCard(_ item: CalendarCommitmentItem) -> some View {
+        Button {
+            selectedTab = "calendar"
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(item.type.color(theme: themeManager))
+                        .frame(width: 6, height: 6)
+                    
+                    Text(item.type.localizedName(using: localizationManager).uppercased())
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(item.type.color(theme: themeManager))
+                    
+                    Spacer(minLength: 0)
+                }
+                
+                Text(item.title)
+                    .font(.system(size: 11.5, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 8.5))
+                        .foregroundStyle(.secondary)
+                    
+                    Text(formatCommitmentTime(item))
+                        .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(width: 140, height: 76, alignment: .leading)
+            .background(Color.primary.opacity(0.035))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(localizationManager.text(it: "Clicca per visualizzare sul calendario", en: "Click to view on calendar"))
+    }
 }
 
 
@@ -1220,6 +1444,10 @@ struct CustomizeOverviewSheet: View {
     
     @State private var sections: [DashboardSection] = []
     
+    private var availableSections: [DashboardSection] {
+        DashboardSection.allCases.filter { !sections.contains($0) }
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -1229,15 +1457,15 @@ struct CustomizeOverviewSheet: View {
                         .fill(themeManager.accentColor.opacity(0.12))
                         .frame(width: 36, height: 36)
                         .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
-                    Image(systemName: "arrow.up.arrow.down")
+                    Image(systemName: "square.grid.2x2")
                         .font(.system(size: 16))
                         .foregroundStyle(themeManager.accentColor)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(localizationManager.text(it: "Personalizza Layout Overview", en: "Customize Overview Layout"))
+                    Text(localizationManager.text(it: "Personalizza Blocchi Overview", en: "Customize Overview Blocks"))
                         .font(UniFont.title())
                         .fontWeight(.semibold)
-                    Text(localizationManager.text(it: "Usa le frecce per riordinare gli elementi della schermata principale", en: "Use arrows to reorder elements on your main overview screen"))
+                    Text(localizationManager.text(it: "Aggiungi, rimuovi o riordina i riquadri visualizzati nella schermata principale", en: "Add, remove, or reorder blocks displayed on your main overview screen"))
                         .font(UniFont.caption())
                         .foregroundStyle(.secondary)
                 }
@@ -1247,66 +1475,186 @@ struct CustomizeOverviewSheet: View {
             
             Divider()
             
-            // Lista Sezioni con pulsanti Su/Giù
+            // Lista Sezioni (Attive + Disponibili)
             ScrollView {
-                VStack(spacing: 8) {
-                    ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
-                        UniCard(padding: 12) {
-                            HStack(spacing: 12) {
-                                ZStack {
-                                    Rectangle()
-                                        .fill(themeManager.accentColor.opacity(0.1))
-                                        .frame(width: 32, height: 32)
-                                        .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.25), lineWidth: 1))
-                                    Image(systemName: section.icon)
-                                        .font(.system(size: 14))
-                                        .foregroundStyle(themeManager.accentColor)
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    HStack(spacing: 6) {
-                                        Text("\(index + 1).")
+                VStack(alignment: .leading, spacing: 18) {
+                    // SEZIONE 1: Blocchi Attivi
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Text(localizationManager.text(it: "BLOCCHI ATTIVI NELL'OVERVIEW", en: "ACTIVE BLOCKS IN OVERVIEW"))
+                                .font(.system(size: 9.5, weight: .bold))
+                                .foregroundStyle(.secondary)
+                                .tracking(0.8)
+                            
+                            Text("\(sections.count)")
+                                .font(.system(size: 9, weight: .bold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(themeManager.accentColor.opacity(0.15))
+                                .foregroundStyle(themeManager.accentColor)
+                                .clipShape(Capsule())
+                        }
+                        
+                        ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
+                            UniCard(padding: 12) {
+                                HStack(spacing: 12) {
+                                    ZStack {
+                                        Rectangle()
+                                            .fill(themeManager.accentColor.opacity(0.1))
+                                            .frame(width: 32, height: 32)
+                                            .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.25), lineWidth: 1))
+                                        Image(systemName: section.icon)
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(themeManager.accentColor)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack(spacing: 6) {
+                                            Text("\(index + 1).")
+                                                .font(UniFont.caption())
+                                                .foregroundStyle(.secondary)
+                                            Text(section.localizedTitle(with: localizationManager))
+                                                .font(UniFont.headline())
+                                        }
+                                        Text(section.localizedSubtitle(with: localizationManager))
                                             .font(UniFont.caption())
                                             .foregroundStyle(.secondary)
-                                        Text(section.localizedTitle(with: localizationManager))
-                                            .font(UniFont.headline())
+                                            .lineLimit(1)
                                     }
-                                    Text(section.localizedSubtitle(with: localizationManager))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
-                                
-                                Spacer()
-                                
-                                HStack(spacing: 4) {
-                                    Button {
-                                        moveUp(index: index)
-                                    } label: {
-                                        Image(systemName: "chevron.up")
-                                            .font(.system(size: 11, weight: .bold))
-                                            .frame(width: 26, height: 26)
-                                            .background(Color.primary.opacity(0.05))
-                                            .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                                            .clipShape(Rectangle())
-                                    }
-                                    .buttonStyle(.plain)
-                                    .disabled(index == 0)
-                                    .opacity(index == 0 ? 0.3 : 1.0)
                                     
-                                    Button {
-                                        moveDown(index: index)
-                                    } label: {
-                                        Image(systemName: "chevron.down")
-                                            .font(.system(size: 11, weight: .bold))
-                                            .frame(width: 26, height: 26)
-                                            .background(Color.primary.opacity(0.05))
-                                            .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                                            .clipShape(Rectangle())
+                                    Spacer()
+                                    
+                                    HStack(spacing: 4) {
+                                        // Sposta Su
+                                        Button {
+                                            moveUp(index: index)
+                                        } label: {
+                                            Image(systemName: "chevron.up")
+                                                .font(.system(size: 11, weight: .bold))
+                                                .frame(width: 26, height: 26)
+                                                .background(Color.primary.opacity(0.05))
+                                                .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                                                .clipShape(Rectangle())
+                                        }
+                                        .buttonStyle(.plain)
+                                        .disabled(index == 0)
+                                        .opacity(index == 0 ? 0.3 : 1.0)
+                                        .help(localizationManager.text(it: "Sposta più in alto", en: "Move higher"))
+                                        
+                                        // Sposta Giù
+                                        Button {
+                                            moveDown(index: index)
+                                        } label: {
+                                            Image(systemName: "chevron.down")
+                                                .font(.system(size: 11, weight: .bold))
+                                                .frame(width: 26, height: 26)
+                                                .background(Color.primary.opacity(0.05))
+                                                .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                                                .clipShape(Rectangle())
+                                        }
+                                        .buttonStyle(.plain)
+                                        .disabled(index == sections.count - 1)
+                                        .opacity(index == sections.count - 1 ? 0.3 : 1.0)
+                                        .help(localizationManager.text(it: "Sposta più in basso", en: "Move lower"))
+                                        
+                                        // Rimuovi Blocco
+                                        Button {
+                                            removeSection(at: index)
+                                        } label: {
+                                            Image(systemName: "trash")
+                                                .font(.system(size: 11))
+                                                .foregroundStyle(.red)
+                                                .frame(width: 26, height: 26)
+                                                .background(Color.red.opacity(0.08))
+                                                .overlay(Rectangle().stroke(Color.red.opacity(0.2), lineWidth: 1))
+                                                .clipShape(Rectangle())
+                                        }
+                                        .buttonStyle(.plain)
+                                        .disabled(sections.count <= 1)
+                                        .opacity(sections.count <= 1 ? 0.3 : 1.0)
+                                        .help(localizationManager.text(it: "Rimuovi questo blocco dall'Overview", en: "Remove this block from Overview"))
                                     }
-                                    .buttonStyle(.plain)
-                                    .disabled(index == sections.count - 1)
-                                    .opacity(index == sections.count - 1 ? 0.3 : 1.0)
+                                }
+                            }
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // SEZIONE 2: Blocchi Disponibili da Aggiungere
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Text(localizationManager.text(it: "BLOCCHI DISPONIBILI DA AGGIUNGERE", en: "AVAILABLE BLOCKS TO ADD"))
+                                .font(.system(size: 9.5, weight: .bold))
+                                .foregroundStyle(.secondary)
+                                .tracking(0.8)
+                            
+                            Text("\(availableSections.count)")
+                                .font(.system(size: 9, weight: .bold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Color.primary.opacity(0.06))
+                                .foregroundStyle(Color.secondary)
+                                .clipShape(Capsule())
+                        }
+                        
+                        if availableSections.isEmpty {
+                            HStack(spacing: 8) {
+                                Image(systemName: "checkmark.circle")
+                                    .foregroundStyle(themeManager.accentColor)
+                                Text(localizationManager.text(
+                                    it: "Tutti i blocchi disponibili sono attualmente presenti nella tua Overview.",
+                                    en: "All available blocks are currently included in your Overview."
+                                ))
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 6)
+                        } else {
+                            ForEach(availableSections) { available in
+                                UniCard(padding: 12) {
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            Rectangle()
+                                                .fill(Color.primary.opacity(0.05))
+                                                .frame(width: 32, height: 32)
+                                                .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                                            Image(systemName: available.icon)
+                                                .font(.system(size: 14))
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(available.localizedTitle(with: localizationManager))
+                                                .font(UniFont.headline())
+                                            Text(available.localizedSubtitle(with: localizationManager))
+                                                .font(UniFont.caption())
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(1)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Button {
+                                            addSection(available)
+                                        } label: {
+                                            HStack(spacing: 5) {
+                                                Image(systemName: "plus")
+                                                    .font(.system(size: 11, weight: .bold))
+                                                Text(localizationManager.text(it: "Aggiungi", en: "Add"))
+                                                    .font(UniFont.caption())
+                                                    .fontWeight(.semibold)
+                                            }
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 5)
+                                            .background(themeManager.accentColor.opacity(0.12))
+                                            .foregroundStyle(themeManager.accentColor)
+                                            .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
+                                            .clipShape(Rectangle())
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help(localizationManager.text(it: "Aggiungi questo blocco all'Overview", en: "Add this block to Overview"))
+                                    }
                                 }
                             }
                         }
@@ -1314,7 +1662,7 @@ struct CustomizeOverviewSheet: View {
                 }
                 .padding(16)
             }
-            .frame(height: 340)
+            .frame(height: 380)
             
             Divider()
             
@@ -1338,7 +1686,7 @@ struct CustomizeOverviewSheet: View {
             }
             .padding(16)
         }
-        .frame(width: 520, height: 490)
+        .frame(width: 540, height: 530)
         .onAppear {
             sections = dataManager.getDashboardSections()
         }
@@ -1358,15 +1706,28 @@ struct CustomizeOverviewSheet: View {
         }
     }
     
+    private func removeSection(at index: Int) {
+        guard sections.count > 1 else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            _ = sections.remove(at: index)
+        }
+    }
+    
+    private func addSection(_ section: DashboardSection) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            sections.append(section)
+        }
+    }
+    
     private func resetToDefault() {
         withAnimation(.easeInOut(duration: 0.2)) {
             sections = [
                 .bentoGrid,
+                .assignments,
+                .upcomingDeadlines,
                 .motivationalQuote,
                 .todayLectures,
-                .upcomingDeadlines,
-                .activeCourses,
-                .assignments
+                .activeCourses
             ]
         }
     }

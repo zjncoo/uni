@@ -17,6 +17,28 @@ struct DeadlinesView: View {
     @State private var isPresentingNewDeadline = false
     @State private var deadlineToEdit: Deadline? = nil
     
+    fileprivate static let dueDateFormatterIT: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.dateFormat = "EEEE d MMMM yyyy"
+        return f
+    }()
+    
+    fileprivate static let dueDateFormatterEN: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "EEEE, MMMM d, yyyy"
+        return f
+    }()
+    
+    fileprivate static let dueTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+    
     enum DeadlineFilter: String, CaseIterable {
         case pending = "pending"
         case urgent = "urgent"
@@ -236,18 +258,13 @@ struct DeadlinesView: View {
     }
     
     private func formatDueDate(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "it_IT")
-        f.dateFormat = "EEEE d MMMM yyyy"
+        let f = localizationManager.currentLanguage == .english ? Self.dueDateFormatterEN : Self.dueDateFormatterIT
         return f.string(from: date).capitalized
     }
     
     private func formatDueTime(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "it_IT")
-        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
-        f.dateFormat = "HH:mm"
-        return "Ore \(f.string(from: date))"
+        let timeStr = Self.dueTimeFormatter.string(from: date)
+        return localizationManager.text(it: "Ore \(timeStr)", en: "At \(timeStr)")
     }
 
     
@@ -450,20 +467,13 @@ struct DeadlineCardView: View {
     }
     
     private func formatDueDate(_ date: Date) -> String {
-        let f = DateFormatter()
-        let isEn = localizationManager.currentLanguage == .english
-        f.locale = isEn ? Locale(identifier: "en_US") : Locale(identifier: "it_IT")
-        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
-        f.dateFormat = isEn ? "EEEE, MMMM d, yyyy" : "EEEE d MMMM yyyy"
+        let f = localizationManager.currentLanguage == .english ? DeadlinesView.dueDateFormatterEN : DeadlinesView.dueDateFormatterIT
         return f.string(from: date).capitalized
     }
     
     private func formatDueTime(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "it_IT")
-        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
-        f.dateFormat = "HH:mm"
-        return "Ore \(f.string(from: date))"
+        let timeStr = DeadlinesView.dueTimeFormatter.string(from: date)
+        return localizationManager.text(it: "Ore \(timeStr)", en: "At \(timeStr)")
     }
 }
 
