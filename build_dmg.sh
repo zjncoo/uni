@@ -38,6 +38,14 @@ cp "$PROJECT_DIR/docs/assets/icon.png" "$APP_BUNDLE/Contents/Resources/AppIcon.p
 cp "$PROJECT_DIR/uni_updater.sh" "$APP_BUNDLE/Contents/Resources/uni_updater.sh" || true
 chmod +x "$APP_BUNDLE/Contents/Resources/uni_updater.sh" || true
 
+echo "=== Signing uni.app with Ad-Hoc Signature and Entitlements ==="
+xattr -cr "$APP_BUNDLE"
+codesign --force --deep --sign - --entitlements "$PROJECT_DIR/uni/uni.entitlements" "$APP_BUNDLE"
+
+echo "=== Verifying code signature ==="
+codesign -vvv "$APP_BUNDLE"
+codesign -d --entitlements - "$APP_BUNDLE"
+
 RELEASE_DIR="$PROJECT_DIR/release"
 mkdir -p "$RELEASE_DIR"
 

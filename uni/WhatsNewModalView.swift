@@ -33,7 +33,7 @@ public struct WhatsNewModalView: View {
                             .font(UniFont.title())
                             .fontWeight(.bold)
                         
-                        Text("v1.4.0")
+                        Text("v1.4.1")
                             .font(.system(size: 11, weight: .bold))
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2.5)
@@ -43,8 +43,8 @@ public struct WhatsNewModalView: View {
                     }
                     
                     Text(localizationManager.text(
-                        it: "Abbiamo arricchito uni con una nuova gestione calendari, layout impegni a schede e un'esperienza d'avvio ancora più fluida.",
-                        en: "We enriched uni with full calendar management, card-based schedule view, and a smoother launch experience."
+                        it: "Questo aggiornamento corregge la sincronizzazione dei calendari di sistema su macOS e introduce l'avanzamento automatico della data odierna.",
+                        en: "This update fixes Mac calendar sync on macOS and brings automatic real-time date advancement."
                     ))
                     .font(UniFont.subheadline())
                     .foregroundStyle(.secondary)
@@ -71,54 +71,41 @@ public struct WhatsNewModalView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     featureCard(
-                        icon: "slider.horizontal.3",
+                        icon: "checkmark.seal.fill",
                         iconColor: themeManager.accentColor,
                         title: localizationManager.text(
-                            it: "Gestione Calendari & Integrazione Mac",
-                            en: "Calendar Management & Mac Integration"
+                            it: "Sincronizzazione Calendario Mac Risolta",
+                            en: "Mac Calendar Sync Resolved"
                         ),
                         description: localizationManager.text(
-                            it: "Importa link iCal/webcal e sincronizza con un clic i calendari del tuo Mac (Google, Outlook, iCloud). Scegli quali mostrare e separa comodamente lezioni e impegni personali.",
-                            en: "Import iCal/webcal links and sync your Mac's calendars (Google, Outlook, iCloud) in one click. Toggle individual calendars and keep academic lectures distinct from personal events."
+                            it: "Risolto il problema di autorizzazione EventKit nelle versioni distribuite. Ora puoi replicare e sincronizzare istantaneamente tutti i calendari del tuo Mac (iCloud, Google, Exchange).",
+                            en: "Resolved EventKit authorization issues in distributed builds. You can now instantly replicate and sync all Mac calendars (iCloud, Google, Exchange)."
                         )
                     )
                     
                     featureCard(
-                        icon: "square.grid.2x2",
+                        icon: "clock.arrow.circlepath",
                         iconColor: .blue,
                         title: localizationManager.text(
-                            it: "Impegni del Giorno & Schede Prossimi Giorni",
-                            en: "Daily Schedule & Upcoming Days Cards"
+                            it: "Avanzamento Automatico Data Odierna",
+                            en: "Automatic Real-Time Date Updates"
                         ),
                         description: localizationManager.text(
-                            it: "Consulta le tue lezioni ed esami di oggi con orari in evidenza e naviga i prossimi impegni a 3, 7 o 20 giorni con salto immediato alla data desiderata.",
-                            en: "View today's lectures and exams with prominent schedules, and browse upcoming events across 3, 7, or 20 days with instant date jump."
+                            it: "La dashboard e il calendario avanzano automaticamente sul nuovo giorno a mezzanotte o al risveglio dal blocco schermo senza bisogno di riavviare l'app.",
+                            en: "The dashboard and calendar views now seamlessly advance to the new day at midnight or upon waking the Mac without requiring an app restart."
                         )
                     )
                     
                     featureCard(
-                        icon: "sparkles",
+                        icon: "slider.horizontal.3",
                         iconColor: .purple,
                         title: localizationManager.text(
-                            it: "Schermata d'Avvio & Dettagli Personalizzati",
-                            en: "Refined Launch & Personalized Touch"
+                            it: "Gestione Calendari & Impegni a Schede",
+                            en: "Calendar Hub & Schedule Cards"
                         ),
                         description: localizationManager.text(
-                            it: "Nuova schermata di caricamento con indicatore circolare fluido, rispetto del tuo font personalizzato e un avvio più piacevole e curato nei minimi dettagli.",
-                            en: "A redesigned launch experience featuring a smooth circular loader, user-tailored typography, and an overall more polished app opening."
-                        )
-                    )
-                    
-                    featureCard(
-                        icon: "rectangle.grid.2x2.fill",
-                        iconColor: .green,
-                        title: localizationManager.text(
-                            it: "Dashboard & Control Overview",
-                            en: "Dashboard & Control Overview"
-                        ),
-                        description: localizationManager.text(
-                            it: "Panoramica a griglia rapida con le tue prossime scadenze, file di studio dal Mac e scorciatoie per non perdere mai il ritmo.",
-                            en: "Quick bento grid overview with your next deadlines, study files from your Mac, and shortcuts to keep your workflow in sync."
+                            it: "Importa feed iCal/webcal, gestisci la visibilità per singola sorgente e consulta gli impegni a 3, 7 e 20 giorni con layout a schede moderne.",
+                            en: "Import iCal/webcal feeds, toggle visibility per calendar source, and navigate upcoming commitments across 3, 7, and 20 days."
                         )
                     )
                 }
@@ -184,7 +171,7 @@ public struct WhatsNewModalView: View {
     }
     
     private func close() {
-        UserDefaults.standard.set("1.4.0", forKey: "uni_last_seen_release_notes")
+        UserDefaults.standard.set("1.4.1", forKey: "uni_last_seen_release_notes")
         dismiss()
     }
 }

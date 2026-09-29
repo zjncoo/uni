@@ -51,6 +51,7 @@ struct CalendarView: View {
     
     @State private var currentMonth: Date = Date()
     @State private var selectedDate: Date = Date()
+    @State private var lastTrackedToday: Date = Date()
     @State private var activeSheet: CalendarSheetType? = nil
     @State private var isShowingNewItemModal: Bool = false
     @State private var selectedScopeFilter: CalendarScopeFilter = .all
@@ -1459,6 +1460,22 @@ struct CalendarView: View {
                     .environmentObject(themeManager)
                     .environmentObject(localizationManager)
             }
+        }
+        .onAppear {
+            let now = dataManager.currentDate
+            dataManager.refreshCurrentDate()
+            if calendar.isDate(selectedDate, inSameDayAs: lastTrackedToday) {
+                selectedDate = now
+                currentMonth = now
+            }
+            lastTrackedToday = now
+        }
+        .onReceive(dataManager.$currentDate) { newDate in
+            if calendar.isDate(selectedDate, inSameDayAs: lastTrackedToday) {
+                selectedDate = newDate
+                currentMonth = newDate
+            }
+            lastTrackedToday = newDate
         }
     }
     

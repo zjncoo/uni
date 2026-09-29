@@ -15,11 +15,17 @@ import Combine
 public class AppleCalendarManager: ObservableObject {
     public static let shared = AppleCalendarManager()
     
-    private let store = EKEventStore()
+    private var store = EKEventStore()
+    private var cancellables = Set<AnyCancellable>()
     
     @Published public var authorizationStatus: EKAuthorizationStatus = .notDetermined
     @Published public var syncEnabled: Bool {
         didSet { UserDefaults.standard.set(syncEnabled, forKey: "appleCalendarSyncEnabled") }
+    }
+    
+    public var hasFullAccess: Bool {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        return status == .fullAccess || status == .authorized
     }
     
     private var eventMap: [String: String] = [:]
@@ -31,18 +37,30 @@ public class AppleCalendarManager: ObservableObject {
         if let saved = UserDefaults.standard.dictionary(forKey: "appleCalendarEventMap") as? [String: String] {
             self.eventMap = saved
         }
+        
+        NotificationCenter.default.publisher(for: .EKEventStoreChanged)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.refreshStatus()
+                self.store.reset()
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Permission
     public func requestAccess() async -> Bool {
         do {
             let granted = try await store.requestFullAccessToEvents()
-            self.authorizationStatus = EKEventStore.authorizationStatus(for: .event)
-            if granted && !self.syncEnabled { self.syncEnabled = true }
+            self.refreshStatus()
+            if granted {
+                self.store.reset()
+                if !self.syncEnabled { self.syncEnabled = true }
+            }
             return granted
         } catch {
             print("[AppleCalendarManager] requestAccess error: \(error.localizedDescription)")
-            self.authorizationStatus = EKEventStore.authorizationStatus(for: .event)
+            self.refreshStatus()
             return false
         }
     }
@@ -73,7 +91,7 @@ public class AppleCalendarManager: ObservableObject {
     
     // MARK: - Sync Deadline
     public func sync(deadline: Deadline, courseName: String?) async {
-        guard syncEnabled, authorizationStatus == .fullAccess else { return }
+        guard syncEnabled, hasFullAccess else { return }
         let key = "deadline-\(deadline.id.uuidString)"
         let ev = existingEvent(forKey: key) ?? EKEvent(eventStore: store)
         ev.title = "📌 \(deadline.title)"
@@ -91,7 +109,7 @@ public class AppleCalendarManager: ObservableObject {
     
     // MARK: - Sync Exam
     public func sync(exam: Exam, courseName: String?) async {
-        guard syncEnabled, authorizationStatus == .fullAccess else { return }
+        guard syncEnabled, hasFullAccess else { return }
         let key = "exam-\(exam.id.uuidString)"
         let ev = existingEvent(forKey: key) ?? EKEvent(eventStore: store)
         ev.title = "🎓 \(exam.title)"
@@ -112,7 +130,7 @@ public class AppleCalendarManager: ObservableObject {
     
     // MARK: - Sync Assignment
     public func sync(assignment: Assignment, courseName: String?) async {
-        guard syncEnabled, authorizationStatus == .fullAccess else { return }
+        guard syncEnabled, hasFullAccess else { return }
         let key = "assignment-\(assignment.id.uuidString)"
         let ev = existingEvent(forKey: key) ?? EKEvent(eventStore: store)
         ev.title = "📝 \(assignment.title)"
@@ -135,7 +153,7 @@ public class AppleCalendarManager: ObservableObject {
     
     // MARK: - Bulk Sync
     public func syncAll(deadlines: [Deadline], exams: [Exam], assignments: [Assignment], courses: [Course]) async {
-        guard syncEnabled, authorizationStatus == .fullAccess else { return }
+        guard syncEnabled, hasFullAccess else { return }
         for d in deadlines { await sync(deadline: d, courseName: courses.first(where: { $0.id == d.courseId })?.name) }
         for e in exams     { await sync(exam: e, courseName: courses.first(where: { $0.id == e.courseId })?.name) }
         for a in assignments { await sync(assignment: a, courseName: courses.first(where: { $0.id == a.courseId })?.name) }
@@ -193,6 +211,13 @@ public class AppleCalendarManager: ObservableObject {
     }
     
     public func getAvailableMacCalendars() -> [MacCalendarInfo] {
+        refreshStatus()
+        guard hasFullAccess else {
+            print("[AppleCalendarManager] getAvailableMacCalendars skipped: not authorized (status: \(authorizationStatus.rawValue))")
+            return []
+        }
+        
+        store.reset()
         let allCalendars = store.calendars(for: .event)
         var list: [MacCalendarInfo] = []
         
@@ -234,10 +259,25 @@ public class AppleCalendarManager: ObservableObject {
         sourceColorHex: String? = nil,
         isAcademic: Bool = true
     ) async -> [CalendarEventItem] {
-        guard authorizationStatus == .fullAccess else { return [] }
+        refreshStatus()
+        guard hasFullAccess else {
+            print("[AppleCalendarManager] fetchEvents skipped: authorizationStatus is \(authorizationStatus.rawValue)")
+            return []
+        }
         
-        let targetCals = store.calendars(for: .event).filter { identifiers.contains($0.calendarIdentifier) }
-        guard !targetCals.isEmpty else { return [] }
+        store.reset()
+        let allCals = store.calendars(for: .event)
+        var targetCals = allCals.filter { identifiers.contains($0.calendarIdentifier) }
+        
+        // Fallback: se l'ID interno CalDAV è cambiato o non corrisponde, cerca per titolo
+        if targetCals.isEmpty, let title = sourceTitle {
+            targetCals = allCals.filter { $0.title == title || "\($0.title) (\($0.source?.title ?? "Mac"))" == title }
+        }
+        
+        guard !targetCals.isEmpty else {
+            print("[AppleCalendarManager] No target calendars found for IDs: \(identifiers)")
+            return []
+        }
         
         let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: targetCals)
         let ekEvents = store.events(matching: predicate)

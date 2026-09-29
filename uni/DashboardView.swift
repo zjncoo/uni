@@ -249,6 +249,17 @@ struct DashboardView: View {
         .sheet(isPresented: $isShowingCustomizeOverviewSheet) {
             CustomizeOverviewSheet()
         }
+        .onAppear {
+            dataManager.refreshCurrentDate()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+            dataManager.refreshCurrentDate(force: true)
+        }
+        #if canImport(AppKit)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            dataManager.refreshCurrentDate()
+        }
+        #endif
     }
     
     // MARK: - Dispatcher Viste Sezioni
@@ -677,7 +688,7 @@ struct DashboardView: View {
     
     private var nextExam: Exam? {
         dataManager.exams
-            .filter { $0.status != .passed && $0.examDate >= Calendar.current.startOfDay(for: Date()) }
+            .filter { $0.status != .passed && $0.examDate >= Calendar.current.startOfDay(for: dataManager.currentDate) }
             .sorted { $0.examDate < $1.examDate }
             .first
     }
@@ -691,7 +702,7 @@ struct DashboardView: View {
         guard let exam = nextExam else {
             return localizationManager.text(it: "Nessun appello fissato", en: "No upcoming exams")
         }
-        let diff = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: Calendar.current.startOfDay(for: exam.examDate)).day ?? 0
+        let diff = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: dataManager.currentDate), to: Calendar.current.startOfDay(for: exam.examDate)).day ?? 0
         if diff == 0 {
             return localizationManager.text(it: "Oggi!", en: "Today!")
         } else if diff == 1 {
@@ -705,7 +716,7 @@ struct DashboardView: View {
     
     private func getTodayEvents() -> [CalendarEventItem] {
         let cal = Calendar.current
-        let today = Date()
+        let today = dataManager.currentDate
         let enabledSources = Set(dataManager.calendarSources.filter { $0.isEnabled }.map { $0.id })
         return dataManager.syncedEvents.filter {
             if let sId = $0.sourceId, !dataManager.calendarSources.isEmpty && !enabledSources.contains(sId) {
@@ -724,7 +735,7 @@ struct DashboardView: View {
     
     private func todayDateFormatted() -> String {
         let f = localizationManager.currentLanguage == .italian ? Self.todayFormatterIT : Self.todayFormatterEN
-        return f.string(from: Date()).capitalized
+        return f.string(from: dataManager.currentDate).capitalized
     }
     
     private func formatDueDate(_ date: Date) -> String {
@@ -742,7 +753,7 @@ struct DashboardView: View {
     }
     
     private func isDueDateUrgent(_ date: Date) -> Bool {
-        date.timeIntervalSinceNow < 86400 * 2
+        date.timeIntervalSince(dataManager.currentDate) < 86400 * 2
     }
     
     private func formatTimeRange(start: Date, end: Date) -> String {
@@ -770,7 +781,7 @@ struct DashboardView: View {
     }
     
     private var nextUpcomingLecture: CalendarEventItem? {
-        let now = Date()
+        let now = dataManager.currentDate
         let enabledSources = Set(dataManager.calendarSources.filter { $0.isEnabled }.map { $0.id })
         return dataManager.syncedEvents
             .filter {

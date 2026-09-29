@@ -19,6 +19,7 @@ struct uniApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
     @StateObject private var outlookManager = OutlookManager.shared
     @StateObject private var updateManager = UpdateManager.shared
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some Scene {
         WindowGroup {
@@ -34,6 +35,8 @@ struct uniApp: App {
                 .preferredColorScheme(themeManager.themeMode.colorScheme)
                 .frame(minWidth: 960, minHeight: 640)
                 .onAppear {
+                    dataManager.refreshCurrentDate()
+                    AppleCalendarManager.shared.refreshStatus()
                     themeManager.applyAppearance()
                     #if os(macOS)
                     if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "png"),
@@ -52,6 +55,12 @@ struct uniApp: App {
                     )
                     // Check for updates in the background (once per day)
                     Task { await updateManager.checkForUpdates() }
+                }
+                .onChange(of: scenePhase) { newPhase in
+                    if newPhase == .active {
+                        dataManager.refreshCurrentDate()
+                        AppleCalendarManager.shared.refreshStatus()
+                    }
                 }
         }
         .windowStyle(.titleBar)

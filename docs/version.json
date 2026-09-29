@@ -1,9 +1,9 @@
 {
-  "tag_name": "v1.4.0",
-  "version": "1.4.0",
-  "name": "uni 1.4.0 — Calendar Hub, Daily Cards & Refined Launch Experience",
-  "body": "Novità introdotte in uni v1.4.0:\n• Gestione Calendari: importa feed iCal/webcal e sincronizza o duplica tutti i calendari del tuo Mac (Google, Outlook, iCloud) con controllo visibilità e separazione lezioni/personale\n• Impegni del Giorno in Cards: visualizzazione chiara ad orari in risalto per lezioni ed esami, con schede 'Prossimi Giorni' a 3, 7 e 20 giorni\n• Nuova Schermata d'Avvio: splash screen pulita con logo senza bordi, cerchio di caricamento moderno, supporto al font personalizzato e nome studente\n• Overview Potenziata: ripristinato il Bento Grid di controllo (prossima scadenza, lezione, esame e scorciatoie) e widget colpo d'occhio rapido\n• Piena traduzione bilingue (Italiano e Inglese) e ottimizzazioni di stabilità",
-  "html_url": "https://github.com/zjncoo/uni/releases/tag/v1.4.0",
-  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/v1.4.0/uni.dmg",
-  "pub_date": "2026-09-28T18:55:00Z"
+  "tag_name": "v1.4.1",
+  "version": "1.4.1",
+  "name": "uni 1.4.1 — Mac Calendar Sync Hotfix & Real-Time Date Advancement",
+  "body": "Fixes and improvements in uni v1.4.1:\n• Resolved Mac Calendar Sync: Added ad-hoc code signature with dedicated calendar entitlements to allow macOS (Sonoma & Sequoia) full access to all system calendars (iCloud, Google, Exchange)\n• Real-Time Automatic Date Updates: Dashboard and calendar views now advance to the new day automatically at midnight and upon waking from sleep without requiring an app restart\n• Dynamic Event Store Reset: Instantly discovers and loads Mac system calendars upon authorization and system calendar changes",
+  "html_url": "https://github.com/zjncoo/uni/releases/tag/v1.4.1",
+  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/v1.4.1/uni.dmg",
+  "pub_date": "2026-09-29T10:30:00Z"
 }

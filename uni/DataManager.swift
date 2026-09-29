@@ -82,10 +82,62 @@ public class DataManager: ObservableObject {
     @Published public var selectedExamId: UUID? = nil
     @Published public var selectedAssignmentId: UUID? = nil
     
+    // Tracciamento automatico e reattivo del giorno odierno
+    @Published public var currentDate: Date = Date()
+    private var dateCancellables = Set<AnyCancellable>()
+    
     private let storageFileName = "uni_database.json"
     
     public init() {
         loadData()
+        setupDateObserving()
+    }
+    
+    // MARK: - Auto-refresh Date & Day tracking
+    private func setupDateObserving() {
+        // 1. Notifica di sistema macOS quando cambia il giorno (mezzanotte esatta)
+        NotificationCenter.default.publisher(for: .NSCalendarDayChanged)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.refreshCurrentDate(force: true)
+            }
+            .store(in: &dateCancellables)
+            
+        // 2. Quando l'applicazione torna attiva / in primo piano
+        #if canImport(AppKit)
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.refreshCurrentDate()
+            }
+            .store(in: &dateCancellables)
+        #endif
+        
+        // 3. Modifica dell'orologio o fuso orario di sistema
+        NotificationCenter.default.publisher(for: .NSSystemClockDidChange)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.refreshCurrentDate(force: true)
+            }
+            .store(in: &dateCancellables)
+            
+        // 4. Timer periodico leggero (ogni 30s) per garantire aggiornamento immediato al cambio di data anche se l'app resta ferma a schermo
+        Timer.publish(every: 30, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] now in
+                guard let self = self else { return }
+                if !Calendar.current.isDate(self.currentDate, inSameDayAs: now) {
+                    self.currentDate = now
+                }
+            }
+            .store(in: &dateCancellables)
+    }
+    
+    public func refreshCurrentDate(force: Bool = false) {
+        let now = Date()
+        if force || !Calendar.current.isDate(currentDate, inSameDayAs: now) {
+            currentDate = now
+        }
     }
     
     // MARK: - File URLs
@@ -125,12 +177,27 @@ public class DataManager: ObservableObject {
         )
         
         let targetURL = self.fileURL
+        let storageName = self.storageFileName
         DispatchQueue.global(qos: .utility).async {
             do {
                 let encoder = JSONEncoder()
                 encoder.dateEncodingStrategy = .iso8601
                 let data = try encoder.encode(payload)
                 try data.write(to: targetURL, options: .atomic)
+                
+                // Mirror di sicurezza tra sandbox container e Library globale per evitare disallineamenti tra build
+                let fileManager = FileManager.default
+                let home = fileManager.homeDirectoryForCurrentUser
+                let mirrors = [
+                    home.appendingPathComponent("Library/Application Support/uni/\(storageName)"),
+                    home.appendingPathComponent("Library/Containers/zinco.cc.uni/Data/Library/Application Support/uni/\(storageName)")
+                ]
+                for mirror in mirrors where mirror.path != targetURL.path {
+                    let parent = mirror.deletingLastPathComponent()
+                    if fileManager.fileExists(atPath: parent.path) {
+                        try? data.write(to: mirror, options: .atomic)
+                    }
+                }
             } catch {
                 print("Errore durante il salvataggio dei dati: \(error.localizedDescription)")
             }
@@ -141,9 +208,27 @@ public class DataManager: ObservableObject {
     
     public func loadData() {
         let fileManager = FileManager.default
-        if fileManager.fileExists(atPath: fileURL.path) {
+        let targetURL = self.fileURL
+        
+        // Verifica migrazione: se il database nel percorso corrente non esiste,
+        // controlla se esiste nei percorsi noti alternativi (es. migrazione da build sandbox a non-sandbox o viceversa)
+        if !fileManager.fileExists(atPath: targetURL.path) {
+            let home = fileManager.homeDirectoryForCurrentUser
+            let candidates = [
+                home.appendingPathComponent("Library/Application Support/uni/\(storageFileName)"),
+                home.appendingPathComponent("Library/Containers/zinco.cc.uni/Data/Library/Application Support/uni/\(storageFileName)")
+            ]
+            for candidate in candidates where candidate.path != targetURL.path {
+                if fileManager.fileExists(atPath: candidate.path) {
+                    try? fileManager.copyItem(at: candidate, to: targetURL)
+                    break
+                }
+            }
+        }
+        
+        if fileManager.fileExists(atPath: targetURL.path) {
             do {
-                let data = try Data(contentsOf: fileURL)
+                let data = try Data(contentsOf: targetURL)
                 let decoder = JSONDecoder()
                 decoder.dateDecodingStrategy = .iso8601
                 let payload = try decoder.decode(AppDataPayload.self, from: data)
@@ -670,7 +755,7 @@ public class DataManager: ObservableObject {
                 
             case .appleCalendar:
                 if let identifier = source.appleCalendarIdentifier {
-                    if AppleCalendarManager.shared.authorizationStatus != .fullAccess {
+                    if !AppleCalendarManager.shared.hasFullAccess {
                         let ok = await AppleCalendarManager.shared.requestAccess()
                         if !ok {
                             syncErrors.append("\(source.title): " + (LocalizationManager.shared.text(it: "Accesso non autorizzato a Calendario PC", en: "Unauthorized access to PC Calendar")))
@@ -678,7 +763,7 @@ public class DataManager: ObservableObject {
                         }
                     }
                     
-                    let now = Date()
+                    let now = self.currentDate
                     let start = Calendar.current.date(byAdding: .month, value: -3, to: now) ?? now
                     let end = Calendar.current.date(byAdding: .month, value: 12, to: now) ?? now
                     
@@ -828,7 +913,12 @@ public class DataManager: ObservableObject {
     
     @MainActor
     public func importAllMacCalendars() async -> Int {
-        let granted = await AppleCalendarManager.shared.requestAccess()
+        let granted: Bool
+        if AppleCalendarManager.shared.hasFullAccess {
+            granted = true
+        } else {
+            granted = await AppleCalendarManager.shared.requestAccess()
+        }
         guard granted else {
             self.syncErrorMessage = LocalizationManager.shared.text(it: "Permesso di accesso ai calendari del PC non concesso", en: "Access permission to PC calendars not granted")
             return 0

@@ -363,7 +363,7 @@ struct ContentView: View {
                 isShowingOnboarding = true
             } else {
                 let lastSeen = UserDefaults.standard.string(forKey: "uni_last_seen_release_notes")
-                if lastSeen != "1.4.0" {
+                if lastSeen != "1.4.1" {
                     isShowingWhatsNew = true
                 }
             }
@@ -744,7 +744,7 @@ struct UniSplashScreenView: View {
     @EnvironmentObject var themeManager: ThemeManager
     
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.0"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.1"
     }
     
     #if canImport(AppKit)

@@ -572,7 +572,8 @@ public struct CalendarManagerModalView: View {
     
     private func refreshPCCalendarsList() {
         Task {
-            if AppleCalendarManager.shared.authorizationStatus == .fullAccess {
+            AppleCalendarManager.shared.refreshStatus()
+            if AppleCalendarManager.shared.hasFullAccess {
                 self.availablePCCalendars = AppleCalendarManager.shared.getAvailableMacCalendars()
             }
         }
