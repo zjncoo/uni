@@ -2,10 +2,9 @@
  * uni — Official Showcase Script
  * Features:
  *  1. Automatic browser language detection (IT / EN) + manual toggle with persistence.
- *  2. Synthesized acoustic soundboard using Web Audio API mirroring SoundManager.swift.
- *  3. Interactive Dynamic Island Pill Notification simulation.
- *  4. Dynamic today date formatted for the mockup.
- *  5. Motion-primitive style intersection animations.
+ *  2. Interactive Dynamic Island Pill Notification simulation.
+ *  3. Dynamic today date formatted for the mockup.
+ *  4. Motion-primitive style intersection animations.
  */
 
 // ===================================================================
@@ -14,8 +13,32 @@
 const i18n = {
   it: {
     nav_features: "Funzionalità",
-    nav_preview: "Interfaccia",
+    nav_panoramica: "Panoramica",
+    nav_preview: "Panoramica",
     nav_download: "Scarica .dmg",
+
+    riquadro_stats: "01 / RENDIMENTO & STATISTICHE",
+    riquadro_heading: "Ciao Daniel 👋 la tua carriera è <strong>in perfetto orario</strong>",
+    pill_gpa: "Media: <strong>28.84</strong>",
+    pill_exams: "🏆 <strong>14/18</strong> esami superati",
+    pill_zerocopy: "⚡️ <strong>Zero-Copy</strong> Finder",
+    pill_local: "🔒 <strong>100%</strong> Locale sul Mac",
+
+    riquadro_yellow_title: "Prossima lezione: <strong>Ingegneria del Software</strong>",
+    riquadro_yellow_sub: "Aula 3 • Ore 11:30 (Sincronizzato da iCal ateneo)",
+    riquadro_yellow_prof: "👨‍🏫 Prof. Bianchi • Oggi",
+
+    riquadro_blue_label: "Avanzamento percorso accademico",
+    riquadro_seg_triennale: "Triennale",
+    riquadro_seg_magistrale: "Magistrale",
+    riquadro_blue_status: "Sei in anticipo sulla tabella di marcia 😊",
+    riquadro_blue_sub: "138 / 180 CFU acquisiti • Base laurea stimata: ~105.7",
+
+    dock_overview: "Panoramica",
+    dock_cal: "Calendario",
+    dock_deadlines: "Scadenze",
+    dock_exams: "Esami",
+    dock_search: "Cerca",
 
     hero_badge: "100% Swift & AppKit nativo per Mac",
     hero_title: "L'app accademica per Mac.<br><span class=\"hero-title-accent\">Progettata come si deve.</span>",
@@ -61,23 +84,23 @@ const i18n = {
     feat_title: "Tutto ciò che serve per studiare.<br>Senza fronzoli.",
     feat_subtitle: "Disegnata per dialogare in modo naturale con il Finder, con i calendari universitari e con le email dei docenti.",
 
-    bento1_tag: "Panoramica & NEXT",
+    bento1_tag: "01 / Panoramica & NEXT.",
     bento1_title: "Panoramica Istantanea & Sezione NEXT",
     bento1_desc: "A colpo d'occhio trovi la prossima lezione in aula, la scadenza più urgente e il prossimo appello d'esame. Clicca sui riquadri per accedere direttamente alla sezione desiderata.",
 
-    bento2_tag: "Calendario & Orario",
+    bento2_tag: "02 / Calendario & Orario 24h.",
     bento2_title: "Orario Settimanale 24h",
     bento2_desc: "Sincronizzazione iCal/webcal con l'ateneo o configurazione manuale. Aule, docenti e orari sempre sotto controllo.",
 
-    bento3_tag: "Scadenze & Task",
+    bento3_tag: "03 / Scadenze & Priorità.",
     bento3_title: "Scadenze con Priorità",
     bento3_desc: "Countdown automatico al minuto, badge di urgenza, allegati locali zero-copy e filtri per materia.",
 
-    bento4_tag: "Carriera & Esami",
+    bento4_tag: "04 / Libretto, Media & Esami.",
     bento4_title: "Media Ponderata & Voto Laurea",
     bento4_desc: "Calcolo automatico della media ponderata, CFU registrati e simulazione della base di partenza per la laurea.",
 
-    bento5_tag: "Ricerca Rapida",
+    bento5_tag: "05 / Ricerca Globale ⌘K.",
     bento5_title: "Palette di Ricerca Globale ⌘K / ⌘F",
     bento5_desc: "Richiama in qualunque momento la ricerca stile Spotlight di macOS: trova istantaneamente corsi, dispense PDF, appelli d'esame e lezioni con filtri a pillola.",
 
@@ -120,14 +143,48 @@ const i18n = {
     legal_updated: "Ultimo aggiornamento: 13 Settembre 2026",
     btn_back_home: "← Torna alla Homepage di uni",
 
+    mobile_notice: "uni è concepita e sviluppata esclusivamente per Mac. Apri questo sito dal tuo computer per scaricare l'app.",
+    mobile_copy_link: "Copia link per Mac",
+    mobile_link_copied: "Link copiato! ✓",
+    mobile_warning_text: "Disponibile solo per Mac • Download disabilitato su mobile",
+    mobile_toast_msg: "uni è disponibile esclusivamente per Mac. Apri questo sito da un computer per scaricare l'app.",
+
     footer_sub: "Progettata con cura per gli studenti universitari su Mac.",
-    footer_credit: "Designed by <a href=\"https://zinco.cc\" target=\"_blank\" rel=\"noopener\">zinco.cc</a>"
+    footer_credit: "Designed by <a href=\"https://zinco.cc\" target=\"_blank\" rel=\"noopener\">zinco.cc</a>",
+    footer_back_to_top: "↑ Torna in cima",
+    footer_col_project: "Progetto",
+    footer_col_resources: "Info &amp; Risorse",
+    footer_tagline: "100% Locale • Offline First • Swift &amp; AppKit"
   },
 
   en: {
     nav_features: "Features",
-    nav_preview: "Interface",
+    nav_panoramica: "Overview",
+    nav_preview: "Overview",
     nav_download: "Download .dmg",
+
+    riquadro_stats: "01 / PERFORMANCE & STATS",
+    riquadro_heading: "Hello Daniel 👋 your academic career is <strong>right on schedule</strong>",
+    pill_gpa: "GPA: <strong>28.84</strong>",
+    pill_exams: "🏆 <strong>14/18</strong> exams passed",
+    pill_zerocopy: "⚡️ <strong>Zero-Copy</strong> Finder",
+    pill_local: "🔒 <strong>100%</strong> Local on Mac",
+
+    riquadro_yellow_title: "Next lecture: <strong>Software Engineering</strong>",
+    riquadro_yellow_sub: "Room 3 • 11:30 AM (Synced from campus iCal)",
+    riquadro_yellow_prof: "👨‍🏫 Prof. Bianchi • Today",
+
+    riquadro_blue_label: "Academic Career Progress",
+    riquadro_seg_triennale: "Bachelor",
+    riquadro_seg_magistrale: "Master",
+    riquadro_blue_status: "You are ahead of schedule 😊",
+    riquadro_blue_sub: "138 / 180 ECTS earned • Graduation estimate: ~105.7",
+
+    dock_overview: "Overview",
+    dock_cal: "Calendar",
+    dock_deadlines: "Deadlines",
+    dock_exams: "Exams",
+    dock_search: "Search",
 
     hero_badge: "100% Native Swift & AppKit for Mac",
     hero_title: "The academic app for Mac.<br><span class=\"hero-title-accent\">Crafted as it should be.</span>",
@@ -173,23 +230,23 @@ const i18n = {
     feat_title: "Everything you need for your studies.<br>Zero clutter.",
     feat_subtitle: "Designed to feel right at home with Finder, your campus calendar, and faculty emails.",
 
-    bento1_tag: "Overview & NEXT",
+    bento1_tag: "01 / Overview & NEXT.",
     bento1_title: "Instant Overview & NEXT Widget",
     bento1_desc: "Get an immediate view of your next scheduled lecture and classroom, top-priority deadline, and upcoming exam session. Click any card to jump straight into that section.",
 
-    bento2_tag: "Calendar & Timetable",
+    bento2_tag: "02 / 24h Weekly Timetable.",
     bento2_title: "24h Weekly Timetable",
     bento2_desc: "Sync your university iCal/webcal calendar or configure classes manually. Rooms, professors, and class hours always at your fingertips.",
 
-    bento3_tag: "Deadlines & Tasks",
+    bento3_tag: "03 / Deadlines & Priority.",
     bento3_title: "Prioritized Academic Deadlines",
     bento3_desc: "Minute-by-minute countdown, priority urgency tags, zero-copy linked study files, and course-specific filters.",
 
-    bento4_tag: "Career & Exams",
+    bento4_tag: "04 / Grades & GPA Projection.",
     bento4_title: "Weighted GPA & Degree Projection",
     bento4_desc: "Automatic weighted average calculation, recorded credits (CFU/ECTS), and real-time degree starting score projection.",
 
-    bento5_tag: "Quick Search",
+    bento5_tag: "05 / Global Search ⌘K.",
     bento5_title: "Spotlight-Style Global Search ⌘K / ⌘F",
     bento5_desc: "Summon the macOS-native search palette at any time: instantly locate courses, PDF slides, exam dates, and lectures with interactive pill filters.",
 
@@ -289,8 +346,18 @@ const i18n = {
     pol_sec6_title: "6. Changes &amp; Updates",
     pol_sec6_desc: "The Data Controller reserves the right to update this policy to reflect legal or technical revisions. The latest version will always be published on this page with the revision date.",
 
+    mobile_notice: "uni is crafted and developed exclusively for Mac. Open this site on your computer to download the app.",
+    mobile_copy_link: "Copy link for Mac",
+    mobile_link_copied: "Link copied! ✓",
+    mobile_warning_text: "Available only for Mac • Download disabled on mobile",
+    mobile_toast_msg: "uni is available exclusively for Mac. Open this site on a computer to download the app.",
+
     footer_sub: "Carefully designed for university students on Mac.",
-    footer_credit: "Designed by <a href=\"https://zinco.cc\" target=\"_blank\" rel=\"noopener\">zinco.cc</a>"
+    footer_credit: "Designed by <a href=\"https://zinco.cc\" target=\"_blank\" rel=\"noopener\">zinco.cc</a>",
+    footer_back_to_top: "↑ Back to top",
+    footer_col_project: "Project",
+    footer_col_resources: "Info &amp; Resources",
+    footer_tagline: "100% Local • Offline First • Swift &amp; AppKit"
   }
 };
 
@@ -341,7 +408,6 @@ function initLanguageSwitcher() {
     switchPill.addEventListener('click', () => {
       const nextLang = currentLanguage === 'it' ? 'en' : 'it';
       setLanguage(nextLang);
-      playWebSound('pop');
     });
 
     switchPill.addEventListener('keydown', (e) => {
@@ -349,7 +415,6 @@ function initLanguageSwitcher() {
         e.preventDefault();
         const nextLang = currentLanguage === 'it' ? 'en' : 'it';
         setLanguage(nextLang);
-        playWebSound('pop');
       }
     });
   }
@@ -360,8 +425,8 @@ function initLanguageSwitcher() {
 // ===================================================================
 function updateMockupDate(lang) {
   const now = new Date();
-  const dayNameEl = document.getElementById('mockDayName');
-  const dayNumEl = document.getElementById('mockDayNum');
+  const dayNameEl = document.getElementById('heroDayName') || document.getElementById('mockDayName');
+  const dayNumEl = document.getElementById('heroDayNum') || document.getElementById('mockDayNum');
   const fullDateEl = document.getElementById('mockFullDate');
 
   if (dayNumEl) {
@@ -380,192 +445,7 @@ function updateMockupDate(lang) {
 }
 
 // ===================================================================
-// 4. Synthesized Audio Engine (Web Audio API)
-//    Meticulously crafts the tone, harmonic decay, and warmth of
-//    the macOS acoustic samples: Pop, Tink, Morse, Ping, Blow.
-// ===================================================================
-let audioCtx = null;
-
-function getAudioContext() {
-  if (!audioCtx) {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new AudioContext();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-  return audioCtx;
-}
-
-function playWebSound(type) {
-  try {
-    const ctx = getAudioContext();
-    const t = ctx.currentTime;
-
-    switch (type) {
-      case 'pop': {
-        // Soft acoustic wooden pop (Pop.aiff)
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(320, t);
-        osc.frequency.exponentialRampToValueAtTime(80, t + 0.08);
-
-        gain.gain.setValueAtTime(0.32, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(t);
-        osc.stop(t + 0.08);
-        break;
-      }
-
-      case 'success': {
-        // Crystalline dual chime (Tink.aiff)
-        [1560, 2340].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(freq, t + i * 0.04);
-
-          gain.gain.setValueAtTime(0.28, t + i * 0.04);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.04 + 0.35);
-
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(t + i * 0.04);
-          osc.stop(t + i * 0.04 + 0.36);
-        });
-        break;
-      }
-
-      case 'notification': {
-        // Soft double chirp (Morse.aiff style)
-        [880, 1174].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, t + i * 0.07);
-
-          gain.gain.setValueAtTime(0.24, t + i * 0.07);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.12);
-
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(t + i * 0.07);
-          osc.stop(t + i * 0.07 + 0.13);
-        });
-        break;
-      }
-
-      case 'timer': {
-        // Resonant meditation ping (Ping.aiff)
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(987.77, t); // B5 note
-
-        gain.gain.setValueAtTime(0.35, t);
-        gain.gain.exponentialRampToValueAtTime(0.0008, t + 0.85);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(t);
-        osc.stop(t + 0.86);
-        break;
-      }
-
-      case 'remove': {
-        // Delicate air whoosh (Blow.aiff)
-        const bufferSize = ctx.sampleRate * 0.12;
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = Math.random() * 2 - 1;
-        }
-
-        const noise = ctx.createBufferSource();
-        noise.buffer = buffer;
-
-        const filter = ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(450, t);
-        filter.Q.setValueAtTime(3.0, t);
-
-        const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.25, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(ctx.destination);
-        noise.start(t);
-        noise.stop(t + 0.12);
-        break;
-      }
-    }
-  } catch (err) {
-    console.warn('Web Audio synthesis not allowed or supported:', err);
-  }
-}
-
-// ===================================================================
-// 5. Interactive Pill Notification HUD Demo
-// ===================================================================
-function initPillHUDDemo() {
-  const pill = document.getElementById('pillHUD');
-  const triggerBtn = document.getElementById('triggerPillDemo');
-  const pillTitle = document.getElementById('pillTitle');
-  const pillDesc = document.getElementById('pillMessage');
-
-  const demoMessages = {
-    it: [
-      { title: "Scadenza completata", desc: "Progetto Finale d'Esame archiviato 🎉" },
-      { title: "Outlook LATEST", desc: "Nuova email dal Prof. Rossi: Aula cambiata" },
-      { title: "Pomodoro Completato", desc: "25 minuti di studio concentrato conclusi 👏" },
-      { title: "iCal Sincronizzato", desc: "6 corsi e 14 orari lezioni aggiornati" }
-    ],
-    en: [
-      { title: "Deadline Completed", desc: "Final Course Project submitted 🎉" },
-      { title: "Outlook LATEST", desc: "New email from Prof. Rossi: Room updated" },
-      { title: "Pomodoro Finished", desc: "25 minutes of deep focus completed 👏" },
-      { title: "iCal Synchronized", desc: "6 courses and 14 lecture slots updated" }
-    ]
-  };
-
-  let messageIdx = 0;
-
-  function triggerDemo(e) {
-    if (e) e.stopPropagation();
-    playWebSound('notification');
-
-    const list = demoMessages[currentLanguage] || demoMessages.it;
-    messageIdx = (messageIdx + 1) % list.length;
-    const nextItem = list[messageIdx];
-
-    if (pillTitle) pillTitle.textContent = nextItem.title;
-    if (pillDesc) pillDesc.textContent = nextItem.desc;
-
-    // Pop bounce animation
-    if (pill) {
-      pill.style.transform = 'translateY(-10px) scale(1.06)';
-      setTimeout(() => {
-        pill.style.transform = 'translateY(0) scale(1)';
-      }, 250);
-    }
-  }
-
-  if (triggerBtn) {
-    triggerBtn.addEventListener('click', triggerDemo);
-  }
-  if (pill) {
-    pill.addEventListener('click', triggerDemo);
-  }
-}
-
-// ===================================================================
-// 6. Latest GitHub Release & Dynamic Download Synchronizer
+// 4. Latest GitHub Release & Dynamic Download Synchronizer
 // ===================================================================
 const GITHUB_REPO = "zjncoo/uni";
 const GITHUB_LATEST_RELEASE_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
@@ -623,15 +503,44 @@ async function fetchLatestGitHubRelease() {
   }
 }
 
+let toastTimeout = null;
+
+function showMobileToast(msg) {
+  const toast = document.getElementById('mobileToast');
+  if (!toast) return;
+
+  const defaultMsg = (i18n[currentLanguage] && i18n[currentLanguage].mobile_toast_msg) || 
+    "uni è disponibile esclusivamente per Mac. Apri questo sito dal tuo computer per scaricare l'app.";
+  const textSpan = toast.querySelector('.toast-message');
+  if (textSpan) textSpan.innerHTML = msg || defaultMsg;
+
+  toast.classList.add('is-visible');
+  toast.setAttribute('aria-hidden', 'false');
+
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toast.classList.remove('is-visible');
+    toast.setAttribute('aria-hidden', 'true');
+  }, 3800);
+}
+
 function initDownloadButtons() {
   const heroBtn = document.getElementById('heroDownloadBtn');
   const mainBtn = document.getElementById('mainDownloadBtn');
   const zipBtn = document.getElementById('zipDownloadBtn');
 
+  function isMobileContext() {
+    return window.innerWidth <= 900 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+
   [heroBtn, mainBtn, zipBtn].forEach(btn => {
     if (btn) {
-      btn.addEventListener('click', () => {
-        playWebSound('success');
+      btn.addEventListener('click', (e) => {
+        if (isMobileContext()) {
+          e.preventDefault();
+          showMobileToast();
+          return;
+        }
       });
     }
   });
@@ -658,14 +567,12 @@ function initScreenshotLightbox() {
     lightbox.classList.add('active');
     lightbox.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
-    playWebSound('pop');
   }
 
   function closeLightbox() {
     lightbox.classList.remove('active');
     lightbox.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
-    playWebSound('remove');
   }
 
   document.querySelectorAll('.bento-screenshot-wrapper').forEach(wrapper => {
@@ -689,14 +596,93 @@ function initScreenshotLightbox() {
 }
 
 // ===================================================================
-// 8. Initialize Application
+// 8. Mobile Fullscreen Navigation Menu
+// ===================================================================
+function initMobileMenu() {
+  const hamburger = document.getElementById('navHamburger');
+  const menuOverlay = document.getElementById('mobileMenu');
+  const copyBtn = document.getElementById('btnCopyMacLink');
+
+  if (!hamburger || !menuOverlay) return;
+
+  function toggleMenu(forceOpen) {
+    const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !menuOverlay.classList.contains('is-open');
+    menuOverlay.classList.toggle('is-open', shouldOpen);
+    hamburger.classList.toggle('is-open', shouldOpen);
+    hamburger.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    menuOverlay.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+    document.body.style.overflow = shouldOpen ? 'hidden' : '';
+  }
+
+  hamburger.addEventListener('click', () => toggleMenu());
+
+  // Close when clicking internal links
+  menuOverlay.querySelectorAll('[data-menu-close]').forEach(link => {
+    link.addEventListener('click', () => {
+      toggleMenu(false);
+    });
+  });
+
+  // Close with Escape key
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && menuOverlay.classList.contains('is-open')) {
+      toggleMenu(false);
+    }
+  });
+
+  // Close if viewport expands to desktop
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 900 && menuOverlay.classList.contains('is-open')) {
+      toggleMenu(false);
+    }
+  });
+
+  // Copy Mac link functionality
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const urlToCopy = window.location.href.split('#')[0];
+      try {
+        await navigator.clipboard.writeText(urlToCopy);
+        const textSpan = copyBtn.querySelector('.copy-text');
+        const origText = textSpan ? textSpan.textContent : '';
+        const copiedMsg = (i18n[currentLanguage] && i18n[currentLanguage].mobile_link_copied) || 'Link copiato! ✓';
+        if (textSpan) textSpan.textContent = copiedMsg;
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          if (textSpan) textSpan.textContent = origText;
+          copyBtn.classList.remove('copied');
+        }, 2200);
+      } catch (err) {
+        console.warn('Clipboard write error:', err);
+      }
+    });
+  }
+}
+
+// ===================================================================
+// 9. Back To Top Smooth Scroll
+// ===================================================================
+function initBackToTop() {
+  const btn = document.getElementById('btnBackToTop');
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+}
+
+// ===================================================================
+// 10. Initialize Application
 // ===================================================================
 document.addEventListener('DOMContentLoaded', () => {
   const initialLang = detectInitialLanguage();
   setLanguage(initialLang);
   initLanguageSwitcher();
-  initPillHUDDemo();
   initDownloadButtons();
   initScreenshotLightbox();
+  initMobileMenu();
+  initBackToTop();
 });
+
 

@@ -8,7 +8,20 @@
   <meta name="keywords" content="uni, app università mac, orario lezioni mac, media ponderata mac, esse3 ical, cineca calendario, macos student planner, app per studenti mac, swift appkit, macos academia, esse3 calendario mac">
   <meta name="author" content="zinco.cc (zinco.cc)">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-  <meta name="theme-color" content="#FAFAFB">
+  <meta name="theme-color" content="#F4F3EE">
+  <meta name="application-name" content="uni">
+  <meta name="apple-mobile-web-app-title" content="uni">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <!-- Web App Manifest -->
+  <link rel="manifest" href="site.webmanifest">
+
+  <!-- Resource Hints & DNS Prefetch -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  <link rel="dns-prefetch" href="https://github.com">
+  <link rel="preload" as="image" href="assets/icon.png" type="image/png">
 
   <!-- Canonical & Multilingual SEO -->
   <link rel="canonical" href="https://uni.zinco.cc/">
@@ -55,10 +68,12 @@
         "@type": "SoftwareApplication",
         "@id": "https://uni.zinco.cc/#software",
         "name": "uni",
-        "alternateName": "uni for macOS",
+        "alternateName": ["uni for macOS", "uni Mac App"],
         "applicationCategory": "EducationalApplication",
-        "applicationSubCategory": "Student Planner & University Workspace",
-        "operatingSystem": "macOS 13.0 or later",
+        "applicationSubCategory": "Student Planner & Academic Workspace",
+        "operatingSystem": "macOS 13.0 or later (Apple Silicon & Intel)",
+        "softwareRequirements": "macOS Ventura 13.0+, Sonoma 14.0+, Sequoia 15.0+",
+        "fileSize": "1.1MB",
         "url": "https://uni.zinco.cc/",
         "image": "https://uni.zinco.cc/assets/icon.png",
         "screenshot": [
@@ -70,16 +85,35 @@
         ],
         "description": "App nativa macOS in Swift & AppKit per studenti universitari: orario settimanale 24h da iCal (Esse3, Cineca), sezione NEXT, scadenze con priorità, media ponderata e zero file duplicati.",
         "softwareVersion": "1.0.0",
+        "featureList": [
+          "Sincronizzazione orario lezioni settimanale 24h tramite iCal/webcal RFC 5545",
+          "Widget Panoramica NEXT con countdown dinamico e scadenze con priorità",
+          "Calcolo automatico della media ponderata, CFU e base di laurea",
+          "Integrazione posta elettronica Microsoft Outlook locale via AppleScript",
+          "Zero-Copy Finder per file, dispense e slide senza duplicare spazio su disco",
+          "Ricerca rapida stile Spotlight di macOS ⌘K / ⌘F"
+        ],
         "offers": {
           "@type": "Offer",
           "price": "0",
-          "priceCurrency": "EUR"
+          "priceCurrency": "EUR",
+          "availability": "https://schema.org/InStock"
         },
         "downloadUrl": "https://github.com/zjncoo/uni/releases/latest/download/uni.dmg",
+        "releaseNotes": "https://github.com/zjncoo/uni/releases",
         "author": {
           "@type": "Person",
           "name": "zinco.cc",
           "url": "https://zinco.cc"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "zinco.cc",
+          "url": "https://zinco.cc",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://uni.zinco.cc/assets/icon.png"
+          }
         },
         "license": "https://github.com/zjncoo/uni/blob/main/LICENSE"
       },
@@ -89,7 +123,40 @@
         "url": "https://uni.zinco.cc/",
         "name": "uni — L'app accademica per Mac",
         "description": "L'app accademica nativa per macOS: orari 24h, Outlook, zero-copy Finder e media ponderata.",
-        "inLanguage": ["it", "en"]
+        "inLanguage": ["it", "en"],
+        "publisher": {
+          "@id": "https://uni.zinco.cc/#software"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://uni.zinco.cc/#breadcrumb",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://uni.zinco.cc/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Funzionalità",
+            "item": "https://uni.zinco.cc/#features"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Download",
+            "item": "https://uni.zinco.cc/#download"
+          },
+          {
+            "@type": "ListItem",
+            "position": 4,
+            "name": "FAQ",
+            "item": "https://uni.zinco.cc/#faq"
+          }
+        ]
       },
       {
         "@type": "FAQPage",
@@ -149,19 +216,22 @@
   }
   </script>
 
-  <!-- Fonts: Inter (Refined Light Weights) & JetBrains Mono -->
+  <!-- Fonts: IBM Plex Serif (Editorial), Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Accessibility Skip Link for Keyboard Navigation & Screen Readers -->
+  <a href="#main-content" class="skip-link">Salta al contenuto principale</a>
+
   <!-- Navigation Header -->
   <header class="site-header">
     <nav class="nav-container">
       <a href="#" class="nav-brand">
-        <img src="assets/icon.png" alt="uni icon" class="brand-icon">
+        <img src="assets/icon.png" alt="uni app icon per macOS" class="brand-icon" width="28" height="28">
         <span class="brand-slash">///</span>
         <span class="brand-name">uni</span>
         <span class="brand-tag">macOS</span>
@@ -169,7 +239,6 @@
 
       <div class="nav-links">
         <a href="#features" data-i18n="nav_features">Funzionalità</a>
-        <a href="#preview" data-i18n="nav_preview">Interfaccia</a>
         <a href="#faq" data-i18n="nav_faq">FAQ</a>
         <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener" class="nav-github-link">
           <svg class="gh-svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
@@ -180,17 +249,64 @@
       </div>
 
       <div class="nav-actions">
-        <!-- Language Switcher Pill -->
-        <div class="lang-switch-pill" id="langSwitch" role="button" tabindex="0" title="Cambia lingua / Switch language">
-          <span class="lang-option active" data-lang="it">IT</span>
-          <span class="lang-separator">/</span>
-          <span class="lang-option" data-lang="en">EN</span>
-        </div>
-
         <a href="#download" class="btn-nav-download" data-i18n="nav_download">Scarica .dmg</a>
+        <button class="nav-hamburger" id="navHamburger" aria-label="Menu di navigazione" aria-expanded="false" aria-controls="mobileMenu">
+          <span class="hamburger-box">
+            <span class="hamburger-bar top"></span>
+            <span class="hamburger-bar bottom"></span>
+          </span>
+        </button>
       </div>
     </nav>
   </header>
+
+  <!-- Fullscreen Mobile Navigation Menu Overlay -->
+  <div class="mobile-menu-overlay" id="mobileMenu" aria-hidden="true">
+    <div class="mobile-menu-container">
+      <div class="mobile-menu-top">
+        <span class="mobile-menu-eyebrow">SELEZIONI • MENU</span>
+      </div>
+
+      <nav class="mobile-menu-list">
+        <a href="#features" class="mobile-nav-item" data-menu-close>
+          <span class="item-num">01</span>
+          <span class="item-label" data-i18n="nav_features">Funzionalità</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="#faq" class="mobile-nav-item" data-menu-close>
+          <span class="item-num">02</span>
+          <span class="item-label" data-i18n="nav_faq">FAQ</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener" class="mobile-nav-item">
+          <span class="item-num">03</span>
+          <span class="item-label">GitHub</span>
+          <span class="item-arrow">↗</span>
+        </a>
+        <a href="privacy.html" class="mobile-nav-item">
+          <span class="item-num">04</span>
+          <span class="item-label" data-i18n="footer_privacy">Privacy Policy</span>
+          <span class="item-arrow">→</span>
+        </a>
+      </nav>
+
+      <div class="mobile-menu-card">
+        <div class="mobile-card-badge">
+          <span class="mobile-badge-text">macOS Application</span>
+        </div>
+        <p class="mobile-card-msg" data-i18n="mobile_notice">
+          uni è concepita e sviluppata esclusivamente per Mac. Apri questo sito dal tuo computer per scaricare l'app.
+        </p>
+        <button class="mobile-copy-btn" id="btnCopyMacLink" type="button">
+          <span class="copy-text" data-i18n="mobile_copy_link">Copia link per Mac</span>
+          <span class="copy-icon">⎘</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Primary Page Landmark for SEO & Accessibility -->
+  <main id="main-content">
 
   <!-- Hero Section -->
   <section class="hero-section">
@@ -232,6 +348,11 @@
         </a>
       </div>
 
+      <div class="mobile-only-warning" role="note">
+        <span class="warning-badge-dot"></span>
+        <span data-i18n="mobile_warning_text">Disponibile solo per Mac • Download disabilitato su mobile</span>
+      </div>
+
       <!-- Quick Fact Metrics Bar -->
       <div class="hero-stats">
         <div class="stat-item">
@@ -256,181 +377,9 @@
       </div>
     </div>
 
-    <!-- Live Interactive Mockup Showcase -->
-    <div class="hero-window-wrapper" id="preview">
-      <!-- Interactive Pill Notification (Dynamic Island) Floating Above Window -->
-      <div class="floating-pill-hud" id="pillHUD">
-        <div class="pill-badge-icon">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-          </svg>
-        </div>
-        <div class="pill-text-content">
-          <strong id="pillTitle" data-i18n="pill_title">Scadenza completata</strong>
-          <span id="pillMessage" data-i18n="pill_desc">Progetto Finale archiviato con successo 🎉</span>
-        </div>
-        <button class="pill-btn-action" id="triggerPillDemo" title="Clicca per testare la notifica">
-          <span data-i18n="pill_test_btn">Test notifica</span>
-        </button>
-      </div>
-
-      <!-- Authentic macOS Light Window Frame -->
-      <div class="mac-window">
-        <!-- Titlebar -->
-        <div class="window-titlebar">
-          <div class="traffic-lights">
-            <span class="traffic-light red"></span>
-            <span class="traffic-light yellow"></span>
-            <span class="traffic-light green"></span>
-          </div>
-          <div class="window-title">
-            <img src="assets/icon.png" alt="" class="title-app-icon">
-            <span>uni — Dashboard</span>
-          </div>
-          <div class="titlebar-actions">
-            <span class="kbd-badge">⌘F</span>
-            <span class="kbd-badge">⌘T</span>
-          </div>
-        </div>
-
-        <!-- App Interface Content -->
-        <div class="window-body">
-          <!-- Sidebar Mockup -->
-          <aside class="mock-sidebar">
-            <div class="sidebar-search">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-              <span data-i18n="mock_search">Cerca materie...</span>
-              <kbd>⌘F</kbd>
-            </div>
-
-            <div class="sidebar-group">
-              <span class="group-title" data-i18n="mock_group_general">GENERALE</span>
-              <div class="nav-item active">
-                <span class="item-icon">⚡️</span>
-                <span data-i18n="mock_nav_overview">Panoramica</span>
-              </div>
-              <div class="nav-item">
-                <span class="item-icon">📅</span>
-                <span data-i18n="mock_nav_cal">Calendario</span>
-              </div>
-            </div>
-
-            <div class="sidebar-group">
-              <span class="group-title" data-i18n="mock_group_didactics">DIDATTICA</span>
-              <div class="nav-item">
-                <span class="item-icon">📚</span>
-                <span data-i18n="mock_nav_courses">Materie (6)</span>
-              </div>
-              <div class="nav-item">
-                <span class="item-icon">⏱️</span>
-                <span data-i18n="mock_nav_deadlines">Scadenze</span>
-                <span class="badge-count">2</span>
-              </div>
-              <div class="nav-item">
-                <span class="item-icon">🎓</span>
-                <span data-i18n="mock_nav_exams">Esami</span>
-              </div>
-              <div class="nav-item">
-                <span class="item-icon">📎</span>
-                <span data-i18n="mock_nav_assignments">Assignments</span>
-              </div>
-            </div>
-          </aside>
-
-          <!-- Main View Mockup -->
-          <main class="mock-main">
-            <!-- Top Banner: Today Big Date & Motivation -->
-            <div class="mock-banner">
-              <div class="banner-date-badge">
-                <span class="banner-day-name" id="mockDayName">SAB</span>
-                <span class="banner-day-number" id="mockDayNum">12</span>
-              </div>
-              <div class="banner-info">
-                <div class="banner-top-row">
-                  <span class="badge-today" data-i18n="mock_today_badge">OGGI</span>
-                  <span class="banner-full-date" id="mockFullDate">Sabato 12 Settembre</span>
-                </div>
-                <div class="banner-greeting" data-i18n="mock_greeting">“L'eccellenza non è un atto, ma un'abitudine.”</div>
-              </div>
-              <div class="banner-btn-group">
-                <button class="mock-btn-primary" onclick="playWebSound('pop')">
-                  <span>+</span> <span data-i18n="mock_add_deadline">Nuova Scadenza</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Stats Bar -->
-            <div class="mock-stats-row">
-              <div class="mock-stat-card">
-                <span class="card-label" data-i18n="mock_stat_gpa">Media Ponderata</span>
-                <span class="card-num">28.84 <small>/30</small></span>
-                <span class="card-sub" data-i18n="mock_stat_base">Base laurea: ~105.7</span>
-              </div>
-              <div class="mock-stat-card">
-                <span class="card-label" data-i18n="mock_stat_cfu">CFU Acquisiti</span>
-                <span class="card-num">138 <small>/180</small></span>
-                <span class="card-sub green" data-i18n="mock_stat_ontrack">In perfetto orario</span>
-              </div>
-              <div class="mock-stat-card">
-                <span class="card-label" data-i18n="mock_stat_next">Prossimo Appello</span>
-                <span class="card-num" style="font-size: 1.05rem; font-weight: 700;">Ingegneria del SW</span>
-                <span class="card-sub orange" data-i18n="mock_stat_days">Tra 9 giorni • Aula 2B</span>
-              </div>
-            </div>
-
-            <!-- LATEST Outlook Row -->
-            <div class="mock-outlook-card">
-              <div class="outlook-header">
-                <div class="outlook-title-area">
-                  <span class="outlook-pill">LATEST</span>
-                  <strong data-i18n="mock_outlook_inbox">Posta in Arrivo • Microsoft Outlook Mac</strong>
-                  <span class="unread-pill">1 nuova</span>
-                </div>
-                <button class="btn-micro" onclick="playWebSound('pop')" data-i18n="mock_outlook_refresh">Aggiorna</button>
-              </div>
-              <div class="outlook-item">
-                <div class="mail-avatar">✉️</div>
-                <div class="mail-content">
-                  <div class="mail-top">
-                    <strong>Prof. Marco Bianchi</strong>
-                    <span class="mail-course-badge">Sistemi Distribuiti</span>
-                    <span class="mail-time">09:15</span>
-                  </div>
-                  <div class="mail-subj">Pubblicazione orari orali e indicazioni progetto finale</div>
-                  <div class="mail-snippet">Gentili studenti, ho caricato su Moodle le fasce orarie per la discussione...</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Active Courses Grid with Files -->
-            <div class="mock-courses-section">
-              <div class="section-heading">
-                <span data-i18n="mock_courses_header">MATERIE ATTIVE & FILE COLLEGATI (ZERO-COPY)</span>
-              </div>
-              <div class="mock-course-cards">
-                <div class="course-pill-card">
-                  <span class="dot blue"></span>
-                  <div class="course-text">
-                    <strong>Algoritmi & Strutture Dati</strong>
-                    <small>9 CFU • 4 file collegati</small>
-                  </div>
-                  <span class="finder-tag" title="Apertura istantanea nel Finder macOS">Finder ↗</span>
-                </div>
-                <div class="course-pill-card">
-                  <span class="dot purple"></span>
-                  <div class="course-text">
-                    <strong>Basi di Dati & Big Data</strong>
-                    <small>6 CFU • 2 file collegati</small>
-                  </div>
-                  <span class="finder-tag">Finder ↗</span>
-                </div>
-              </div>
-            </div>
-          </main>
-        </div>
+      <!-- Clean Visual Showcase Card (Inspired by Image 2 editorial card) -->
+      <div class="hero-visual-card">
+        <img src="assets/screenshots/dashboard.png" alt="Dashboard di uni per macOS con orari, scadenze ed esami" class="hero-visual-img" width="1600" height="1000" loading="eager" fetchpriority="high" decoding="async">
       </div>
     </div>
   </section>
@@ -450,15 +399,22 @@
       </div>
 
       <div class="bento-grid">
-        <!-- Bento 1: Dashboard & NEXT (Wide) -->
-        <div class="bento-card bento-wide">
+        <!-- Bento 1: Dashboard & NEXT (Pistachio Green) -->
+        <div class="bento-card bento-wide card-pistachio">
+          <div class="card-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round">
+              <line x1="12" y1="2" x2="12" y2="22"></line>
+              <line x1="3.5" y1="7" x2="20.5" y2="17"></line>
+              <line x1="3.5" y1="17" x2="20.5" y2="7"></line>
+            </svg>
+          </div>
           <div class="bento-header">
-            <span class="bento-tag" data-i18n="bento1_tag">Panoramica &amp; NEXT</span>
+            <span class="bento-tag" data-i18n="bento1_tag">01 / Panoramica &amp; NEXT.</span>
             <h3 data-i18n="bento1_title">Panoramica Istantanea &amp; Sezione NEXT</h3>
-            <p data-i18n="bento1_desc">A colpo d'occhio trovi la prossima lezione in aula, la scadenza più urgente e il prossimo appello d'esame. Clicca sui riquadri per accedere direttamente alla sezione desiderata.</p>
+            <p data-i18n="bento1_desc">A colpo d'occhio trovi la prossima lezione in aula, la scadenza più urgente e il prossimo appello d'esame. Organizzazione accademica essenziale e senza attriti.</p>
           </div>
           <div class="bento-screenshot-wrapper" data-screenshot="assets/screenshots/dashboard.png" data-caption="uni — Dashboard &amp; Sezione NEXT">
-            <img src="assets/screenshots/dashboard.png" alt="Dashboard di uni con sezione NEXT" class="bento-img" loading="lazy">
+            <img src="assets/screenshots/dashboard.png" alt="Dashboard di uni con sezione NEXT" class="bento-img" width="1600" height="1000" loading="lazy" decoding="async">
             <div class="screenshot-hover-overlay">
               <span class="zoom-icon">🔍</span>
               <span class="zoom-text" data-i18n="zoom_screenshot">Clicca per ingrandire</span>
@@ -466,15 +422,23 @@
           </div>
         </div>
 
-        <!-- Bento 2: Orario Lezioni & Calendario -->
-        <div class="bento-card">
+        <!-- Bento 2: Orario Lezioni & Calendario (Sage Mint) -->
+        <div class="bento-card card-sage">
+          <div class="card-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <polyline points="9 21 3 21 3 15"></polyline>
+              <line x1="21" y1="3" x2="14" y2="10"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+          </div>
           <div class="bento-header">
-            <span class="bento-tag" data-i18n="bento2_tag">Calendario &amp; Orario</span>
+            <span class="bento-tag" data-i18n="bento2_tag">02 / Calendario &amp; Orario 24h.</span>
             <h3 data-i18n="bento2_title">Orario Settimanale 24h</h3>
             <p data-i18n="bento2_desc">Sincronizzazione iCal/webcal con l'ateneo o configurazione manuale. Aule, docenti e orari sempre sotto controllo.</p>
           </div>
           <div class="bento-screenshot-wrapper" data-screenshot="assets/screenshots/calendar.png" data-caption="uni — Orario Settimanale &amp; Calendario Lezioni">
-            <img src="assets/screenshots/calendar.png" alt="Orario settimanale e calendario di uni" class="bento-img" loading="lazy">
+            <img src="assets/screenshots/calendar.png" alt="Orario settimanale e calendario di uni" class="bento-img" width="1600" height="1000" loading="lazy" decoding="async">
             <div class="screenshot-hover-overlay">
               <span class="zoom-icon">🔍</span>
               <span class="zoom-text" data-i18n="zoom_screenshot">Clicca per ingrandire</span>
@@ -482,15 +446,23 @@
           </div>
         </div>
 
-        <!-- Bento 3: Scadenze & Consegne -->
-        <div class="bento-card">
+        <!-- Bento 3: Scadenze & Consegne (Warm Sand) -->
+        <div class="bento-card card-sand">
+          <div class="card-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round">
+              <circle cx="12" cy="13" r="8"></circle>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="13" x2="15" y2="15"></line>
+              <line x1="10" y1="2" x2="14" y2="2"></line>
+            </svg>
+          </div>
           <div class="bento-header">
-            <span class="bento-tag" data-i18n="bento3_tag">Scadenze &amp; Task</span>
+            <span class="bento-tag" data-i18n="bento3_tag">03 / Scadenze &amp; Priorità.</span>
             <h3 data-i18n="bento3_title">Scadenze con Priorità</h3>
             <p data-i18n="bento3_desc">Countdown automatico al minuto, badge di urgenza, allegati locali zero-copy e filtri per materia.</p>
           </div>
           <div class="bento-screenshot-wrapper" data-screenshot="assets/screenshots/deadlines.png" data-caption="uni — Scadenze &amp; Consegne Programmate">
-            <img src="assets/screenshots/deadlines.png" alt="Elenco scadenze e compiti in uni" class="bento-img" loading="lazy">
+            <img src="assets/screenshots/deadlines.png" alt="Elenco scadenze e compiti in uni" class="bento-img" width="1600" height="1000" loading="lazy" decoding="async">
             <div class="screenshot-hover-overlay">
               <span class="zoom-icon">🔍</span>
               <span class="zoom-text" data-i18n="zoom_screenshot">Clicca per ingrandire</span>
@@ -498,15 +470,22 @@
           </div>
         </div>
 
-        <!-- Bento 4: Esami & Media Ponderata -->
-        <div class="bento-card">
+        <!-- Bento 4: Esami & Zero-Copy (Deep Matte Charcoal) -->
+        <div class="bento-card card-charcoal">
+          <div class="card-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+          </div>
           <div class="bento-header">
-            <span class="bento-tag" data-i18n="bento4_tag">Carriera &amp; Esami</span>
+            <span class="bento-tag" data-i18n="bento4_tag">04 / Libretto, Media &amp; Esami.</span>
             <h3 data-i18n="bento4_title">Media Ponderata &amp; Voto Laurea</h3>
             <p data-i18n="bento4_desc">Calcolo automatico della media ponderata, CFU registrati e simulazione della base di partenza per la laurea.</p>
           </div>
           <div class="bento-screenshot-wrapper" data-screenshot="assets/screenshots/exams.png" data-caption="uni — Esami, Statistiche &amp; Media Ponderata">
-            <img src="assets/screenshots/exams.png" alt="Esami e statistiche media in uni" class="bento-img" loading="lazy">
+            <img src="assets/screenshots/exams.png" alt="Esami e statistiche media in uni" class="bento-img" width="1600" height="1000" loading="lazy" decoding="async">
             <div class="screenshot-hover-overlay">
               <span class="zoom-icon">🔍</span>
               <span class="zoom-text" data-i18n="zoom_screenshot">Clicca per ingrandire</span>
@@ -514,15 +493,20 @@
           </div>
         </div>
 
-        <!-- Bento 5: Ricerca Globale Spotlight (Wide) -->
-        <div class="bento-card bento-wide">
+        <!-- Bento 5: Ricerca Globale Spotlight (Sky Blue Wide) -->
+        <div class="bento-card bento-wide card-sky">
+          <div class="card-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+            </svg>
+          </div>
           <div class="bento-header">
-            <span class="bento-tag" data-i18n="bento5_tag">Ricerca Rapida</span>
+            <span class="bento-tag" data-i18n="bento5_tag">05 / Ricerca Globale ⌘K.</span>
             <h3 data-i18n="bento5_title">Palette di Ricerca Globale ⌘K / ⌘F</h3>
             <p data-i18n="bento5_desc">Richiama in qualunque momento la ricerca stile Spotlight di macOS: trova istantaneamente corsi, dispense PDF, appelli d'esame e lezioni con filtri a pillola.</p>
           </div>
           <div class="bento-screenshot-wrapper" data-screenshot="assets/screenshots/search.png" data-caption="uni — Ricerca Globale Spotlight ⌘K">
-            <img src="assets/screenshots/search.png" alt="Ricerca globale rapida Spotlight in uni" class="bento-img" loading="lazy">
+            <img src="assets/screenshots/search.png" alt="Ricerca globale rapida Spotlight in uni" class="bento-img" width="1600" height="1000" loading="lazy" decoding="async">
             <div class="screenshot-hover-overlay">
               <span class="zoom-icon">🔍</span>
               <span class="zoom-text" data-i18n="zoom_screenshot">Clicca per ingrandire</span>
@@ -537,7 +521,14 @@
   <section class="download-section" id="download">
     <div class="container">
       <div class="download-card">
-        <img src="assets/icon.png" alt="uni app icon" class="download-app-icon">
+        <div class="card-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </div>
+        <img src="assets/icon.png" alt="uni app icon per macOS" class="download-app-icon" width="76" height="76" loading="lazy" decoding="async">
         <h2 class="download-title" data-i18n="dl_title">Scarica uni per il tuo Mac.</h2>
         <p class="download-desc" data-i18n="dl_desc">
           Compatibile con macOS (Apple Silicon & Intel). Scarica l'immagine disco .dmg oppure compila l'app direttamente dal codice sorgente su GitHub.
@@ -575,23 +566,15 @@
           </a>
         </div>
 
-        <!-- DMG Showcase Mockup Window -->
+        <div class="mobile-only-warning" role="note">
+          <span class="warning-badge-dot"></span>
+          <span data-i18n="mobile_warning_text">Disponibile solo per Mac • Download disabilitato su mobile</span>
+        </div>
+
+        <!-- DMG Showcase Clean Riquadro Frame -->
         <div class="dmg-showcase-container">
-          <div class="dmg-mockup-window">
-            <div class="dmg-mockup-titlebar">
-              <div class="traffic-lights">
-                <span class="traffic-light red"></span>
-                <span class="traffic-light yellow"></span>
-                <span class="traffic-light green"></span>
-              </div>
-              <div class="dmg-mockup-title">
-                <span class="dmg-title-icon">💿</span>
-                <span>uni</span>
-              </div>
-            </div>
-            <div class="dmg-mockup-body">
-              <img src="assets/dmg_showcase.png" alt="Finestra installazione DMG uni con grafica personalizzata" class="dmg-mockup-img" width="660" height="440" loading="lazy">
-            </div>
+          <div class="dmg-riquadro-frame">
+            <img src="assets/dmg_showcase.png" alt="Installazione DMG uni con grafica personalizzata" class="dmg-mockup-img" width="660" height="440" loading="lazy">
           </div>
           <p class="dmg-showcase-hint" data-i18n="dmg_showcase_hint">Esperienza d'installazione refined: apri il .dmg e trascina semplicemente l'app nella cartella Applicazioni.</p>
         </div>
@@ -691,25 +674,47 @@
     </div>
   </section>
 
+  </main>
+
   <!-- Footer -->
   <footer class="site-footer">
     <div class="container footer-content">
-      <div class="footer-left">
-        <div class="footer-brand">
-          <img src="assets/icon.png" alt="" class="footer-icon">
-          <span class="brand-slash">///</span>
-          <span class="brand-name">uni for macOS</span>
+      <div class="footer-top-row">
+        <div class="footer-left">
+          <div class="footer-brand">
+            <img src="assets/icon.png" alt="uni app icon" class="footer-icon" width="24" height="24" loading="lazy" decoding="async">
+            <span class="brand-slash">///</span>
+            <span class="brand-name">uni</span>
+            <span class="brand-tag">macOS</span>
+          </div>
+          <p class="footer-desc" data-i18n="footer_sub">Progettata con cura per gli studenti universitari su Mac.</p>
+          <p class="footer-credit" data-i18n="footer_credit">Designed by <a href="https://zinco.cc" target="_blank" rel="noopener">zinco.cc</a></p>
         </div>
-        <p data-i18n="footer_sub">Progettata con cura per gli studenti universitari su Mac.</p>
-        <p class="footer-credit" data-i18n="footer_credit">Designed by <a href="https://zinco.cc" target="_blank" rel="noopener">zinco.cc</a></p>
+
+        <div class="footer-back-to-top">
+          <a href="#" class="btn-back-to-top" id="btnBackToTop" aria-label="Torna in cima alla pagina">
+            <span data-i18n="footer_back_to_top">↑ Torna in cima</span>
+          </a>
+        </div>
       </div>
 
-      <div class="footer-links">
-        <a href="privacy.html" data-i18n="footer_privacy">Privacy &amp; Cookie Policy</a>
-        <a href="https://zinco.cc" target="_blank" rel="noopener" class="footer-portfolio-link">zinco.cc</a>
-        <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener">GitHub Repository</a>
-        <a href="https://github.com/zjncoo/uni/releases" target="_blank" rel="noopener">Releases & Changelog</a>
-        <a href="https://github.com/zjncoo/uni/blob/main/LICENSE" target="_blank" rel="noopener">Licenza MIT</a>
+      <div class="footer-links-grid">
+        <div class="footer-links-col">
+          <span class="footer-col-title" data-i18n="footer_col_project">Progetto</span>
+          <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener">GitHub Repository ↗</a>
+          <a href="https://github.com/zjncoo/uni/releases" target="_blank" rel="noopener">Releases &amp; Changelog ↗</a>
+          <a href="https://github.com/zjncoo/uni/blob/main/LICENSE" target="_blank" rel="noopener">Licenza MIT ↗</a>
+        </div>
+        <div class="footer-links-col">
+          <span class="footer-col-title" data-i18n="footer_col_resources">Info &amp; Risorse</span>
+          <a href="privacy.html" data-i18n="footer_privacy">Privacy &amp; Cookie Policy</a>
+          <a href="https://zinco.cc" target="_blank" rel="noopener" class="footer-portfolio-link">zinco.cc ↗</a>
+          <a href="llms.txt" target="_blank" rel="noopener">LLMs &amp; AI Context (llms.txt)</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <span class="footer-legal-tag" data-i18n="footer_tagline">100% Locale • Offline First • Swift &amp; AppKit</span>
       </div>
     </div>
   </footer>
@@ -723,6 +728,14 @@
         <img src="" alt="" id="lightboxImg" class="lightbox-image">
       </div>
       <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+  </div>
+
+  <!-- Mobile Notification Toast -->
+  <div class="mobile-toast" id="mobileToast" role="alert" aria-live="assertive" aria-hidden="true">
+    <div class="toast-content">
+      <span class="toast-icon">ℹ</span>
+      <span class="toast-message" data-i18n="mobile_toast_msg">uni è disponibile solo per Mac. Apri questo sito dal tuo computer per scaricare l'app.</span>
     </div>
   </div>
 

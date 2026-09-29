@@ -6,11 +6,58 @@
   <title>Privacy & Cookie Policy — uni for macOS</title>
   <meta name="description" content="Informativa sulla Privacy e Cookie Policy per il sito web e l'applicazione macOS uni. Trasparenza totale, zero tracciamento, 100% locale.">
   <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#F4F3EE">
   <link rel="canonical" href="https://uni.zinco.cc/privacy.html">
+  <link rel="manifest" href="site.webmanifest">
+
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:site_name" content="uni for macOS">
+  <meta property="og:title" content="Privacy & Cookie Policy — uni for macOS">
+  <meta property="og:description" content="Informativa sulla Privacy e Cookie Policy per l'applicazione macOS uni e il sito web ufficiale. Trasparenza totale, zero telemetria, 100% locale.">
+  <meta property="og:image" content="https://uni.zinco.cc/assets/screenshots/dashboard.png">
+  <meta property="og:url" content="https://uni.zinco.cc/privacy.html">
+  <meta property="og:type" content="article">
+  <meta property="og:locale" content="it_IT">
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Privacy & Cookie Policy — uni for macOS">
+  <meta name="twitter:description" content="Informativa sulla Privacy per l'applicazione uni per Mac: architettura 100% locale, zero tracciamento, massima trasparenza.">
+  <meta name="twitter:image" content="https://uni.zinco.cc/assets/icon.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/icon.png">
+
+  <!-- Structured Data: Schema.org JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": "https://uni.zinco.cc/privacy.html#webpage",
+    "url": "https://uni.zinco.cc/privacy.html",
+    "name": "Privacy & Cookie Policy — uni for macOS",
+    "description": "Informativa sulla Privacy e Cookie Policy per il sito web e l'applicazione macOS uni. Trasparenza totale, zero tracciamento, 100% locale.",
+    "inLanguage": ["it", "en"],
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://uni.zinco.cc/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Privacy Policy",
+          "item": "https://uni.zinco.cc/privacy.html"
+        }
+      ]
+    }
+  }
+  </script>
 
   <!-- Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,11 +67,14 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="legal-page">
+  <!-- Accessibility Skip Link -->
+  <a href="#main-content" class="skip-link">Salta al contenuto principale</a>
+
   <!-- Navigation Header -->
   <header class="site-header">
     <nav class="nav-container">
       <a href="index.html" class="nav-brand">
-        <img src="assets/icon.png" alt="uni icon" class="brand-icon">
+        <img src="assets/icon.png" alt="uni app icon per macOS" class="brand-icon" width="28" height="28">
         <span class="brand-slash">///</span>
         <span class="brand-name">uni</span>
         <span class="brand-tag">macOS</span>
@@ -43,20 +93,64 @@
       </div>
 
       <div class="nav-actions">
-        <!-- Language Switcher Pill -->
-        <div class="lang-switch-pill" id="langSwitch" role="button" tabindex="0" title="Cambia lingua / Switch language">
-          <span class="lang-option active" data-lang="it">IT</span>
-          <span class="lang-separator">/</span>
-          <span class="lang-option" data-lang="en">EN</span>
-        </div>
-
         <a href="index.html#download" class="btn-nav-download" data-i18n="nav_download">Scarica .dmg</a>
+        <button class="nav-hamburger" id="navHamburger" aria-label="Menu di navigazione" aria-expanded="false" aria-controls="mobileMenu">
+          <span class="hamburger-box">
+            <span class="hamburger-bar top"></span>
+            <span class="hamburger-bar bottom"></span>
+          </span>
+        </button>
       </div>
     </nav>
   </header>
 
+  <!-- Fullscreen Mobile Navigation Menu Overlay -->
+  <div class="mobile-menu-overlay" id="mobileMenu" aria-hidden="true">
+    <div class="mobile-menu-container">
+      <div class="mobile-menu-top">
+        <span class="mobile-menu-eyebrow">SELEZIONI • MENU</span>
+      </div>
+
+      <nav class="mobile-menu-list">
+        <a href="index.html" class="mobile-nav-item">
+          <span class="item-num">01</span>
+          <span class="item-label" data-i18n="nav_home">← Torna al sito</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="index.html#features" class="mobile-nav-item">
+          <span class="item-num">02</span>
+          <span class="item-label" data-i18n="nav_features">Funzionalità</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="index.html#faq" class="mobile-nav-item">
+          <span class="item-num">03</span>
+          <span class="item-label" data-i18n="nav_faq">FAQ</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener" class="mobile-nav-item">
+          <span class="item-num">04</span>
+          <span class="item-label">GitHub</span>
+          <span class="item-arrow">↗</span>
+        </a>
+      </nav>
+
+      <div class="mobile-menu-card">
+        <div class="mobile-card-badge">
+          <span class="mobile-badge-text">macOS Application</span>
+        </div>
+        <p class="mobile-card-msg" data-i18n="mobile_notice">
+          uni è concepita e sviluppata esclusivamente per Mac. Apri questo sito dal tuo computer per scaricare l'app.
+        </p>
+        <button class="mobile-copy-btn" id="btnCopyMacLink" type="button">
+          <span class="copy-text" data-i18n="mobile_copy_link">Copia link per Mac</span>
+          <span class="copy-icon">⎘</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Legal Content -->
-  <main class="legal-main">
+  <main class="legal-main" id="main-content">
     <div class="legal-container">
       <div class="legal-header">
         <span class="section-tag" data-i18n="legal_badge">Informativa Legale & Privacy</span>
@@ -204,21 +298,42 @@
   <!-- Footer -->
   <footer class="site-footer">
     <div class="container footer-content">
-      <div class="footer-left">
-        <div class="footer-brand">
-          <img src="assets/icon.png" alt="" class="footer-icon">
-          <span class="brand-slash">///</span>
-          <span class="brand-name">uni for macOS</span>
+      <div class="footer-top-row">
+        <div class="footer-left">
+          <div class="footer-brand">
+            <img src="assets/icon.png" alt="uni app icon" class="footer-icon" width="24" height="24" loading="lazy" decoding="async">
+            <span class="brand-slash">///</span>
+            <span class="brand-name">uni</span>
+            <span class="brand-tag">macOS</span>
+          </div>
+          <p class="footer-desc" data-i18n="footer_sub">Progettata con cura per gli studenti universitari su Mac.</p>
+          <p class="footer-credit" data-i18n="footer_credit">Designed by <a href="https://zinco.cc" target="_blank" rel="noopener">zinco.cc</a></p>
         </div>
-        <p data-i18n="footer_sub">Progettata con cura per gli studenti universitari su Mac.</p>
-        <p class="footer-credit" data-i18n="footer_credit">Designed by <a href="https://zinco.cc" target="_blank" rel="noopener">zinco.cc</a></p>
+
+        <div class="footer-back-to-top">
+          <a href="#" class="btn-back-to-top" id="btnBackToTop" aria-label="Torna in cima alla pagina">
+            <span data-i18n="footer_back_to_top">↑ Torna in cima</span>
+          </a>
+        </div>
       </div>
 
-      <div class="footer-links">
-        <a href="https://zinco.cc" target="_blank" rel="noopener" class="footer-portfolio-link">zinco.cc</a>
-        <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener">GitHub Repository</a>
-        <a href="https://github.com/zjncoo/uni/releases" target="_blank" rel="noopener">Releases & Changelog</a>
-        <a href="https://github.com/zjncoo/uni/blob/main/LICENSE" target="_blank" rel="noopener">Licenza MIT</a>
+      <div class="footer-links-grid">
+        <div class="footer-links-col">
+          <span class="footer-col-title" data-i18n="footer_col_project">Progetto</span>
+          <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener">GitHub Repository ↗</a>
+          <a href="https://github.com/zjncoo/uni/releases" target="_blank" rel="noopener">Releases &amp; Changelog ↗</a>
+          <a href="https://github.com/zjncoo/uni/blob/main/LICENSE" target="_blank" rel="noopener">Licenza MIT ↗</a>
+        </div>
+        <div class="footer-links-col">
+          <span class="footer-col-title" data-i18n="footer_col_resources">Info &amp; Risorse</span>
+          <a href="index.html" data-i18n="nav_home">← Torna al sito</a>
+          <a href="https://zinco.cc" target="_blank" rel="noopener" class="footer-portfolio-link">zinco.cc ↗</a>
+          <a href="llms.txt" target="_blank" rel="noopener">LLMs &amp; AI Context (llms.txt)</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <span class="footer-legal-tag" data-i18n="footer_tagline">100% Locale • Offline First • Swift &amp; AppKit</span>
       </div>
     </div>
   </footer>

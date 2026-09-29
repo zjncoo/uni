@@ -1,0 +1,25 @@
+{
+  "name": "uni — L'app accademica per Mac",
+  "short_name": "uni",
+  "description": "L'app accademica nativa per macOS: orari 24h da iCal, scadenze con priorità, media ponderata e zero-copy Finder.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F3EE",
+  "theme_color": "#F4F3EE",
+  "icons": [
+    {
+      "src": "assets/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["education", "productivity", "utilities"],
+  "lang": "it",
+  "dir": "ltr"
+}
