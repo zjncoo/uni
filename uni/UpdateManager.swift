@@ -295,18 +295,23 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
     }
 
     public func openDownloadedDMG() {
-        let downloadsFolder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-        let fallback = downloadsFolder?.appendingPathComponent("uni.dmg")
-        let fileURL = downloadedFileURL ?? fallback
+        let fileManager = FileManager.default
+        let cacheFolder = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
+        let candidates: [URL?] = [
+            downloadedFileURL,
+            cacheFolder?.appendingPathComponent("uni.dmg"),
+            fileManager.temporaryDirectory.appendingPathComponent("uni.dmg"),
+            fileManager.urls(for: .downloadsDirectory, in: .userDomainMask).first?.appendingPathComponent("uni.dmg")
+        ]
 
-        guard let url = fileURL, FileManager.default.fileExists(atPath: url.path) else {
+        guard let targetURL = candidates.compactMap({ $0 }).first(where: { fileManager.fileExists(atPath: $0.path) }) else {
             downloadAndInstall()
             return
         }
 
         DataManager.shared.saveData()
         self.showUpdateModal = false
-        _ = NSWorkspace.shared.open(url)
+        _ = NSWorkspace.shared.open(targetURL)
 
         // Terminate app so Finder displays the disk image and releases the lock on /Applications/uni.app
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
@@ -338,14 +343,40 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
         downloadTask: URLSessionDownloadTask,
         didFinishDownloadingTo location: URL
     ) {
-        let downloadsFolder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        let destination = downloadsFolder.appendingPathComponent("uni.dmg")
+        let fileManager = FileManager.default
+        
+        // 1. Target inside the App Sandbox Container (Caches or Temporary): always 100% accessible
+        let targetFolder = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? fileManager.temporaryDirectory
+        let destination = targetFolder.appendingPathComponent("uni.dmg")
+        
+        try? fileManager.removeItem(at: destination)
 
-        try? FileManager.default.removeItem(at: destination)
-
+        var savedSuccessfully = false
+        
+        // Try copyItem
         do {
-            try FileManager.default.moveItem(at: location, to: destination)
+            try fileManager.copyItem(at: location, to: destination)
+            savedSuccessfully = true
+        } catch {
+            // Fallback: try direct atomic data write
+            do {
+                let data = try Data(contentsOf: location)
+                try data.write(to: destination, options: .atomic)
+                savedSuccessfully = true
+            } catch {
+                savedSuccessfully = false
+            }
+        }
+        
+        // Optional: also attempt to copy to Downloads if permitted, for user convenience
+        if let downloadsFolder = fileManager.urls(for: .downloadsDirectory, in: .userDomainMask).first {
+            let downloadsDest = downloadsFolder.appendingPathComponent("uni.dmg")
+            try? fileManager.removeItem(at: downloadsDest)
+            try? fileManager.copyItem(at: destination, to: downloadsDest)
+        }
+
+        if savedSuccessfully {
             Task { @MainActor in
                 self.isDownloading = false
                 self.isDownloaded = true
@@ -353,10 +384,10 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
                 // Open DMG in Finder and close the app so macOS Finder allows replacing uni.app in /Applications
                 self.openDownloadedDMG()
             }
-        } catch {
+        } else {
             Task { @MainActor in
                 self.isDownloading = false
-                self.downloadErrorMessage = "Errore durante il salvataggio del file: \(error.localizedDescription)"
+                self.downloadErrorMessage = "Errore durante il salvataggio dell'aggiornamento. Apertura della pagina di download nel browser in corso..."
                 // Fallback: apri browser
                 self.openReleaseInBrowser()
             }
