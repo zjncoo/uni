@@ -25,7 +25,11 @@ public class AppleCalendarManager: ObservableObject {
     
     public var hasFullAccess: Bool {
         let status = EKEventStore.authorizationStatus(for: .event)
-        return status == .fullAccess || status == .authorized
+        if #available(macOS 14.0, *) {
+            return status == .fullAccess
+        } else {
+            return status == .authorized
+        }
     }
     
     private var eventMap: [String: String] = [:]

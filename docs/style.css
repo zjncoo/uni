@@ -1605,6 +1605,38 @@ h1, h2, h3, h4 {
   letter-spacing: 0.04em;
 }
 
+/* Footer Language Switcher */
+.btn-lang-toggle {
+  background: rgba(17, 22, 24, 0.05);
+  border: 1px solid rgba(17, 22, 24, 0.1);
+  border-radius: 9999px;
+  padding: 4px 11px;
+  font-size: 0.76rem;
+  font-weight: 550;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-fast);
+}
+
+.btn-lang-toggle:hover {
+  background: rgba(17, 22, 24, 0.09);
+  color: var(--text-primary);
+}
+
+.btn-lang-toggle .lang-option {
+  opacity: 0.55;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.btn-lang-toggle .lang-option.active {
+  opacity: 1;
+  color: var(--accent-blue, #0071E3);
+  font-weight: 650;
+}
+
 /* ===================================================================
    FAQ Section (Schema & SEO Optimized)
    =================================================================== */

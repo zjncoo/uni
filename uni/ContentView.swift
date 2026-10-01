@@ -26,6 +26,8 @@ struct ContentView: View {
     @State private var isShowingFocusTimer = false
     @State private var isShowingOnboarding = false
     @State private var isShowingWhatsNew = false
+    @State private var shouldShowOnboardingAfterWhatsNew = false
+    @State private var isShowingSupportModal = false
     
     // Global Contextual Creation Sheets (⌘N)
     @State private var isPresentingNewDeadlineSheet = false
@@ -197,10 +199,8 @@ struct ContentView: View {
                             
                             Spacer()
                             
-                            // Statistiche Compatte Media & CFU
-                            if dataManager.weightedAverage > 0 || dataManager.totalCfuTarget > 0 {
-                                sidebarStatsFooter
-                            }
+                            // Statistiche Compatte Media & CFU e Supporto
+                            sidebarStatsFooter
                             
                             // BARRA INFERIORE NAVBAR: Impostazioni in basso a sinistra + Bottone Rapido Configurabile
                             sidebarBottomActionBar
@@ -353,19 +353,33 @@ struct ContentView: View {
                 .environmentObject(themeManager)
                 .environmentObject(localizationManager)
         }
-        .sheet(isPresented: $isShowingWhatsNew) {
+        .sheet(isPresented: $isShowingWhatsNew, onDismiss: {
+            if shouldShowOnboardingAfterWhatsNew {
+                shouldShowOnboardingAfterWhatsNew = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    isShowingOnboarding = true
+                }
+            }
+        }) {
             WhatsNewModalView()
                 .environmentObject(themeManager)
                 .environmentObject(localizationManager)
         }
+        .sheet(isPresented: $isShowingSupportModal) {
+            SupportFeedbackModalView()
+                .environmentObject(themeManager)
+                .environmentObject(localizationManager)
+        }
         .onAppear {
+            let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.2"
+            let lastSeen = UserDefaults.standard.string(forKey: "uni_last_seen_release_notes")
+            
             if !dataManager.hasCompletedOnboarding {
                 isShowingOnboarding = true
-            } else {
-                let lastSeen = UserDefaults.standard.string(forKey: "uni_last_seen_release_notes")
-                if lastSeen != "1.4.1" {
-                    isShowingWhatsNew = true
-                }
+                UserDefaults.standard.set(currentVersion, forKey: "uni_last_seen_release_notes")
+            } else if lastSeen != currentVersion {
+                shouldShowOnboardingAfterWhatsNew = true
+                isShowingWhatsNew = true
             }
             NotificationManager.shared.requestAuthorization()
             NotificationManager.shared.scheduleAllReminders(
@@ -486,8 +500,35 @@ struct ContentView: View {
     }
 
     private var sidebarStatsFooter: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
+            // Bottone circolare col punto interrogativo per Supporto / Suggerimenti (sopra la linea che inquadra CURRENT GPA)
+            HStack {
+                Button {
+                    isShowingSupportModal = true
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.05))
+                            .frame(width: 22, height: 22)
+                        Image(systemName: "questionmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .overlay(
+                        Circle()
+                            .stroke(isDarkMode ? Color.white.opacity(0.12) : Color.black.opacity(0.08), lineWidth: 0.8)
+                    )
+                }
+                .buttonStyle(.plain)
+                .help(localizationManager.text(it: "Supporto & Suggerisci nuove funzionalità", en: "Support & Suggest new features"))
+                
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 2)
+            
             Divider().opacity(isDarkMode ? 0.2 : 0.4)
+            
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -514,7 +555,7 @@ struct ContentView: View {
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 6)
+            .padding(.bottom, 6)
         }
     }
 
@@ -744,7 +785,7 @@ struct UniSplashScreenView: View {
     @EnvironmentObject var themeManager: ThemeManager
     
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.1"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.2"
     }
     
     #if canImport(AppKit)

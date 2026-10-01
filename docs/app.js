@@ -15,7 +15,9 @@ const i18n = {
     nav_features: "Funzionalità",
     nav_panoramica: "Panoramica",
     nav_preview: "Panoramica",
+    nav_help: "Supporto",
     nav_download: "Scarica .dmg",
+    footer_help: "Supporto &amp; Feedback",
 
     riquadro_stats: "01 / RENDIMENTO & STATISTICHE",
     riquadro_heading: "Ciao Daniel 👋 la tua carriera è <strong>in perfetto orario</strong>",
@@ -154,14 +156,46 @@ const i18n = {
     footer_back_to_top: "↑ Torna in cima",
     footer_col_project: "Progetto",
     footer_col_resources: "Info &amp; Risorse",
-    footer_tagline: "100% Locale • Offline First • Swift &amp; AppKit"
+    footer_tagline: "100% Locale • Offline First • Swift &amp; AppKit",
+
+    help_badge: "SUPPORTO &amp; FEEDBACK • COMUNITÀ UNI",
+    help_title: "Come possiamo aiutarti?",
+    help_sub: "Segnala un bug o richiedi una nuova funzionalità per uni.",
+    help_type_label: "TIPO DI SEGNALAZIONE",
+    help_type_bug: "Segnala un Bug",
+    help_type_feat: "Suggerisci Funzionalità",
+    help_subject_label: "OGGETTO",
+    help_subject_ph: "Es. 'Aggiungere filtro per semestre' o 'Errore import iCal'",
+    help_desc_label: "DESCRIZIONE DETTAGLIATA",
+    help_desc_ph: "Descrivi il comportamento riscontrato o la novità richiesta...",
+    help_rating_label: "VALUTAZIONE GENERALE DI UNI",
+    help_rating_low: "1 - Molto scarsa",
+    help_rating_high: "5 - Eccellente",
+    help_submit_btn: "Invia Feedback",
+    help_submitting: "Invio in corso...",
+    help_success_title: "Feedback inviato con successo! 🎉",
+    help_success_desc: "Grazie per il tuo contributo: la tua risposta è stata registrata direttamente nel database di supporto di uni.",
+    help_success_another: "Invia un'altra segnalazione",
+    help_tip_title: "💡 Suggerimento per utenti Mac",
+    help_tip_desc: "Se usi l'app uni per macOS, puoi inviare feedback direttamente dal pulsante <strong>?</strong> nella barra laterale, che allega automaticamente la versione del sistema.",
+
+    notfound_badge: "ERRORE 404 • PAGINA NON TROVATA",
+    notfound_title: "Questa pagina non è all'ordine del giorno.",
+    notfound_desc: "Il link che hai seguito potrebbe essere errato, spostato o non più disponibile. Torna alla home o visita la pagina di supporto.",
+    notfound_btn_home: "Torna alla Home",
+    notfound_btn_help: "Centro Supporto &amp; Bug",
+    notfound_q_features: "Orari 24h, Sezione NEXT, Zero-Copy",
+    notfound_q_download: "Installazione per Apple Silicon &amp; Intel",
+    notfound_q_support: "Segnala problemi o suggerisci novità"
   },
 
   en: {
     nav_features: "Features",
     nav_panoramica: "Overview",
     nav_preview: "Overview",
+    nav_help: "Support",
     nav_download: "Download .dmg",
+    footer_help: "Support &amp; Feedback",
 
     riquadro_stats: "01 / PERFORMANCE & STATS",
     riquadro_heading: "Hello Daniel 👋 your academic career is <strong>right on schedule</strong>",
@@ -357,7 +391,37 @@ const i18n = {
     footer_back_to_top: "↑ Back to top",
     footer_col_project: "Project",
     footer_col_resources: "Info &amp; Resources",
-    footer_tagline: "100% Local • Offline First • Swift &amp; AppKit"
+    footer_tagline: "100% Local • Offline First • Swift &amp; AppKit",
+
+    help_badge: "SUPPORT &amp; FEEDBACK • UNI COMMUNITY",
+    help_title: "How can we help?",
+    help_sub: "Report a bug or suggest a new feature for uni.",
+    help_type_label: "SUBMISSION TYPE",
+    help_type_bug: "Bug Report",
+    help_type_feat: "Feature Request",
+    help_subject_label: "SUBJECT",
+    help_subject_ph: "E.g. 'Add semester filter' or 'iCal import issue'",
+    help_desc_label: "DETAILED DESCRIPTION",
+    help_desc_ph: "Describe the issue encountered or the desired feature...",
+    help_rating_label: "OVERALL RATING OF UNI",
+    help_rating_low: "1 - Very Poor",
+    help_rating_high: "5 - Excellent",
+    help_submit_btn: "Submit Feedback",
+    help_submitting: "Submitting...",
+    help_success_title: "Feedback submitted successfully! 🎉",
+    help_success_desc: "Thank you for your contribution! Your feedback has been recorded directly in the uni support database.",
+    help_success_another: "Submit another response",
+    help_tip_title: "💡 Tip for Mac users",
+    help_tip_desc: "If you're using the uni Mac app, you can submit feedback directly via the <strong>?</strong> button in the sidebar, which automatically attaches system diagnostic info.",
+
+    notfound_badge: "ERROR 404 • PAGE NOT FOUND",
+    notfound_title: "This page is not on the syllabus.",
+    notfound_desc: "The link you followed may be incorrect, moved, or no longer available. Head back home or visit our support page.",
+    notfound_btn_home: "Back to Home",
+    notfound_btn_help: "Support &amp; Bug Center",
+    notfound_q_features: "24h Schedules, NEXT section, Zero-Copy",
+    notfound_q_download: "Installer for Apple Silicon &amp; Intel",
+    notfound_q_support: "Report issues or suggest features"
   }
 };
 
@@ -365,6 +429,8 @@ const i18n = {
 // 2. Language Detection & Switching
 // ===================================================================
 let currentLanguage = 'it';
+window.i18n = i18n;
+window.currentLanguage = currentLanguage;
 
 function detectInitialLanguage() {
   // 1. Check local storage
@@ -382,6 +448,7 @@ function detectInitialLanguage() {
 
 function setLanguage(lang) {
   currentLanguage = lang;
+  window.currentLanguage = lang;
   localStorage.setItem('uni_site_lang', lang);
   document.documentElement.lang = lang;
 
@@ -395,6 +462,14 @@ function setLanguage(lang) {
     const key = el.getAttribute('data-i18n');
     if (i18n[lang] && i18n[lang][key]) {
       el.innerHTML = i18n[lang][key];
+    }
+  });
+
+  // Update translatable placeholders with data-i18n-placeholder
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (i18n[lang] && i18n[lang][key]) {
+      el.setAttribute('placeholder', i18n[lang][key]);
     }
   });
 

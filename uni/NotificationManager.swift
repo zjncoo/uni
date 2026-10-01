@@ -267,14 +267,16 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
         for deadline in deadlines where !deadline.isCompleted {
             let courseName = deadline.courseId.flatMap { courseDict[$0] } ?? "Materia"
             
+            let isEn = LocalizationManager.shared.currentLanguage == .english
+            
             // 24 Ore Prima
             if notify24hBefore {
                 let triggerDate24h = deadline.dueDate.addingTimeInterval(-86400)
                 if triggerDate24h > now {
                     scheduleSingleReminder(
                         id: "deadline-24h-\(deadline.id.uuidString)",
-                        title: "Scadenza domani: \(deadline.title)",
-                        body: "Corso: \(courseName) • Ricordati di completare l'attività.",
+                        title: isEn ? "Deadline tomorrow: \(deadline.title)" : "Scadenza domani: \(deadline.title)",
+                        body: isEn ? "Course: \(courseName) • Remember to complete the task." : "Corso: \(courseName) • Ricordati di completare l'attività.",
                         date: triggerDate24h
                     )
                 }
@@ -286,8 +288,8 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
                 if triggerDate1h > now {
                     scheduleSingleReminder(
                         id: "deadline-1h-\(deadline.id.uuidString)",
-                        title: "Scadenza imminente (1 ora): \(deadline.title)",
-                        body: "Corso: \(courseName) • Scade alle \(DateFormatter.timeOnly.string(from: deadline.dueDate))",
+                        title: isEn ? "Upcoming deadline (1 hour): \(deadline.title)" : "Scadenza imminente (1 ora): \(deadline.title)",
+                        body: isEn ? "Course: \(courseName) • Due at \(DateFormatter.timeOnly.string(from: deadline.dueDate))" : "Corso: \(courseName) • Scade alle \(DateFormatter.timeOnly.string(from: deadline.dueDate))",
                         date: triggerDate1h
                     )
                 }
@@ -297,8 +299,8 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
             if deadline.dueDate > now {
                 scheduleSingleReminder(
                     id: "deadline-exact-\(deadline.id.uuidString)",
-                    title: "Scadenza ORA: \(deadline.title)",
-                    body: "Corso: \(courseName) • Termine scaduto alle \(DateFormatter.timeOnly.string(from: deadline.dueDate))",
+                    title: isEn ? "Deadline NOW: \(deadline.title)" : "Scadenza ORA: \(deadline.title)",
+                    body: isEn ? "Course: \(courseName) • Deadline reached at \(DateFormatter.timeOnly.string(from: deadline.dueDate))" : "Corso: \(courseName) • Termine scaduto alle \(DateFormatter.timeOnly.string(from: deadline.dueDate))",
                     date: deadline.dueDate
                 )
             }
@@ -306,7 +308,8 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
         
         // 2. Programma notifiche per Assignments (Compiti / Consegne)
         for assignment in assignments where !assignment.isCompleted {
-            let courseName = courseDict[assignment.courseId] ?? "Materia"
+            let courseName = courseDict[assignment.courseId] ?? (LocalizationManager.shared.currentLanguage == .english ? "Course" : "Materia")
+            let isEn = LocalizationManager.shared.currentLanguage == .english
             
             // 24 Ore Prima
             if notify24hBefore {
@@ -314,8 +317,8 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
                 if triggerDate24h > now {
                     scheduleSingleReminder(
                         id: "assignment-24h-\(assignment.id.uuidString)",
-                        title: "Consegna domani: \(assignment.title)",
-                        body: "Corso: \(courseName) • Verifica di aver caricato tutti i file.",
+                        title: isEn ? "Assignment due tomorrow: \(assignment.title)" : "Consegna domani: \(assignment.title)",
+                        body: isEn ? "Course: \(courseName) • Check that you uploaded all required files." : "Corso: \(courseName) • Verifica di aver caricato tutti i file.",
                         date: triggerDate24h
                     )
                 }
@@ -327,8 +330,8 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
                 if triggerDate1h > now {
                     scheduleSingleReminder(
                         id: "assignment-1h-\(assignment.id.uuidString)",
-                        title: "Consegna tra 1 ora: \(assignment.title)",
-                        body: "Corso: \(courseName) • Scadenza alle \(DateFormatter.timeOnly.string(from: assignment.dueDate))",
+                        title: isEn ? "Assignment due in 1 hour: \(assignment.title)" : "Consegna tra 1 ora: \(assignment.title)",
+                        body: isEn ? "Course: \(courseName) • Due at \(DateFormatter.timeOnly.string(from: assignment.dueDate))" : "Corso: \(courseName) • Scadenza alle \(DateFormatter.timeOnly.string(from: assignment.dueDate))",
                         date: triggerDate1h
                     )
                 }
@@ -337,8 +340,8 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
             if assignment.dueDate > now {
                 scheduleSingleReminder(
                     id: "assignment-exact-\(assignment.id.uuidString)",
-                    title: "Termine consegna: \(assignment.title)",
-                    body: "Corso: \(courseName) • Ultimi minuti per la consegna!",
+                    title: isEn ? "Assignment due now: \(assignment.title)" : "Termine consegna: \(assignment.title)",
+                    body: isEn ? "Course: \(courseName) • Final minutes for submission!" : "Corso: \(courseName) • Ultimi minuti per la consegna!",
                     date: assignment.dueDate
                 )
             }

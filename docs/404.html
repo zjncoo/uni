@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — Pagina Non Trovata • uni for macOS</title>
+  <meta name="description" content="La pagina che stai cercando non è disponibile o è stata spostata. Torna alla home di uni per macOS.">
+  <meta name="robots" content="noindex, follow">
+  <meta name="theme-color" content="#F4F3EE">
+
+  <!-- Favicon & Icons -->
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/icon.png">
+  <link rel="manifest" href="site.webmanifest">
+
+  <!-- Open Graph -->
+  <meta property="og:site_name" content="uni for macOS">
+  <meta property="og:title" content="404 — Pagina Non Trovata • uni">
+  <meta property="og:description" content="La pagina che stai cercando non è disponibile. Torna alla home di uni per Mac.">
+  <meta property="og:image" content="https://uni.zinco.cc/assets/screenshots/dashboard.png">
+  <meta property="og:url" content="https://uni.zinco.cc/404.html">
+  <meta property="og:type" content="website">
+
+  <!-- Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    .notfound-main {
+      min-height: calc(100vh - 180px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 120px 24px 80px;
+    }
+
+    .notfound-container {
+      max-width: 720px;
+      width: 100%;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .notfound-card {
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(17, 22, 24, 0.08);
+      border-radius: 28px;
+      padding: 56px 44px 44px;
+      box-shadow: 0 20px 50px -12px rgba(17, 22, 24, 0.08);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    [data-theme="dark"] .notfound-card {
+      background: rgba(26, 31, 38, 0.72);
+      border-color: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.45);
+    }
+
+    .notfound-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-blue, #0071E3), transparent);
+      opacity: 0.6;
+    }
+
+    .notfound-big-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 9999px;
+      background: rgba(0, 113, 227, 0.08);
+      border: 1px solid rgba(0, 113, 227, 0.16);
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--accent-blue, #0071E3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: var(--font-mono, monospace);
+      margin-bottom: 22px;
+    }
+
+    .notfound-digits {
+      font-size: clamp(4.5rem, 12vw, 7.5rem);
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      line-height: 0.95;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      margin: 0 0 16px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .notfound-digits .slash-accent {
+      color: var(--accent-blue, #0071E3);
+      font-weight: 300;
+      opacity: 0.8;
+      font-size: 0.75em;
+    }
+
+    .notfound-title {
+      font-size: clamp(1.4rem, 3.5vw, 1.9rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      margin: 0 0 12px 0;
+      line-height: 1.25;
+    }
+
+    .notfound-desc {
+      font-size: 0.98rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      max-width: 520px;
+      margin: 0 auto 32px;
+    }
+
+    .notfound-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 38px;
+    }
+
+    .btn-notfound-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-blue, #0071E3);
+      color: #FFFFFF !important;
+      font-size: 0.92rem;
+      font-weight: 550;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      text-decoration: none;
+      box-shadow: 0 4px 16px -2px rgba(0, 113, 227, 0.35);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn-notfound-primary:hover {
+      background: #0077ED;
+      transform: translateY(-1.5px);
+      box-shadow: 0 8px 24px -2px rgba(0, 113, 227, 0.45);
+    }
+
+    .btn-notfound-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(17, 22, 24, 0.04);
+      border: 1px solid rgba(17, 22, 24, 0.1);
+      color: var(--text-primary) !important;
+      font-size: 0.92rem;
+      font-weight: 500;
+      padding: 12px 22px;
+      border-radius: 9999px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    [data-theme="dark"] .btn-notfound-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-notfound-secondary:hover {
+      background: rgba(17, 22, 24, 0.08);
+      transform: translateY(-1px);
+    }
+
+    [data-theme="dark"] .btn-notfound-secondary:hover {
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    /* Quick Links Grid */
+    .notfound-quick-grid {
+      border-top: 1px solid rgba(17, 22, 24, 0.08);
+      padding-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      text-align: left;
+    }
+
+    [data-theme="dark"] .notfound-quick-grid {
+      border-top-color: rgba(255, 255, 255, 0.08);
+    }
+
+    @media (max-width: 620px) {
+      .notfound-card {
+        padding: 40px 22px 30px;
+        border-radius: 20px;
+      }
+      .notfound-quick-grid {
+        grid-template-columns: 1fr;
+      }
+      .notfound-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+      .btn-notfound-primary, .btn-notfound-secondary {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    .quick-link-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(17, 22, 24, 0.025);
+      border: 1px solid rgba(17, 22, 24, 0.05);
+      text-decoration: none;
+      color: var(--text-primary);
+      transition: all 0.18s ease;
+    }
+
+    [data-theme="dark"] .quick-link-box {
+      background: rgba(255, 255, 255, 0.025);
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .quick-link-box:hover {
+      background: rgba(0, 113, 227, 0.06);
+      border-color: rgba(0, 113, 227, 0.2);
+      transform: translateY(-1.5px);
+    }
+
+    .quick-link-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .quick-link-sub {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body class="legal-page">
+  <!-- Accessibility Skip Link -->
+  <a href="#main-content" class="skip-link">Salta al contenuto principale</a>
+
+  <!-- Navigation Header -->
+  <header class="site-header">
+    <nav class="nav-container">
+      <a href="index.html" class="nav-brand">
+        <img src="assets/icon.png" alt="uni app icon per macOS" class="brand-icon" width="28" height="28">
+        <span class="brand-slash">///</span>
+        <span class="brand-name">uni</span>
+        <span class="brand-tag">macOS</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="index.html" data-i18n="nav_home">← Torna al sito</a>
+        <a href="index.html#features" data-i18n="nav_features">Funzionalità</a>
+        <a href="index.html#faq" data-i18n="nav_faq">FAQ</a>
+        <a href="help.html" data-i18n="nav_help">Supporto</a>
+        <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener" class="nav-github-link">
+          <svg class="gh-svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+      </div>
+
+      <div class="nav-actions">
+        <a href="index.html#download" class="btn-nav-download" data-i18n="nav_download">Scarica .dmg</a>
+        <button class="nav-hamburger" id="navHamburger" aria-label="Menu di navigazione" aria-expanded="false" aria-controls="mobileMenu">
+          <span class="hamburger-box">
+            <span class="hamburger-bar top"></span>
+            <span class="hamburger-bar bottom"></span>
+          </span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Fullscreen Mobile Navigation Menu Overlay -->
+  <div class="mobile-menu-overlay" id="mobileMenu" aria-hidden="true">
+    <div class="mobile-menu-container">
+      <div class="mobile-menu-top">
+        <span class="mobile-menu-eyebrow">SELEZIONI • MENU</span>
+      </div>
+
+      <nav class="mobile-menu-list">
+        <a href="index.html" class="mobile-nav-item">
+          <span class="item-num">01</span>
+          <span class="item-label">Home</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="index.html#features" class="mobile-nav-item">
+          <span class="item-num">02</span>
+          <span class="item-label" data-i18n="nav_features">Funzionalità</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="index.html#faq" class="mobile-nav-item">
+          <span class="item-num">03</span>
+          <span class="item-label" data-i18n="nav_faq">FAQ</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="help.html" class="mobile-nav-item">
+          <span class="item-num">04</span>
+          <span class="item-label" data-i18n="footer_help">Supporto &amp; Feedback</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="privacy.html" class="mobile-nav-item">
+          <span class="item-num">05</span>
+          <span class="item-label" data-i18n="footer_privacy">Privacy Policy</span>
+          <span class="item-arrow">→</span>
+        </a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- 404 Main Content -->
+  <main class="notfound-main" id="main-content">
+    <div class="notfound-container">
+      <div class="notfound-card">
+        <div class="notfound-big-badge">
+          <span>⚠️</span>
+          <span data-i18n="notfound_badge">ERRORE 404 • PAGINA NON TROVATA</span>
+        </div>
+
+        <div class="notfound-digits">
+          <span>4</span><span class="slash-accent">///</span><span>4</span>
+        </div>
+
+        <h1 class="notfound-title" data-i18n="notfound_title">Questa pagina non è all'ordine del giorno.</h1>
+        <p class="notfound-desc" data-i18n="notfound_desc">Il link che hai seguito potrebbe essere errato, spostato o non più disponibile. Torna alla home o visita la pagina di supporto.</p>
+
+        <div class="notfound-actions">
+          <a href="index.html" class="btn-notfound-primary" data-i18n="notfound_btn_home">
+            <span>←</span>
+            <span>Torna alla Home</span>
+          </a>
+          <a href="help.html" class="btn-notfound-secondary" data-i18n="notfound_btn_help">
+            <span>Centro Supporto &amp; Bug</span>
+          </a>
+          <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener" class="btn-notfound-secondary">
+            <span>GitHub ↗</span>
+          </a>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="notfound-quick-grid">
+          <a href="index.html#features" class="quick-link-box">
+            <span class="quick-link-title">
+              <span data-i18n="nav_features">Funzionalità</span>
+              <span>→</span>
+            </span>
+            <span class="quick-link-sub" data-i18n="notfound_q_features">Orari 24h, Sezione NEXT, Zero-Copy</span>
+          </a>
+          <a href="index.html#download" class="quick-link-box">
+            <span class="quick-link-title">
+              <span data-i18n="nav_download">Scarica .dmg</span>
+              <span>↓</span>
+            </span>
+            <span class="quick-link-sub" data-i18n="notfound_q_download">Installazione per Apple Silicon &amp; Intel</span>
+          </a>
+          <a href="help.html" class="quick-link-box">
+            <span class="quick-link-title">
+              <span data-i18n="nav_help">Supporto</span>
+              <span>💬</span>
+            </span>
+            <span class="quick-link-sub" data-i18n="notfound_q_support">Segnala problemi o suggerisci novità</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <div class="footer-top-row">
+        <div class="footer-left">
+          <div class="footer-brand">
+            <img src="assets/icon.png" alt="uni app icon" class="footer-icon" width="24" height="24" loading="lazy" decoding="async">
+            <span class="brand-slash">///</span>
+            <span class="brand-name">uni</span>
+            <span class="brand-tag">macOS</span>
+          </div>
+          <p class="footer-desc" data-i18n="footer_sub">Progettata con cura per gli studenti universitari su Mac.</p>
+          <p class="footer-credit" data-i18n="footer_credit">Designed by <a href="https://zinco.cc" target="_blank" rel="noopener">zinco.cc</a></p>
+        </div>
+
+        <div class="footer-back-to-top">
+          <a href="#" class="btn-back-to-top" id="btnBackToTop" aria-label="Torna in cima alla pagina">
+            <span data-i18n="footer_back_to_top">↑ Torna in cima</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-links-grid">
+        <div class="footer-links-col">
+          <span class="footer-col-title" data-i18n="footer_col_project">Progetto</span>
+          <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener">GitHub Repository ↗</a>
+          <a href="https://github.com/zjncoo/uni/releases" target="_blank" rel="noopener">Releases &amp; Changelog ↗</a>
+          <a href="https://github.com/zjncoo/uni/blob/main/LICENSE" target="_blank" rel="noopener">Licenza MIT ↗</a>
+        </div>
+        <div class="footer-links-col">
+          <span class="footer-col-title" data-i18n="footer_col_resources">Info &amp; Risorse</span>
+          <a href="help.html" data-i18n="footer_help">Supporto &amp; Feedback</a>
+          <a href="index.html" data-i18n="nav_home">← Torna al sito</a>
+          <a href="https://zinco.cc" target="_blank" rel="noopener" class="footer-portfolio-link">zinco.cc ↗</a>
+          <a href="privacy.html" data-i18n="footer_privacy">Privacy Policy</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <span class="footer-legal-tag" data-i18n="footer_tagline">100% Locale • Offline First • Swift &amp; AppKit</span>
+        <button class="btn-lang-toggle" id="langSwitch" type="button" aria-label="Cambia lingua / Switch language">
+          <span class="lang-option" data-lang="it">IT</span>
+          <span>/</span>
+          <span class="lang-option" data-lang="en">EN</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

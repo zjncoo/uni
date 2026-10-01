@@ -17,6 +17,7 @@ struct AssignmentsView: View {
     @EnvironmentObject var localizationManager: LocalizationManager
     
     @State private var filterCompleted = false
+    @State private var selectedCourseId: UUID? = nil
     @State private var searchText = ""
     @State private var isPresentingNewAssignment = false
     @State private var assignmentToEdit: Assignment? = nil
@@ -37,10 +38,21 @@ struct AssignmentsView: View {
         return f
     }()
     
+    private var selectedCourseName: String {
+        if let id = selectedCourseId, let course = dataManager.courses.first(where: { $0.id == id }) {
+            return course.name
+        }
+        return localizationManager.text(it: "Tutti i Corsi", en: "All Courses")
+    }
+    
     var filteredAssignments: [Assignment] {
-        let base = dataManager.assignments
+        var base = dataManager.assignments
             .filter { filterCompleted ? $0.isCompleted : !$0.isCompleted }
             .sorted { $0.dueDate < $1.dueDate }
+        
+        if let courseId = selectedCourseId {
+            base = base.filter { $0.courseId == courseId }
+        }
         
         let clean = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if clean.isEmpty {
@@ -79,6 +91,53 @@ struct AssignmentsView: View {
                                 filterCompleted = true
                             }
                         }
+                        
+                        // Menu a tendina per filtrare per Corso
+                        Menu {
+                            Button {
+                                selectedCourseId = nil
+                            } label: {
+                                HStack {
+                                    Text(localizationManager.text(it: "Tutti i Corsi", en: "All Courses"))
+                                    if selectedCourseId == nil {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                            
+                            if !dataManager.courses.isEmpty {
+                                Divider()
+                                ForEach(dataManager.courses) { course in
+                                    Button {
+                                        selectedCourseId = course.id
+                                    } label: {
+                                        HStack {
+                                            Text(course.name)
+                                            if selectedCourseId == course.id {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: selectedCourseId == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                                    .font(.system(size: 11, weight: .medium))
+                                Text(selectedCourseName)
+                                    .font(UniFont.subheadline())
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 9))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(selectedCourseId != nil ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
+                            .foregroundStyle(selectedCourseId != nil ? themeManager.accentColor : .primary)
+                            .overlay(Rectangle().stroke(selectedCourseId != nil ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1))
+                            .clipShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                         
                         Spacer()
                         
@@ -153,7 +212,7 @@ struct AssignmentsView: View {
                 dataManager.assignments.append(newOne)
                 dataManager.saveData()
                 NotificationManager.shared.notify(
-                    title: "Assignment creato",
+                    title: localizationManager.text(it: "Assignment creato", en: "Assignment created"),
                     message: newOne.title,
                     type: .success,
                     icon: "doc.badge.plus"
@@ -166,7 +225,7 @@ struct AssignmentsView: View {
                     dataManager.assignments[idx] = updated
                     dataManager.saveData()
                     NotificationManager.shared.notify(
-                        title: "Assignment aggiornato",
+                        title: localizationManager.text(it: "Assignment aggiornato", en: "Assignment updated"),
                         message: updated.title,
                         type: .info,
                         icon: "doc.text"
@@ -218,7 +277,7 @@ struct AssignmentsView: View {
             }
             
             NotificationManager.shared.notify(
-                title: completed ? "Assignment completato! 🎉" : "Assignment riaperto",
+                title: completed ? localizationManager.text(it: "Assignment completato! 🎉", en: "Assignment completed! 🎉") : localizationManager.text(it: "Assignment riaperto", en: "Assignment reopened"),
                 message: assignment.title,
                 type: completed ? .success : .info,
                 icon: completed ? "checkmark.circle.fill" : "circle",
@@ -248,7 +307,7 @@ struct AssignmentsView: View {
         dataManager.assignments.removeAll { $0.id == assignment.id }
         dataManager.saveData()
         NotificationManager.shared.notify(
-            title: "Assignment rimosso",
+            title: localizationManager.text(it: "Assignment rimosso", en: "Assignment removed"),
             message: assignment.title,
             type: .warning,
             icon: "trash"
@@ -583,38 +642,42 @@ struct AssignmentCardView: View {
                         }
                         
                         // SEZIONE LINK WEB (Se presente)
-                        if let link = assignment.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            HStack(spacing: 8) {
-                                Image(systemName: "link")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(themeManager.accentColor)
-                                
-                                Text(link)
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                
-                                Spacer()
-                                
-                                Button {
-                                    AppSystemHelper.openWebURL(urlString: link)
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "arrow.up.forward.square")
-                                        Text(localizationManager.text(it: "Apri Link", en: "Open Link"))
+                        if !assignment.allLinks.isEmpty {
+                            VStack(spacing: 6) {
+                                ForEach(assignment.allLinks, id: \.self) { link in
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "link")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(themeManager.accentColor)
+                                        
+                                        Text(link)
+                                            .font(UniFont.caption())
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                        
+                                        Spacer()
+                                        
+                                        Button {
+                                            AppSystemHelper.openWebURL(urlString: link)
+                                        } label: {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "arrow.up.forward.square")
+                                                Text(localizationManager.text(it: "Apri Link", en: "Open Link"))
+                                            }
+                                            .font(UniFont.caption())
+                                            .fontWeight(.medium)
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .help(link)
                                     }
-                                    .font(UniFont.caption())
-                                    .fontWeight(.medium)
+                                    .padding(8)
+                                    .background(Color.primary.opacity(0.03))
+                                    .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                                    .clipShape(Rectangle())
                                 }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .help(link)
                             }
-                            .padding(8)
-                            .background(Color.primary.opacity(0.03))
-                            .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
-                            .clipShape(Rectangle())
                         }
                         
                         // Righina con i pulsanti Modifica ed Elimina
@@ -692,7 +755,7 @@ struct AssignmentEditorSheet: View {
     @State private var dueDate: Date = Date().addingTimeInterval(86400 * 7)
     @State private var details: String = ""
     @State private var weightPercent: Int = 0
-    @State private var linkURL: String = ""
+    @State private var linkURLs: [String] = [""]
     @State private var status: AssignmentStatus = .notStarted
     
     init(assignmentToEdit: Assignment?, onSave: @escaping (Assignment) -> Void) {
@@ -703,7 +766,8 @@ struct AssignmentEditorSheet: View {
         _dueDate = State(initialValue: assignmentToEdit?.dueDate ?? Date().addingTimeInterval(86400 * 7))
         _details = State(initialValue: assignmentToEdit?.details ?? "")
         _weightPercent = State(initialValue: assignmentToEdit?.weightPercent ?? 0)
-        _linkURL = State(initialValue: assignmentToEdit?.linkURL ?? "")
+        let existing = assignmentToEdit?.allLinks ?? []
+        _linkURLs = State(initialValue: existing.isEmpty ? [""] : existing)
         _status = State(initialValue: assignmentToEdit?.status ?? .notStarted)
     }
     
@@ -757,8 +821,58 @@ struct AssignmentEditorSheet: View {
                     Stepper(localizationManager.text(it: "Peso sul voto: \(weightPercent)%", en: "Grade Weight: \(weightPercent)%"), value: $weightPercent, in: 0...100, step: 5)
                 }
                 
-                Section(localizationManager.text(it: "Link & Risorse Web", en: "Link & Web Resources")) {
-                    TextField(localizationManager.text(it: "https://... (sito consegna, repository o specifiche)", en: "https://... (submission portal, repo or specs)"), text: $linkURL)
+                Section {
+                    ForEach(linkURLs.indices, id: \.self) { idx in
+                        HStack(spacing: 8) {
+                            Image(systemName: "link")
+                                .font(.system(size: 11))
+                                .foregroundStyle(themeManager.accentColor)
+                            TextField(localizationManager.text(it: "https://... (sito consegna, repository o specifiche)", en: "https://... (submission portal, repo or specs)"), text: $linkURLs[idx])
+                                .textFieldStyle(.plain)
+                            
+                            if linkURLs.count > 1 {
+                                Button {
+                                    linkURLs.remove(at: idx)
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .help(localizationManager.text(it: "Rimuovi questo link", en: "Remove this link"))
+                            }
+                        }
+                    }
+                    
+                    Button {
+                        linkURLs.append("")
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 13))
+                            Text(localizationManager.text(it: "Aggiungi altro link", en: "Add another link"))
+                                .font(UniFont.caption())
+                        }
+                        .foregroundStyle(themeManager.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                } header: {
+                    HStack {
+                        Text(localizationManager.text(it: "Link & Risorse Web", en: "Links & Web Resources"))
+                        Spacer()
+                        Button {
+                            linkURLs.append("")
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 10, weight: .bold))
+                                .padding(4)
+                                .background(themeManager.accentColor.opacity(0.12), in: Circle())
+                                .foregroundStyle(themeManager.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                        .help(localizationManager.text(it: "Aggiungi link (+)", en: "Add link (+)"))
+                    }
                 }
                 
                 Section(localizationManager.text(it: "Istruzioni / Note", en: "Instructions / Notes")) {
@@ -775,7 +889,7 @@ struct AssignmentEditorSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Spacer()
                 Button(localizationManager.text(it: "Salva", en: "Save")) {
-                    let cleanLink = linkURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let cleanLinks = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
                     let updated = Assignment(
                         id: assignmentToEdit?.id ?? UUID(),
                         title: title.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -788,7 +902,8 @@ struct AssignmentEditorSheet: View {
                         localFilePath: assignmentToEdit?.localFilePath,
                         localFileName: assignmentToEdit?.localFileName,
                         localFileSize: assignmentToEdit?.localFileSize,
-                        linkURL: cleanLink.isEmpty ? nil : cleanLink
+                        linkURL: cleanLinks.first,
+                        linkURLs: cleanLinks
                     )
                     onSave(updated)
                     dismiss()
@@ -800,7 +915,7 @@ struct AssignmentEditorSheet: View {
             }
             .padding(16)
         }
-        .frame(width: 480, height: 480)
+        .frame(width: 480, height: 520)
         .onAppear {
             if assignmentToEdit == nil, let firstCourse = dataManager.courses.first {
                 courseId = firstCourse.id

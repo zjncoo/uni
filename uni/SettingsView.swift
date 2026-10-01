@@ -31,24 +31,138 @@ struct SettingsView: View {
     @State private var isShowingAddShortcutSheet = false
     @State private var editingShortcut: QuickShortcutLink? = nil
     @State private var isShowingCalendarManager: Bool = false
+    @State private var isShowingSupportModal: Bool = false
+    @State private var selectedTab: SettingsTab = .general
+    
+    // Category Tab Bar
+    private var categoryTabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(SettingsTab.allCases) { tab in
+                    categoryTabButton(for: tab)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+    
+    private func categoryTabButton(for tab: SettingsTab) -> some View {
+        let isSelected = selectedTab == tab
+        return Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                selectedTab = tab
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(tab.title(isItalian: localizationManager.currentLanguage == .italian))
+                    .font(UniFont.caption())
+                    .fontWeight(isSelected ? .bold : .medium)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(isSelected ? themeManager.accentColor.opacity(0.14) : Color.primary.opacity(0.04))
+            .foregroundStyle(isSelected ? themeManager.accentColor : .secondary)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 26) {
                 // Header
                 UniHeader(
                     localizationManager.t(.settingsTitle),
                     subtitle: localizationManager.t(.settingsSubtitle)
                 )
                 
-                // SEZIONE 0: PROFILO STUDENTE & ATENEO
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.currentLanguage == .italian ? "PROFILO & ATENEO" : "STUDENT PROFILE & UNIVERSITY")
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
-                    UniCard(padding: 18) {
+                // Selettore Categoria con pillole
+                categoryTabBar
+                
+                // Categoria 1: GENERALE & PROFILO
+                if selectedTab == .general || selectedTab == .all {
+                    Group {
+                        profileSection
+                        navbarShortcutsSection
+                        languageSection
+                    }
+                }
+                
+                // Categoria 2: ASPETTO & STILE
+                if selectedTab == .appearance || selectedTab == .all {
+                    Group {
+                        themeSection
+                        accentColorSection
+                        typographySection
+                    }
+                }
+                
+                // Categoria 3: CALENDARI & NOTIFICHE
+                if selectedTab == .calendarsAlerts || selectedTab == .all {
+                    Group {
+                        calendarSyncSection
+                        notificationsSection
+                    }
+                }
+                
+                // Categoria 4: SISTEMA & DATI
+                if selectedTab == .dataSystem || selectedTab == .all {
+                    Group {
+                        softwareUpdateSection
+                        setupGuideSection
+                        dataBackupSection
+                        quotesSection
+                        aboutCreditsSection
+                    }
+                }
+            }
+            .padding(32)
+        }
+        .sheet(isPresented: $isShowingOnboarding) {
+            OnboardingWizardView()
+        }
+        .sheet(isPresented: $isShowingAddShortcutSheet) {
+            QuickShortcutEditorSheet(existingShortcut: nil)
+        }
+        .sheet(item: $editingShortcut) { shortcut in
+            QuickShortcutEditorSheet(existingShortcut: shortcut)
+        }
+        .sheet(isPresented: $isShowingCalendarManager) {
+            CalendarManagerModalView()
+        }
+        .sheet(isPresented: $isShowingSupportModal) {
+            SupportFeedbackModalView()
+                .environmentObject(themeManager)
+                .environmentObject(localizationManager)
+        }
+        .alert(localizationManager.t(.clearConfirmTitle), isPresented: $showingClearAlert) {
+            Button(localizationManager.t(.cancel), role: .cancel) {}
+            Button(localizationManager.t(.delete), role: .destructive) {
+                dataManager.clearAllData()
+                isShowingOnboarding = true
+            }
+        } message: {
+            Text(localizationManager.t(.clearConfirmMessage))
+        }
+    }
+    
+
+    // MARK: - Category Sections
+    @ViewBuilder
+    private var profileSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "person.crop.circle",
+                title: localizationManager.text(it: "Profilo Studente & Ateneo", en: "Student Profile & University"),
+                subtitle: localizationManager.text(it: "Personalizza il tuo nome e il collegamento rapido al portale o sito del tuo ateneo.", en: "Customize your name and quick shortcut link to your university portal or website.")
+            )
+                        UniCard(padding: 18) {
                         VStack(alignment: .leading, spacing: 14) {
                             Text(localizationManager.currentLanguage == .italian ? "Personalizza il tuo nome e il link rapido al portale o sito della tua università." : "Customize your name and quick shortcut link to your university portal or website.")
                                 .font(UniFont.subheadline())
@@ -63,7 +177,7 @@ struct SettingsView: View {
                                     TextField(localizationManager.currentLanguage == .italian ? "Es. Marco" : "e.g. Alex", text: $dataManager.studentName)
                                         .textFieldStyle(.roundedBorder)
                                         .font(UniFont.body())
-                                        .onChange(of: dataManager.studentName) { dataManager.saveData() }
+                                        .onChange(of: dataManager.studentName) { _, _ in dataManager.saveData() }
                                 }
                                 
                                 GridRow {
@@ -73,7 +187,7 @@ struct SettingsView: View {
                                     TextField(localizationManager.currentLanguage == .italian ? "Es. Politecnico di Milano, UniMi, UniPD..." : "e.g. Stanford, MIT, Oxford...", text: $dataManager.universityName)
                                         .textFieldStyle(.roundedBorder)
                                         .font(UniFont.body())
-                                        .onChange(of: dataManager.universityName) { dataManager.saveData() }
+                                        .onChange(of: dataManager.universityName) { _, _ in dataManager.saveData() }
                                 }
                                 
                                 GridRow {
@@ -84,7 +198,7 @@ struct SettingsView: View {
                                         TextField("https://...", text: $dataManager.universityPortalURL)
                                             .textFieldStyle(.roundedBorder)
                                             .font(UniFont.body())
-                                            .onChange(of: dataManager.universityPortalURL) { dataManager.saveData() }
+                                            .onChange(of: dataManager.universityPortalURL) { _, _ in dataManager.saveData() }
                                         
                                         if !dataManager.universityPortalURL.isEmpty {
                                             Button {
@@ -101,15 +215,19 @@ struct SettingsView: View {
                             }
                         }
                     }
-                }
-                
-                // SEZIONE 0.5: BARRA DI NAVIGAZIONE & SCORCIATOIE HOME
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.currentLanguage == .italian ? "BARRA DI NAVIGAZIONE & SCORCIATOIE" : "NAVBAR & HOME SHORTCUTS")
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
+
+        }
+    }
+
+    @ViewBuilder
+    private var navbarShortcutsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "sidebar.left",
+                title: localizationManager.text(it: "Barra di Navigazione & Scorciatoie", en: "Navigation Bar & Shortcuts"),
+                subtitle: localizationManager.text(it: "Configura fino a 3 scorciatoie rapide nella barra laterale e i link veloci della home.", en: "Configure up to 3 quick navbar shortcuts and home quick links."),
+                badge: "\(dataManager.activeNavbarShortcuts.count)/3"
+            )
                     UniCard(padding: 18) {
                         VStack(alignment: .leading, spacing: 20) {
                             // 1. Scelta del Bottone Rapido nella Navbar
@@ -362,15 +480,74 @@ struct SettingsView: View {
                             }
                         }
                     }
-                }
-                
-                // SEZIONE 1: TEMA DELL'APPLICAZIONE (CHIARO / SCURO / SISTEMA)
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.t(.themeModeSection))
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
+
+        }
+    }
+
+    @ViewBuilder
+    private var languageSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "globe",
+                title: localizationManager.t(.languageSection),
+                subtitle: localizationManager.t(.languageSubtitle),
+                badge: localizationManager.currentLanguage == .italian ? "ITALIANO" : "ENGLISH"
+            )
+                    UniCard(padding: 18) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(localizationManager.t(.languageSubtitle))
+                                .font(UniFont.subheadline())
+                                .foregroundStyle(.secondary)
+                            
+                            HStack(spacing: 12) {
+                                ForEach(AppLanguage.allCases) { lang in
+                                    let isSelected = localizationManager.currentLanguage == lang
+                                    Button {
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            localizationManager.currentLanguage = lang
+                                        }
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            Text(lang.flag)
+                                                .font(.system(size: 16))
+                                            Text(lang.displayName)
+                                                .font(UniFont.headline())
+                                                .foregroundStyle(isSelected ? themeManager.accentColor : .primary)
+                                            Spacer()
+                                            if isSelected {
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 11, weight: .bold))
+                                                    .foregroundStyle(themeManager.accentColor)
+                                            }
+                                        }
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 10)
+                                        .background(
+                                            Rectangle()
+                                                .fill(isSelected ? themeManager.accentColor.opacity(0.08) : Color.primary.opacity(0.03))
+                                        )
+                                        .overlay(
+                                            Rectangle()
+                                                .stroke(isSelected ? themeManager.accentColor : Color.primary.opacity(0.06), lineWidth: 1)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+
+        }
+    }
+
+    @ViewBuilder
+    private var themeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "circle.righthalf.filled",
+                title: localizationManager.t(.themeModeSection),
+                subtitle: localizationManager.t(.themeModeSubtitle)
+            )
                     UniCard(padding: 18) {
                         VStack(alignment: .leading, spacing: 14) {
                             Text(localizationManager.t(.themeModeSubtitle))
@@ -419,67 +596,18 @@ struct SettingsView: View {
                             }
                         }
                     }
-                }
-                
-                // SEZIONE 2: LINGUA / LANGUAGE
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.t(.languageSection))
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
-                    UniCard(padding: 18) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(localizationManager.t(.languageSubtitle))
-                                .font(UniFont.subheadline())
-                                .foregroundStyle(.secondary)
-                            
-                            HStack(spacing: 12) {
-                                ForEach(AppLanguage.allCases) { lang in
-                                    let isSelected = localizationManager.currentLanguage == lang
-                                    Button {
-                                        withAnimation(.easeInOut(duration: 0.2)) {
-                                            localizationManager.currentLanguage = lang
-                                        }
-                                    } label: {
-                                        HStack(spacing: 8) {
-                                            Text(lang.flag)
-                                                .font(.system(size: 16))
-                                            Text(lang.displayName)
-                                                .font(UniFont.headline())
-                                                .foregroundStyle(isSelected ? themeManager.accentColor : .primary)
-                                            Spacer()
-                                            if isSelected {
-                                                Image(systemName: "checkmark")
-                                                    .font(.system(size: 11, weight: .bold))
-                                                    .foregroundStyle(themeManager.accentColor)
-                                            }
-                                        }
-                                        .padding(.horizontal, 14)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            Rectangle()
-                                                .fill(isSelected ? themeManager.accentColor.opacity(0.08) : Color.primary.opacity(0.03))
-                                        )
-                                        .overlay(
-                                            Rectangle()
-                                                .stroke(isSelected ? themeManager.accentColor : Color.primary.opacity(0.06), lineWidth: 1)
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // SEZIONE 3: COLORE D'ACCENTO (RIQUADRO SFUMATO & HEX)
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.t(.appearanceSection))
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
+
+        }
+    }
+
+    @ViewBuilder
+    private var accentColorSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "paintpalette",
+                title: localizationManager.t(.appearanceSection),
+                subtitle: localizationManager.t(.accentColorSubtitle)
+            )
                     UniCard(padding: 18) {
                         VStack(alignment: .leading, spacing: 16) {
                             Text(localizationManager.t(.accentColorSubtitle))
@@ -544,15 +672,18 @@ struct SettingsView: View {
                             ColorPickerBoxView()
                         }
                     }
-                }
-                
-                // SEZIONE TIPOGRAFIA (FONT PERSONALIZZABILE & STILI)
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.t(.typographySection))
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
+
+        }
+    }
+
+    @ViewBuilder
+    private var typographySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "textformat",
+                title: localizationManager.text(it: "Tipografia & Font di Sistema", en: "Typography & System Fonts"),
+                subtitle: localizationManager.text(it: "Scegli il design tipografico per i titoli e i testi di uni.", en: "Choose the typographic design for uni's headers and body copy.")
+            )
                     UniCard(padding: 18) {
                         VStack(alignment: .leading, spacing: 16) {
                             Text(localizationManager.t(.typographySubtitle))
@@ -657,15 +788,82 @@ struct SettingsView: View {
                             }
                         }
                     }
-                }
-                
-                // SEZIONE 4: NOTIFICHE & PROMEMORIA (MAC & IN-APP)
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.currentLanguage == .italian ? "NOTIFICHE & AVVISI" : "NOTIFICATIONS & ALERTS")
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
+
+        }
+    }
+
+    @ViewBuilder
+    private var calendarSyncSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            let activeCalCount = dataManager.calendarSources.filter { $0.isEnabled }.count
+            SettingsSectionHeader(
+                icon: "calendar.badge.clock",
+                title: localizationManager.text(it: "Calendari & Sincronizzazione Mac", en: "Calendars & Mac Sync"),
+                subtitle: localizationManager.text(it: "Collega feed iCal o sincronizza in 1 click tutti i calendari del tuo Mac (iCloud, Google, Exchange).", en: "Connect iCal feeds or sync all your Mac calendars in 1-click (iCloud, Google, Exchange)."),
+                badge: "\(activeCalCount) " + (localizationManager.currentLanguage == .italian ? "attivi" : "active")
+            )
+                    UniCard(padding: 20) {
+                        HStack(spacing: 16) {
+                            Circle()
+                                .fill(themeManager.accentColor.opacity(0.12))
+                                .frame(width: 48, height: 48)
+                                .overlay(
+                                    Image(systemName: "calendar.badge.clock")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(themeManager.accentColor)
+                                )
+                            
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 8) {
+                                    Text(localizationManager.currentLanguage == .italian ? "Gestione Multi-Calendario & Replica PC" : "Multi-Calendar & PC Replicate")
+                                        .font(UniFont.headline())
+                                    
+                                    let activeCount = dataManager.calendarSources.filter { $0.isEnabled }.count
+                                    Text("\(activeCount) " + (localizationManager.currentLanguage == .italian ? "attivi" : "active"))
+                                        .font(.system(size: 10, weight: .bold))
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 2)
+                                        .background(themeManager.accentColor.opacity(0.15))
+                                        .foregroundStyle(themeManager.accentColor)
+                                        .clipShape(Capsule())
+                                }
+                                
+                                Text(localizationManager.currentLanguage == .italian 
+                                    ? "Collega più feed iCal/webcal, file .ics o replica in 1 click tutti i calendari del tuo PC (iCloud, Google, Exchange), distinguendo lezioni ed eventi personali." 
+                                    : "Connect multiple iCal/webcal feeds, .ics files or replicate all PC calendars in 1-click, separating academic from personal events.")
+                                    .font(UniFont.subheadline())
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button {
+                                isShowingCalendarManager = true
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "slider.horizontal.3")
+                                    Text(localizationManager.currentLanguage == .italian ? "Gestisci Calendari" : "Manage Calendars")
+                                }
+                                .font(UniFont.headline())
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(themeManager.accentColor)
+                        }
+                    }
+
+        }
+    }
+
+    @ViewBuilder
+    private var notificationsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "bell.badge",
+                title: localizationManager.text(it: "Notifiche & Promemoria Accademici", en: "Notifications & Academic Reminders"),
+                subtitle: localizationManager.text(it: "Configura gli avvisi di sistema per scadenze imminenti, lezioni ed esami.", en: "Configure system alerts for upcoming deadlines, lectures, and exams.")
+            )
                     UniCard(padding: 18) {
                         VStack(alignment: .leading, spacing: 16) {
                             Text(localizationManager.currentLanguage == .italian ? "Configura le notifiche su macOS e le notifiche fluttuanti (Toast HUD) all'interno dell'app." : "Configure macOS Notification Center alerts and in-app floating Toast HUDs.")
@@ -765,245 +963,19 @@ struct SettingsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
-                }
-                
-                // SEZIONE 5: FRASI MOTIVAZIONALI HOME
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.t(.customQuotesSection))
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
-                    UniCard(padding: 20) {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text(localizationManager.t(.customQuotesSubtitle))
-                                .font(UniFont.subheadline())
-                                .foregroundStyle(.secondary)
-                            
-                            HStack(spacing: 10) {
-                                TextField(localizationManager.t(.addQuotePlaceholder), text: $newQuoteText)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(UniFont.body())
-                                
-                                Button {
-                                    quoteManager.addQuote(newQuoteText)
-                                    newQuoteText = ""
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "plus")
-                                        Text(localizationManager.t(.addQuoteButton))
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(themeManager.accentColor)
-                                .disabled(newQuoteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            }
-                            
-                            Divider()
-                            
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(localizationManager.t(.activeQuotesTitle))
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
-                                
-                                ForEach(Array(quoteManager.quotes.enumerated()), id: \.offset) { idx, quote in
-                                    HStack(alignment: .center, spacing: 10) {
-                                        Text("“\(quote)”")
-                                            .font(UniFont.subheadline())
-                                            .foregroundStyle(.primary)
-                                            .lineLimit(2)
-                                        
-                                        Spacer()
-                                        
-                                        Button {
-                                            withAnimation {
-                                                quoteManager.deleteQuote(at: idx)
-                                            }
-                                        } label: {
-                                            Image(systemName: "trash")
-                                                .font(.system(size: 11))
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .help(localizationManager.text(it: "Elimina questa frase", en: "Delete this quote"))
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(Color.primary.opacity(0.02))
-                                    .overlay(Rectangle().stroke(Color.primary.opacity(0.06), lineWidth: 1))
-                                    .clipShape(Rectangle())
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // SEZIONE: GESTIONE MULTI-CALENDARIO & SINCRONIZZAZIONE PC
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.currentLanguage == .italian ? "CALENDARI & SINCRONIZZAZIONE PC" : "CALENDARS & PC SYNC")
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
-                    UniCard(padding: 20) {
-                        HStack(spacing: 16) {
-                            Circle()
-                                .fill(themeManager.accentColor.opacity(0.12))
-                                .frame(width: 48, height: 48)
-                                .overlay(
-                                    Image(systemName: "calendar.badge.clock")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(themeManager.accentColor)
-                                )
-                            
-                            VStack(alignment: .leading, spacing: 3) {
-                                HStack(spacing: 8) {
-                                    Text(localizationManager.currentLanguage == .italian ? "Gestione Multi-Calendario & Replica PC" : "Multi-Calendar & PC Replicate")
-                                        .font(UniFont.headline())
-                                    
-                                    let activeCount = dataManager.calendarSources.filter { $0.isEnabled }.count
-                                    Text("\(activeCount) " + (localizationManager.currentLanguage == .italian ? "attivi" : "active"))
-                                        .font(.system(size: 10, weight: .bold))
-                                        .padding(.horizontal, 7)
-                                        .padding(.vertical, 2)
-                                        .background(themeManager.accentColor.opacity(0.15))
-                                        .foregroundStyle(themeManager.accentColor)
-                                        .clipShape(Capsule())
-                                }
-                                
-                                Text(localizationManager.currentLanguage == .italian 
-                                    ? "Collega più feed iCal/webcal, file .ics o replica in 1 click tutti i calendari del tuo PC (iCloud, Google, Exchange), distinguendo lezioni ed eventi personali." 
-                                    : "Connect multiple iCal/webcal feeds, .ics files or replicate all PC calendars in 1-click, separating academic from personal events.")
-                                    .font(UniFont.subheadline())
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            Button {
-                                isShowingCalendarManager = true
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "slider.horizontal.3")
-                                    Text(localizationManager.currentLanguage == .italian ? "Gestisci Calendari" : "Manage Calendars")
-                                }
-                                .font(UniFont.headline())
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(themeManager.accentColor)
-                        }
-                    }
-                }
-                
-                // SEZIONE 6: GUIDA, SETUP & TUTORIAL
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.currentLanguage == .italian ? "SETUP INIZIALE & GUIDA" : "INITIAL SETUP & TUTORIAL")
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
-                    UniCard(padding: 20) {
-                        HStack(spacing: 16) {
-                            Circle()
-                                .fill(themeManager.accentColor.opacity(0.12))
-                                .frame(width: 48, height: 48)
-                                .overlay(
-                                    Image(systemName: "sparkles")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(themeManager.accentColor)
-                                )
-                            
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(localizationManager.currentLanguage == .italian ? "Rivedi il Setup Iniziale e la Guida Funzionalità" : "Re-open Initial Setup & Features Tutorial")
-                                    .font(UniFont.headline())
-                                Text(localizationManager.currentLanguage == .italian ? "Avvia la procedura guidata a passaggi per reimpostare profilo, lingua, calendario iCal, colore e ripassare tutte le scorciatoie di uni." : "Launch the step-by-step wizard to reconfigure profile, language, iCal calendar, accent color, and review all uni shortcuts.")
-                                    .font(UniFont.subheadline())
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            Button {
-                                isShowingOnboarding = true
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "arrow.counterclockwise")
-                                    Text(localizationManager.currentLanguage == .italian ? "Avvia Setup" : "Launch Setup")
-                                }
-                                .font(UniFont.headline())
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(themeManager.accentColor)
-                        }
-                    }
-                }
-                
 
-                // SEZIONE 8: GESTIONE DATI & BACKUP
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.t(.dataManagementSection))
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
-                    UniCard(padding: 20) {
-                        VStack(alignment: .leading, spacing: 16) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(localizationManager.t(.dataManagementTitle))
-                                    .font(UniFont.headline())
-                                Text(localizationManager.t(.dataManagementSubtitle))
-                                    .font(UniFont.subheadline())
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            HStack(spacing: 12) {
-                                Button {
-                                    exportBackup()
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "square.and.arrow.up")
-                                        Text(localizationManager.t(.exportBackup))
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                
-                                Button {
-                                    importBackup()
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "square.and.arrow.down")
-                                        Text(localizationManager.t(.restoreBackup))
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                
-                                Spacer()
-                                
-                                Button(role: .destructive) {
-                                    showingClearAlert = true
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "trash")
-                                        Text(localizationManager.t(.clearAllData))
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                        }
-                    }
-                }
-                
-                // SEZIONE 9: AGGIORNAMENTI SOFTWARE
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.text(it: "AGGIORNAMENTI SOFTWARE", en: "SOFTWARE UPDATES"))
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
+        }
+    }
+
+    @ViewBuilder
+    private var softwareUpdateSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "arrow.triangle.2.circlepath.circle",
+                title: localizationManager.text(it: "Aggiornamenti Software", en: "Software Updates"),
+                subtitle: localizationManager.text(it: "Verifica e scarica le nuove versioni disponibili di uni per macOS.", en: "Check and download newly available versions of uni for macOS."),
+                badge: "v\(updateManager.currentVersion)"
+            )
                     UniCard(padding: 20) {
                         VStack(alignment: .leading, spacing: 16) {
                             HStack(alignment: .center, spacing: 16) {
@@ -1182,15 +1154,197 @@ struct SettingsView: View {
                             .toggleStyle(.switch)
                         }
                     }
-                }
-                
-                // SEZIONE 10: INFORMAZIONI, CREDITI & LICENZA
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(localizationManager.text(it: "INFORMAZIONI & CREDITI", en: "ABOUT & CREDITS"))
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-                    
+
+        }
+    }
+
+    @ViewBuilder
+    private var setupGuideSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "sparkles",
+                title: localizationManager.text(it: "Setup Guidato & Tutorial", en: "Guided Setup & Tutorial"),
+                subtitle: localizationManager.text(it: "Ripercorri i 5 passi della configurazione mantenendo tutti i tuoi dati salvati.", en: "Re-run the step-by-step setup wizard with your current data preserved.")
+            )
+                    UniCard(padding: 20) {
+                        HStack(spacing: 16) {
+                            Circle()
+                                .fill(themeManager.accentColor.opacity(0.12))
+                                .frame(width: 48, height: 48)
+                                .overlay(
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(themeManager.accentColor)
+                                )
+                            
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(localizationManager.currentLanguage == .italian ? "Rivedi il Setup Iniziale e la Guida Funzionalità" : "Re-open Initial Setup & Features Tutorial")
+                                    .font(UniFont.headline())
+                                Text(localizationManager.currentLanguage == .italian ? "Avvia la procedura guidata a passaggi per reimpostare profilo, lingua, calendario iCal, colore e ripassare tutte le scorciatoie di uni." : "Launch the step-by-step wizard to reconfigure profile, language, iCal calendar, accent color, and review all uni shortcuts.")
+                                    .font(UniFont.subheadline())
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button {
+                                isShowingOnboarding = true
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrow.counterclockwise")
+                                    Text(localizationManager.currentLanguage == .italian ? "Avvia Setup" : "Launch Setup")
+                                }
+                                .font(UniFont.headline())
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(themeManager.accentColor)
+                        }
+                    }
+
+        }
+    }
+
+    @ViewBuilder
+    private var dataBackupSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "externaldrive.badge.icloud",
+                title: localizationManager.t(.dataManagementSection),
+                subtitle: localizationManager.t(.dataManagementSubtitle)
+            )
+                    UniCard(padding: 20) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(localizationManager.t(.dataManagementTitle))
+                                    .font(UniFont.headline())
+                                Text(localizationManager.t(.dataManagementSubtitle))
+                                    .font(UniFont.subheadline())
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            HStack(spacing: 12) {
+                                Button {
+                                    exportBackup()
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "square.and.arrow.up")
+                                        Text(localizationManager.t(.exportBackup))
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                
+                                Button {
+                                    importBackup()
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "square.and.arrow.down")
+                                        Text(localizationManager.t(.restoreBackup))
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                
+                                Spacer()
+                                
+                                Button(role: .destructive) {
+                                    showingClearAlert = true
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "trash")
+                                        Text(localizationManager.t(.clearAllData))
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+
+        }
+    }
+
+    @ViewBuilder
+    private var quotesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "quote.bubble",
+                title: localizationManager.text(it: "Frasi Motivazionali", en: "Motivational Quotes"),
+                subtitle: localizationManager.text(it: "Personalizza i motti accademici visualizzati sulla Dashboard.", en: "Customize the academic quotes shown on your Dashboard.")
+            )
+                    UniCard(padding: 20) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text(localizationManager.t(.customQuotesSubtitle))
+                                .font(UniFont.subheadline())
+                                .foregroundStyle(.secondary)
+                            
+                            HStack(spacing: 10) {
+                                TextField(localizationManager.t(.addQuotePlaceholder), text: $newQuoteText)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(UniFont.body())
+                                
+                                Button {
+                                    quoteManager.addQuote(newQuoteText)
+                                    newQuoteText = ""
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "plus")
+                                        Text(localizationManager.t(.addQuoteButton))
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(themeManager.accentColor)
+                                .disabled(newQuoteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
+                            
+                            Divider()
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(localizationManager.t(.activeQuotesTitle))
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                                
+                                ForEach(Array(quoteManager.quotes.enumerated()), id: \.offset) { idx, quote in
+                                    HStack(alignment: .center, spacing: 10) {
+                                        Text("“\(quote)”")
+                                            .font(UniFont.subheadline())
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(2)
+                                        
+                                        Spacer()
+                                        
+                                        Button {
+                                            withAnimation {
+                                                quoteManager.deleteQuote(at: idx)
+                                            }
+                                        } label: {
+                                            Image(systemName: "trash")
+                                                .font(.system(size: 11))
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help(localizationManager.text(it: "Elimina questa frase", en: "Delete this quote"))
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color.primary.opacity(0.02))
+                                    .overlay(Rectangle().stroke(Color.primary.opacity(0.06), lineWidth: 1))
+                                    .clipShape(Rectangle())
+                                }
+                            }
+                        }
+                    }
+
+        }
+    }
+
+    @ViewBuilder
+    private var aboutCreditsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "info.circle",
+                title: localizationManager.text(it: "Informazioni & Assistenza", en: "About & Support"),
+                subtitle: localizationManager.text(it: "Dettagli sulla release, licenza open-source e modulo di supporto.", en: "Release details, open-source license, and support feedback form.")
+            )
                     UniCard(padding: 20) {
                         VStack(alignment: .leading, spacing: 16) {
                             HStack(alignment: .top) {
@@ -1224,6 +1378,28 @@ struct SettingsView: View {
                             // Link & Portfolio
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack(spacing: 12) {
+                                    // Supporto & Feedback
+                                    Button {
+                                        isShowingSupportModal = true
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "questionmark.bubble.fill")
+                                                .font(.system(size: 11))
+                                            Text(localizationManager.text(it: "Supporto & Feedback", en: "Support & Feedback"))
+                                                .font(UniFont.headline())
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(themeManager.accentColor.opacity(0.12))
+                                        .foregroundStyle(themeManager.accentColor)
+                                        .overlay(
+                                            Rectangle()
+                                                .stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help(localizationManager.text(it: "Invia suggerimenti o segnala un bug", en: "Submit feedback or report a bug"))
+                                    
                                     // Portfolio zinco.cc
                                     Button {
                                         #if canImport(AppKit)
@@ -1299,33 +1475,9 @@ struct SettingsView: View {
                             }
                         }
                     }
-                }
-            }
-            .padding(32)
-        }
-        .sheet(isPresented: $isShowingOnboarding) {
-            OnboardingWizardView()
-        }
-        .sheet(isPresented: $isShowingAddShortcutSheet) {
-            QuickShortcutEditorSheet(existingShortcut: nil)
-        }
-        .sheet(item: $editingShortcut) { shortcut in
-            QuickShortcutEditorSheet(existingShortcut: shortcut)
-        }
-        .sheet(isPresented: $isShowingCalendarManager) {
-            CalendarManagerModalView()
-        }
-        .alert(localizationManager.t(.clearConfirmTitle), isPresented: $showingClearAlert) {
-            Button(localizationManager.t(.cancel), role: .cancel) {}
-            Button(localizationManager.t(.delete), role: .destructive) {
-                dataManager.clearAllData()
-                isShowingOnboarding = true
-            }
-        } message: {
-            Text(localizationManager.t(.clearConfirmMessage))
+
         }
     }
-    
     // MARK: - Esporta Backup
     private func exportBackup() {
         #if canImport(AppKit)
@@ -1604,4 +1756,98 @@ struct QuickShortcutEditorSheet: View {
         dismiss()
     }
 }
+
+// MARK: - Settings Tab Navigation
+enum SettingsTab: String, CaseIterable, Identifiable {
+    case general = "general"
+    case appearance = "appearance"
+    case calendarsAlerts = "calendarsAlerts"
+    case dataSystem = "dataSystem"
+    case all = "all"
+    
+    var id: String { rawValue }
+    
+    func title(isItalian: Bool) -> String {
+        switch self {
+        case .general:
+            return isItalian ? "Generale & Profilo" : "General & Profile"
+        case .appearance:
+            return isItalian ? "Aspetto & Stile" : "Appearance & Style"
+        case .calendarsAlerts:
+            return isItalian ? "Calendari & Notifiche" : "Calendars & Alerts"
+        case .dataSystem:
+            return isItalian ? "Sistema & Dati" : "System & Data"
+        case .all:
+            return isItalian ? "Tutte" : "All"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .general: return "person.crop.circle"
+        case .appearance: return "paintbrush"
+        case .calendarsAlerts: return "calendar.badge.clock"
+        case .dataSystem: return "gearshape.2"
+        case .all: return "square.grid.2x2"
+        }
+    }
+}
+
+// MARK: - Reusable Settings Section Header
+struct SettingsSectionHeader: View {
+    let icon: String
+    let title: String
+    let subtitle: String?
+    var badge: String? = nil
+    var badgeColor: Color? = nil
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    init(icon: String, title: String, subtitle: String? = nil, badge: String? = nil, badgeColor: Color? = nil) {
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.badge = badge
+        self.badgeColor = badgeColor
+    }
+    
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Circle()
+                .fill(themeManager.accentColor.opacity(0.12))
+                .frame(width: 32, height: 32)
+                .overlay(
+                    Image(systemName: icon)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(themeManager.accentColor)
+                )
+            
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Text(title)
+                        .font(UniFont.headline())
+                        .foregroundStyle(.primary)
+                    
+                    if let badge = badge {
+                        Text(badge)
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background((badgeColor ?? themeManager.accentColor).opacity(0.12))
+                            .foregroundStyle(badgeColor ?? themeManager.accentColor)
+                            .clipShape(Capsule())
+                    }
+                }
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            Spacer()
+        }
+    }
+}
+
 

@@ -13,6 +13,7 @@ struct DeadlinesView: View {
     @EnvironmentObject var localizationManager: LocalizationManager
     
     @State private var filterMode: DeadlineFilter = .pending
+    @State private var selectedCourseId: UUID? = nil
     @State private var searchText = ""
     @State private var isPresentingNewDeadline = false
     @State private var deadlineToEdit: Deadline? = nil
@@ -55,8 +56,15 @@ struct DeadlinesView: View {
         }
     }
     
+    private var selectedCourseName: String {
+        if let id = selectedCourseId, let course = dataManager.courses.first(where: { $0.id == id }) {
+            return course.name
+        }
+        return localizationManager.text(it: "Tutti i Corsi", en: "All Courses")
+    }
+    
     var filteredDeadlines: [Deadline] {
-        let base: [Deadline]
+        var base: [Deadline]
         switch filterMode {
         case .pending:
             base = dataManager.deadlines.filter { !$0.isCompleted }.sorted { $0.dueDate < $1.dueDate }
@@ -68,6 +76,10 @@ struct DeadlinesView: View {
             base = dataManager.deadlines.sorted { $0.dueDate < $1.dueDate }
         }
         
+        if let courseId = selectedCourseId {
+            base = base.filter { $0.courseId == courseId }
+        }
+        
         let clean = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if clean.isEmpty {
             return base
@@ -77,6 +89,7 @@ struct DeadlinesView: View {
             return deadline.title.localizedCaseInsensitiveContains(clean) ||
                    deadline.notes.localizedCaseInsensitiveContains(clean) ||
                    courseName.localizedCaseInsensitiveContains(clean) ||
+                   deadline.priority.localizedName.localizedCaseInsensitiveContains(clean) ||
                    deadline.priority.rawValue.localizedCaseInsensitiveContains(clean)
         }
     }
@@ -111,6 +124,53 @@ struct DeadlinesView: View {
                                 .buttonStyle(.plain)
                             }
                         }
+                        
+                        // Menu a tendina per filtrare per Corso
+                        Menu {
+                            Button {
+                                selectedCourseId = nil
+                            } label: {
+                                HStack {
+                                    Text(localizationManager.text(it: "Tutti i Corsi", en: "All Courses"))
+                                    if selectedCourseId == nil {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                            
+                            if !dataManager.courses.isEmpty {
+                                Divider()
+                                ForEach(dataManager.courses) { course in
+                                    Button {
+                                        selectedCourseId = course.id
+                                    } label: {
+                                        HStack {
+                                            Text(course.name)
+                                            if selectedCourseId == course.id {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: selectedCourseId == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                                    .font(.system(size: 11, weight: .medium))
+                                Text(selectedCourseName)
+                                    .font(UniFont.subheadline())
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 9))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(selectedCourseId != nil ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
+                            .foregroundStyle(selectedCourseId != nil ? themeManager.accentColor : .primary)
+                            .overlay(Rectangle().stroke(selectedCourseId != nil ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1))
+                            .clipShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                         
                         Spacer()
                         
@@ -182,8 +242,8 @@ struct DeadlinesView: View {
                 dataManager.saveData()
                 
                 NotificationManager.shared.notify(
-                    title: "Scadenza creata",
-                    message: "\(newOne.title) • Scade il \(formatDueDate(newOne.dueDate))",
+                    title: localizationManager.text(it: "Scadenza creata", en: "Deadline created"),
+                    message: "\(newOne.title) • \(localizationManager.text(it: "Scade il", en: "Due")) \(formatDueDate(newOne.dueDate))",
                     type: .success,
                     icon: "clock.badge.checkmark"
                 )
@@ -197,7 +257,7 @@ struct DeadlinesView: View {
                     dataManager.saveData()
                     
                     NotificationManager.shared.notify(
-                        title: "Scadenza aggiornata",
+                        title: localizationManager.text(it: "Scadenza aggiornata", en: "Deadline updated"),
                         message: updated.title,
                         type: .info,
                         icon: "pencil"
@@ -233,7 +293,7 @@ struct DeadlinesView: View {
             }
             
             NotificationManager.shared.notify(
-                title: isNowCompleted ? "Scadenza completata! 🎉" : "Scadenza riattivata",
+                title: isNowCompleted ? localizationManager.text(it: "Scadenza completata! 🎉", en: "Deadline completed! 🎉") : localizationManager.text(it: "Scadenza riattivata", en: "Deadline reactivated"),
                 message: deadline.title,
                 type: isNowCompleted ? .success : .info,
                 icon: isNowCompleted ? "checkmark.circle.fill" : "circle",
@@ -249,7 +309,7 @@ struct DeadlinesView: View {
         dataManager.saveData()
         
         NotificationManager.shared.notify(
-            title: "Scadenza eliminata",
+            title: localizationManager.text(it: "Scadenza eliminata", en: "Deadline deleted"),
             message: deadline.title,
             type: .warning,
             icon: "trash"
@@ -379,36 +439,40 @@ struct DeadlineCardView: View {
                             .foregroundStyle(.secondary)
                             .tracking(1.0)
                         
-                        if let link = deadline.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            HStack(spacing: 8) {
-                                Image(systemName: "link")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(themeManager.accentColor)
-                                Text(link)
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                
-                                Spacer()
-                                
-                                Button {
-                                    AppSystemHelper.openWebURL(urlString: link)
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "arrow.up.forward.square")
-                                        Text(localizationManager.text(it: "Apri Link", en: "Open Link"))
+                        if !deadline.allLinks.isEmpty {
+                            VStack(spacing: 6) {
+                                ForEach(deadline.allLinks, id: \.self) { link in
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "link")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(themeManager.accentColor)
+                                        Text(link)
+                                            .font(UniFont.caption())
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                        
+                                        Spacer()
+                                        
+                                        Button {
+                                            AppSystemHelper.openWebURL(urlString: link)
+                                        } label: {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "arrow.up.forward.square")
+                                                Text(localizationManager.text(it: "Apri Link", en: "Open Link"))
+                                            }
+                                            .font(UniFont.caption())
+                                            .fontWeight(.medium)
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .help(link)
                                     }
-                                    .font(UniFont.caption())
-                                    .fontWeight(.medium)
+                                    .padding(8)
+                                    .background(Color.primary.opacity(0.03))
+                                    .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(Color.primary.opacity(0.08), lineWidth: 1))
                                 }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .help(link)
                             }
-                            .padding(8)
-                            .background(Color.primary.opacity(0.03))
-                            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(Color.primary.opacity(0.08), lineWidth: 1))
                         } else {
                             Text(localizationManager.text(it: "Nessun allegato o link collegato a questa scadenza.", en: "No attachments or links linked to this deadline."))
                                 .font(UniFont.caption())
@@ -492,7 +556,7 @@ struct DeadlineEditorSheet: View {
     @State private var dueDate: Date = Date().addingTimeInterval(86400 * 3)
     @State private var priority: Deadline.Priority = .medium
     @State private var notes: String = ""
-    @State private var linkURL: String = ""
+    @State private var linkURLs: [String] = [""]
     
     init(deadlineToEdit: Deadline?, initialDate: Date = Date(), onSave: @escaping (Deadline) -> Void) {
         self.deadlineToEdit = deadlineToEdit
@@ -502,7 +566,8 @@ struct DeadlineEditorSheet: View {
         _dueDate = State(initialValue: deadlineToEdit?.dueDate ?? initialDate)
         _priority = State(initialValue: deadlineToEdit?.priority ?? .medium)
         _notes = State(initialValue: deadlineToEdit?.notes ?? "")
-        _linkURL = State(initialValue: deadlineToEdit?.linkURL ?? "")
+        let existing = deadlineToEdit?.allLinks ?? []
+        _linkURLs = State(initialValue: existing.isEmpty ? [""] : existing)
     }
     
     var body: some View {
@@ -553,8 +618,58 @@ struct DeadlineEditorSheet: View {
                     }
                 }
                 
-                Section(localizationManager.text(it: "Link & Risorse Web", en: "Link & Web Resources")) {
-                    TextField(localizationManager.text(it: "https://... (sito, portale consegna o link esterno)", en: "https://... (website, submission portal or link)"), text: $linkURL)
+                Section {
+                    ForEach(linkURLs.indices, id: \.self) { idx in
+                        HStack(spacing: 8) {
+                            Image(systemName: "link")
+                                .font(.system(size: 11))
+                                .foregroundStyle(themeManager.accentColor)
+                            TextField(localizationManager.text(it: "https://... (sito, portale consegna o link esterno)", en: "https://... (website, submission portal or link)"), text: $linkURLs[idx])
+                                .textFieldStyle(.plain)
+                            
+                            if linkURLs.count > 1 {
+                                Button {
+                                    linkURLs.remove(at: idx)
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .help(localizationManager.text(it: "Rimuovi questo link", en: "Remove this link"))
+                            }
+                        }
+                    }
+                    
+                    Button {
+                        linkURLs.append("")
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 13))
+                            Text(localizationManager.text(it: "Aggiungi altro link", en: "Add another link"))
+                                .font(UniFont.caption())
+                        }
+                        .foregroundStyle(themeManager.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                } header: {
+                    HStack {
+                        Text(localizationManager.text(it: "Link & Risorse Web", en: "Links & Web Resources"))
+                        Spacer()
+                        Button {
+                            linkURLs.append("")
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 10, weight: .bold))
+                                .padding(4)
+                                .background(themeManager.accentColor.opacity(0.12), in: Circle())
+                                .foregroundStyle(themeManager.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                        .help(localizationManager.text(it: "Aggiungi link (+)", en: "Add link (+)"))
+                    }
                 }
                 
                 Section(localizationManager.text(it: "Note", en: "Notes")) {
@@ -570,7 +685,7 @@ struct DeadlineEditorSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Spacer()
                 Button(localizationManager.text(it: "Salva", en: "Save")) {
-                    let cleanLink = linkURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let cleanLinks = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
                     let updated = Deadline(
                         id: deadlineToEdit?.id ?? UUID(),
                         title: title.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -579,7 +694,8 @@ struct DeadlineEditorSheet: View {
                         priority: priority,
                         isCompleted: deadlineToEdit?.isCompleted ?? false,
                         notes: notes.trimmingCharacters(in: .whitespacesAndNewlines),
-                        linkURL: cleanLink.isEmpty ? nil : cleanLink
+                        linkURL: cleanLinks.first,
+                        linkURLs: cleanLinks
                     )
                     onSave(updated)
                     dismiss()
@@ -591,6 +707,6 @@ struct DeadlineEditorSheet: View {
             }
             .padding(16)
         }
-        .frame(width: 460, height: 450)
+        .frame(width: 480, height: 500)
     }
 }

@@ -90,7 +90,7 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
     // Secondary: standard GitHub Releases API
     private let apiURL = "https://api.github.com/repos/zjncoo/uni/releases/latest"
 
-    private let checkIntervalSeconds: TimeInterval = 43200 // 12 hours
+    private let checkIntervalSeconds: TimeInterval = 86400 // 24 hours (1 day)
     private let lastCheckKey = "uni_last_update_check"
     private let ignoredVersionKey = "uni_ignored_update_version"
     private let autoCheckKey = "uni_auto_check_updates"
@@ -115,6 +115,7 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
 
     private var downloadTask: URLSessionDownloadTask? = nil
     private var downloadSession: URLSession? = nil
+    private var wakeObserver: NSObjectProtocol? = nil
 
     override private init() {
         let savedAuto = UserDefaults.standard.object(forKey: autoCheckKey) as? Bool ?? true
@@ -125,6 +126,38 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
             self.lastCheckDate = Date(timeIntervalSince1970: lastTime)
         }
         super.init()
+        setupWakeObserver()
+    }
+
+    deinit {
+        if let observer = wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+    }
+
+    /// Sets up zero-overhead system notification observer:
+    /// Triggers exclusively when the Mac wakes from sleep (NSWorkspace.didWakeNotification).
+    private func setupWakeObserver() {
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                await self.checkIfDailyUpdateDue()
+            }
+        }
+    }
+
+    /// Runs an update check if at least 24 hours have passed since the last check
+    public func checkIfDailyUpdateDue() async {
+        guard autoCheckUpdates else { return }
+        let last = UserDefaults.standard.double(forKey: lastCheckKey)
+        let now = Date().timeIntervalSince1970
+        if last == 0 || (now - last >= checkIntervalSeconds) {
+            await checkForUpdates(force: false, isManual: false)
+        }
     }
 
     // MARK: - Current App Info
@@ -272,11 +305,13 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
         }
 
         DataManager.shared.saveData()
-        NSWorkspace.shared.open(url)
+        self.showUpdateModal = false
+        _ = NSWorkspace.shared.open(url)
 
-        // Terminate app after a brief delay so Finder displays the disk image and releases the lock on /Applications/uni.app
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+        // Terminate app so Finder displays the disk image and releases the lock on /Applications/uni.app
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             NSApplication.shared.terminate(nil)
+            exit(0)
         }
     }
 
@@ -378,35 +413,64 @@ public struct UpdateModalView: View {
     public var body: some View {
         VStack(spacing: 0) {
             // Header
-            HStack(alignment: .center, spacing: 14) {
+            HStack(alignment: .top, spacing: 16) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(themeManager.accentColor.opacity(0.15))
-                        .frame(width: 48, height: 48)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(themeManager.accentColor.opacity(0.14))
+                        .frame(width: 52, height: 52)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(themeManager.accentColor.opacity(0.25), lineWidth: 1)
+                        )
                     Image(systemName: "sparkles")
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(themeManager.accentColor)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(localizationManager.text(it: "Aggiornamento Disponibile", en: "Update Available"))
-                        .font(UniFont.title())
-                        .foregroundStyle(.primary)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(localizationManager.text(it: "AGGIORNAMENTO DISPONIBILE", en: "UPDATE AVAILABLE"))
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(themeManager.accentColor.opacity(0.12))
+                            .foregroundStyle(themeManager.accentColor)
+                            .clipShape(Capsule())
 
-                    if let release = updateManager.availableRelease {
-                        HStack(spacing: 6) {
-                            Text("uni v\(updateManager.currentVersion)")
-                                .font(UniFont.caption())
-                                .foregroundStyle(.secondary)
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.secondary)
-                            Text("v\(release.version)")
-                                .font(UniFont.caption())
-                                .fontWeight(.bold)
-                                .foregroundStyle(themeManager.accentColor)
+                        if let release = updateManager.availableRelease {
+                            HStack(spacing: 4) {
+                                Text("v\(updateManager.currentVersion)")
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.secondary)
+                                Text("v\(release.version)")
+                                    .font(UniFont.caption())
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(themeManager.accentColor)
+                            }
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2.5)
+                            .background(Color.primary.opacity(0.04))
+                            .overlay(Capsule().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                            .clipShape(Capsule())
                         }
                     }
+
+                    Text(updateManager.availableRelease?.name?.isEmpty == false
+                         ? (updateManager.availableRelease?.name ?? "")
+                         : localizationManager.text(it: "Nuova Versione di uni", en: "New uni Version"))
+                        .font(UniFont.title())
+                        .fontWeight(.bold)
+                        .foregroundStyle(.primary)
+
+                    Text(localizationManager.text(
+                        it: "È disponibile un aggiornamento consigliato con miglioramenti e nuove funzionalità.",
+                        en: "A recommended update with improvements and new features is ready to install."
+                    ))
+                    .font(UniFont.subheadline())
+                    .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -414,78 +478,113 @@ public struct UpdateModalView: View {
                 Button {
                     updateManager.dismissUpdate()
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(8)
-                        .background(Color.primary.opacity(0.05))
-                        .clipShape(Circle())
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.secondary.opacity(0.8))
                 }
                 .buttonStyle(.plain)
             }
-            .padding(22)
+            .padding(.horizontal, 26)
+            .padding(.top, 24)
+            .padding(.bottom, 16)
 
             Divider()
 
-            // Content & Changelog
+            // Content Body
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 18) {
+                    // Guida visiva rapida sul processo di aggiornamento
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(localizationManager.text(it: "COME FUNZIONA L'INSTALLAZIONE:", en: "HOW INSTALLATION WORKS:"))
+                            .font(UniFont.sectionLabel())
+                            .foregroundStyle(.secondary)
+                            .tracking(1.2)
+
+                        HStack(spacing: 10) {
+                            stepMiniCard(
+                                num: "1",
+                                title: localizationManager.text(it: "Download .dmg", en: "Download .dmg"),
+                                desc: localizationManager.text(it: "Scaricamento pacchetto ufficiale", en: "Official installer download")
+                            )
+                            stepMiniCard(
+                                num: "2",
+                                title: localizationManager.text(it: "Chiusura uni", en: "Quit uni"),
+                                desc: localizationManager.text(it: "Libera /Applicazioni da blocchi", en: "Frees /Applications locks")
+                            )
+                            stepMiniCard(
+                                num: "3",
+                                title: localizationManager.text(it: "Trascina & Avvia", en: "Drag & Launch"),
+                                desc: localizationManager.text(it: "Sostituisci e riapri uni aggiornata", en: "Replace & open updated uni")
+                            )
+                        }
+                    }
+
+                    // Changelog Card
                     if let release = updateManager.availableRelease {
-                        if let name = release.name, !name.isEmpty {
-                            Text(name)
-                                .font(UniFont.headline())
-                                .foregroundStyle(.primary)
-                        }
-
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(localizationManager.text(it: "Novità introdotte:", en: "What's new:"))
-                                .font(UniFont.subheadline())
-                                .fontWeight(.semibold)
+                            Text(localizationManager.text(it: "NOVITÀ E MODIFICHE:", en: "WHAT'S NEW & CHANGES:"))
+                                .font(UniFont.sectionLabel())
                                 .foregroundStyle(.secondary)
+                                .tracking(1.2)
 
-                            Text(release.formattedChangelog.isEmpty
-                                 ? localizationManager.text(it: "Miglioramenti generali alle prestazioni e alla stabilità grafica.", en: "General performance and visual stability improvements.")
-                                 : release.formattedChangelog)
-                                .font(UniFont.body())
-                                .lineSpacing(4)
-                                .foregroundStyle(.primary)
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(release.formattedChangelog.isEmpty
+                                     ? localizationManager.text(it: "Miglioramenti generali a prestazioni, sincronizzazione e stabilità grafica.", en: "General performance, sync, and visual stability improvements.")
+                                     : release.formattedChangelog)
+                                    .font(UniFont.body())
+                                    .lineSpacing(4)
+                                    .foregroundStyle(.primary)
+                            }
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.primary.opacity(0.03))
+                            .overlay(
+                                Rectangle()
+                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                            )
                         }
-                        .padding(14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.primary.opacity(0.03))
-                        .overlay(
-                            Rectangle()
-                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                        )
                     }
 
                     // Download Progress View
                     if updateManager.isDownloading {
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text(localizationManager.text(it: "Download pacchetto uni.dmg...", en: "Downloading uni.dmg package..."))
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
+                                HStack(spacing: 6) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                    Text(localizationManager.text(it: "Download pacchetto uni.dmg...", en: "Downloading uni.dmg package..."))
+                                        .font(UniFont.headline())
+                                }
                                 Spacer()
                                 Text("\(Int(updateManager.downloadProgress * 100))%")
-                                    .font(UniFont.caption())
-                                    .fontWeight(.bold)
+                                    .font(UniFont.headline())
                                     .foregroundStyle(themeManager.accentColor)
                             }
 
                             ProgressView(value: updateManager.downloadProgress)
                                 .tint(themeManager.accentColor)
 
-                            Button {
-                                updateManager.cancelDownload()
-                            } label: {
-                                Text(localizationManager.text(it: "Annulla Download", en: "Cancel Download"))
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.red)
+                            HStack {
+                                Text(localizationManager.text(
+                                    it: "L'installer si aprirà nel Finder e l'app si chiuderà per consentire la sostituzione.",
+                                    en: "The installer will open in Finder and the app will close to allow replacing."
+                                ))
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
+
+                                Spacer()
+
+                                Button {
+                                    updateManager.cancelDownload()
+                                } label: {
+                                    Text(localizationManager.text(it: "Annulla", en: "Cancel"))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.red)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
-                        .padding(12)
+                        .padding(14)
                         .background(themeManager.accentColor.opacity(0.06))
                         .overlay(
                             Rectangle().stroke(themeManager.accentColor.opacity(0.2), lineWidth: 1)
@@ -494,30 +593,37 @@ public struct UpdateModalView: View {
 
                     // Downloaded success banner
                     if updateManager.isDownloaded {
-                        HStack(spacing: 10) {
+                        HStack(spacing: 12) {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(.green)
-                                .font(.system(size: 16))
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(localizationManager.text(it: "uni.dmg scaricato con successo!", en: "uni.dmg downloaded successfully!"))
-                                    .font(UniFont.subheadline())
+                                .font(.system(size: 20))
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(localizationManager.text(it: "uni.dmg scaricato e pronto!", en: "uni.dmg downloaded and ready!"))
+                                    .font(UniFont.headline())
                                     .fontWeight(.semibold)
-                                Text(localizationManager.text(it: "L'installer si aprirà nel Finder e uni si chiuderà per consentire la sostituzione in Applicazioni.", en: "The installer will open in Finder and uni will quit to allow replacing in Applications."))
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
+                                Text(localizationManager.text(
+                                    it: "All'apertura l'app salverà i tuoi dati e si chiuderà automaticamente per consentire l'installazione.",
+                                    en: "Upon opening, uni will save all data and quit automatically so Finder can replace it."
+                                ))
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
                             }
+
                             Spacer()
+
                             Button {
                                 updateManager.openDownloadedDMG()
                             } label: {
-                                Text(localizationManager.text(it: "Apri & Chiudi uni", en: "Open & Quit uni"))
-                                    .font(UniFont.caption())
+                                Text(localizationManager.text(it: "Apri & Chiudi", en: "Open & Quit"))
+                                    .font(UniFont.headline())
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(.borderedProminent)
+                            .tint(.green)
                         }
-                        .padding(12)
+                        .padding(14)
                         .background(Color.green.opacity(0.08))
-                        .overlay(Rectangle().stroke(Color.green.opacity(0.2), lineWidth: 1))
+                        .overlay(Rectangle().stroke(Color.green.opacity(0.25), lineWidth: 1))
                     }
 
                     if let error = updateManager.downloadErrorMessage {
@@ -528,11 +634,15 @@ public struct UpdateModalView: View {
                                 .font(UniFont.caption())
                                 .foregroundStyle(.secondary)
                         }
+                        .padding(12)
+                        .background(Color.orange.opacity(0.08))
+                        .overlay(Rectangle().stroke(Color.orange.opacity(0.2), lineWidth: 1))
                     }
                 }
-                .padding(22)
+                .padding(.horizontal, 26)
+                .padding(.vertical, 18)
             }
-            .frame(maxHeight: 280)
+            .frame(maxHeight: 330)
 
             Divider()
 
@@ -580,12 +690,13 @@ public struct UpdateModalView: View {
                             ProgressView()
                                 .scaleEffect(0.7)
                                 .frame(width: 14, height: 14)
+                            Text(localizationManager.text(it: "Download in corso...", en: "Downloading..."))
                         } else {
-                            Image(systemName: "arrow.down.circle.fill")
+                            Image(systemName: updateManager.isDownloaded ? "arrow.up.right.and.arrow.down.left.rectangle" : "arrow.down.circle.fill")
+                            Text(updateManager.isDownloaded
+                                 ? localizationManager.text(it: "Apri Installer & Chiudi uni", en: "Open Installer & Quit uni")
+                                 : localizationManager.text(it: "Scarica & Installa (.dmg)", en: "Download & Install (.dmg)"))
                         }
-                        Text(updateManager.isDownloaded
-                             ? localizationManager.text(it: "Apri Installer & Chiudi App", en: "Open Installer & Quit App")
-                             : localizationManager.text(it: "Scarica & Installa", en: "Download & Install"))
                     }
                     .font(UniFont.headline())
                     .padding(.horizontal, 14)
@@ -595,11 +706,38 @@ public struct UpdateModalView: View {
                 .tint(themeManager.accentColor)
                 .disabled(updateManager.isDownloading)
             }
-            .padding(18)
+            .padding(.horizontal, 26)
+            .padding(.vertical, 16)
             .background(Color.primary.opacity(0.02))
         }
-        .frame(width: 520)
+        .frame(width: 580)
         .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    private func stepMiniCard(num: String, title: String, desc: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(num)
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(themeManager.accentColor)
+                .frame(width: 18, height: 18)
+                .background(themeManager.accentColor.opacity(0.12))
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(UniFont.caption())
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                Text(desc)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.025))
+        .overlay(Rectangle().stroke(Color.primary.opacity(0.06), lineWidth: 1))
     }
 }
 

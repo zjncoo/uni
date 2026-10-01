@@ -13,6 +13,7 @@ struct ExamsView: View {
     @EnvironmentObject var localizationManager: LocalizationManager
     
     @State private var filterStatus: ExamFilter = .all
+    @State private var selectedCourseId: UUID? = nil
     @State private var searchText = ""
     @State private var isPresentingNewExam = false
     @State private var examToEdit: Exam? = nil
@@ -52,8 +53,15 @@ struct ExamsView: View {
         }
     }
     
+    private var selectedCourseName: String {
+        if let id = selectedCourseId, let course = dataManager.courses.first(where: { $0.id == id }) {
+            return course.name
+        }
+        return localizationManager.text(it: "Tutti i Corsi", en: "All Courses")
+    }
+    
     var filteredExams: [Exam] {
-        let base: [Exam]
+        var base: [Exam]
         switch filterStatus {
         case .planned:
             base = dataManager.exams.filter { $0.status != .passed }.sorted { $0.examDate < $1.examDate }
@@ -61,6 +69,10 @@ struct ExamsView: View {
             base = dataManager.exams.filter { $0.status == .passed }.sorted { $0.examDate > $1.examDate }
         case .all:
             base = dataManager.exams.sorted { $0.examDate < $1.examDate }
+        }
+        
+        if let courseId = selectedCourseId {
+            base = base.filter { $0.courseId == courseId }
         }
         
         let clean = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -157,6 +169,53 @@ struct ExamsView: View {
                                 .buttonStyle(.plain)
                             }
                         }
+                        
+                        // Menu a tendina per filtrare per Corso
+                        Menu {
+                            Button {
+                                selectedCourseId = nil
+                            } label: {
+                                HStack {
+                                    Text(localizationManager.text(it: "Tutti i Corsi", en: "All Courses"))
+                                    if selectedCourseId == nil {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                            
+                            if !dataManager.courses.isEmpty {
+                                Divider()
+                                ForEach(dataManager.courses) { course in
+                                    Button {
+                                        selectedCourseId = course.id
+                                    } label: {
+                                        HStack {
+                                            Text(course.name)
+                                            if selectedCourseId == course.id {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: selectedCourseId == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                                    .font(.system(size: 11, weight: .medium))
+                                Text(selectedCourseName)
+                                    .font(UniFont.subheadline())
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 9))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(selectedCourseId != nil ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
+                            .foregroundStyle(selectedCourseId != nil ? themeManager.accentColor : .primary)
+                            .overlay(Rectangle().stroke(selectedCourseId != nil ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1))
+                            .clipShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                         
                         Spacer()
                         

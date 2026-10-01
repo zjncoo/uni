@@ -80,10 +80,11 @@ enum WidgetPriority: String, Codable {
     case high = "Alta"
 
     var label: String {
+        let isIt = Locale.current.language.languageCode?.identifier == "it" || Locale.current.identifier.hasPrefix("it")
         switch self {
-        case .low: return "Bassa"
-        case .medium: return "Media"
-        case .high: return "Urgente"
+        case .low: return isIt ? "Bassa" : "Low"
+        case .medium: return isIt ? "Media" : "Medium"
+        case .high: return isIt ? "Urgente" : "Urgent"
         }
     }
 

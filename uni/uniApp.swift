@@ -54,12 +54,13 @@ struct uniApp: App {
                         assignments: dataManager.assignments
                     )
                     // Check for updates in the background (once per day)
-                    Task { await updateManager.checkForUpdates() }
+                    Task { await updateManager.checkIfDailyUpdateDue() }
                 }
-                .onChange(of: scenePhase) { newPhase in
+                .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
                         dataManager.refreshCurrentDate()
                         AppleCalendarManager.shared.refreshStatus()
+                        Task { await updateManager.checkIfDailyUpdateDue() }
                     }
                 }
         }
@@ -144,6 +145,9 @@ struct MenuBarQuickView: View {
                 NSApp.activate(ignoringOtherApps: true)
                 for window in NSApp.windows where !(window is NSPanel) {
                     window.makeKeyAndOrderFront(nil)
+                }
+                Task { @MainActor in
+                    await UpdateManager.shared.checkIfDailyUpdateDue()
                 }
                 #endif
             }

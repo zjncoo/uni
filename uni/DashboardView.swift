@@ -509,7 +509,7 @@ struct DashboardView: View {
                                             .font(UniFont.caption())
                                             .foregroundStyle(isDueDateUrgent(deadline.dueDate) ? .red : .secondary)
                                         
-                                        if let link = deadline.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        ForEach(deadline.allLinks, id: \.self) { link in
                                             Text("•")
                                                 .foregroundStyle(.secondary)
                                             Button {
@@ -620,7 +620,7 @@ struct DashboardView: View {
                                     .clipShape(Rectangle())
                                 }
                                 
-                                if let link = assignment.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                ForEach(assignment.allLinks, id: \.self) { link in
                                     HStack(spacing: 6) {
                                         Image(systemName: "link")
                                             .font(.system(size: 11))
@@ -885,7 +885,7 @@ struct DashboardView: View {
                         Spacer()
                         
                         if let first = pendingDeadlines.first {
-                            Text(first.priority.rawValue.uppercased())
+                            Text(first.priority.localizedName.uppercased())
                                 .font(.system(size: 9, weight: .medium))
                                 .tracking(1.0)
                                 .padding(.horizontal, 7)

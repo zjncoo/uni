@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supporto & Feedback — uni for macOS</title>
+  <meta name="description" content="Centro di supporto e suggerimenti per uni, l'applicazione accademica nativa per macOS. Segnala bug, richiedi nuove funzionalità e invia il tuo feedback direttamente allo sviluppatore.">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#F4F3EE">
+  <link rel="canonical" href="https://uni.zinco.cc/help.html">
+  <link rel="manifest" href="site.webmanifest">
+
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:site_name" content="uni for macOS">
+  <meta property="og:title" content="Supporto & Suggerimenti — uni for macOS">
+  <meta property="og:description" content="Centro di supporto e feedback per uni: segnala bug o suggerisci nuove funzionalità per le prossime versioni dell'app per Mac.">
+  <meta property="og:image" content="https://uni.zinco.cc/assets/screenshots/dashboard.png">
+  <meta property="og:url" content="https://uni.zinco.cc/help.html">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="it_IT">
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Supporto & Suggerimenti — uni for macOS">
+  <meta name="twitter:description" content="Segnala bug, richiedi funzionalità e invia feedback per uni per Mac.">
+  <meta name="twitter:image" content="https://uni.zinco.cc/assets/icon.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/icon.png">
+
+  <!-- Structured Data: Schema.org JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    "@id": "https://uni.zinco.cc/help.html#contact",
+    "url": "https://uni.zinco.cc/help.html",
+    "name": "Supporto & Feedback — uni for macOS",
+    "description": "Modulo ufficiale di assistenza e richiesta funzionalità per l'applicazione accademica uni per macOS.",
+    "inLanguage": ["it", "en"],
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://uni.zinco.cc/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Supporto & Feedback",
+          "item": "https://uni.zinco.cc/help.html"
+        }
+      ]
+    }
+  }
+  </script>
+
+  <!-- Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Custom uni Feedback Form Styles */
+    .custom-feedback-card {
+      margin-top: 36px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(17, 22, 24, 0.09);
+      border-radius: 24px;
+      padding: 38px 40px;
+      box-shadow: 0 16px 40px -10px rgba(17, 22, 24, 0.06);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      transition: all 0.25s ease;
+    }
+
+    @media (max-width: 600px) {
+      .custom-feedback-card {
+        padding: 24px 20px;
+        border-radius: 18px;
+      }
+    }
+
+    .form-group {
+      margin-bottom: 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .form-group-label {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .form-req-star {
+      color: #E53E3E;
+    }
+
+    /* Type Picker Radio Cards */
+    .type-picker-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 500px) {
+      .type-picker-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .type-picker-label {
+      cursor: pointer;
+      position: relative;
+    }
+
+    .type-picker-label input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .type-picker-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 18px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1.5px solid rgba(17, 22, 24, 0.09);
+      border-radius: 12px;
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: all 0.18s ease;
+    }
+
+    .type-picker-label input:checked + .type-picker-box {
+      background: rgba(0, 113, 227, 0.08);
+      border-color: var(--accent-blue, #0071E3);
+      color: var(--accent-blue, #0071E3);
+      font-weight: 600;
+      box-shadow: 0 4px 14px -2px rgba(0, 113, 227, 0.15);
+    }
+
+    .type-picker-box .type-check {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(17, 22, 24, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.18s ease;
+    }
+
+    .type-picker-label input:checked + .type-picker-box .type-check {
+      background: var(--accent-blue, #0071E3);
+      border-color: var(--accent-blue, #0071E3);
+      color: #fff;
+    }
+
+    .type-picker-box .type-check::after {
+      content: "✓";
+      font-size: 11px;
+      color: #fff;
+      display: none;
+    }
+
+    .type-picker-label input:checked + .type-picker-box .type-check::after {
+      display: block;
+    }
+
+    /* Text & Textarea Inputs */
+    .form-input-text,
+    .form-textarea {
+      width: 100%;
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.85);
+      border: 1.5px solid rgba(17, 22, 24, 0.11);
+      border-radius: 12px;
+      padding: 12px 16px;
+      box-sizing: border-box;
+      outline: none;
+      transition: all 0.18s ease;
+    }
+
+    .form-input-text:focus,
+    .form-textarea:focus {
+      border-color: var(--accent-blue, #0071E3);
+      background: #FFFFFF;
+      box-shadow: 0 0 0 3.5px rgba(0, 113, 227, 0.14);
+    }
+
+    .form-textarea {
+      min-height: 140px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    /* Star Rating Group */
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .rating-option {
+      flex: 1;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .rating-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .rating-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 11px 0;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1.5px solid rgba(17, 22, 24, 0.09);
+      border-radius: 11px;
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: all 0.18s ease;
+    }
+
+    .rating-option input:checked + .rating-box {
+      background: rgba(0, 113, 227, 0.09);
+      border-color: var(--accent-blue, #0071E3);
+      color: var(--accent-blue, #0071E3);
+      font-weight: 600;
+      box-shadow: 0 4px 12px -2px rgba(0, 113, 227, 0.14);
+    }
+
+    .rating-labels-sub {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      padding: 0 2px;
+    }
+
+    /* Submit Button */
+    .form-submit-row {
+      margin-top: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-submit-form {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--accent-blue, #0071E3);
+      color: #FFFFFF;
+      font-family: var(--font-sans);
+      font-size: 0.96rem;
+      font-weight: 550;
+      padding: 13px 28px;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      box-shadow: 0 4px 18px -2px rgba(0, 113, 227, 0.35);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn-submit-form:hover {
+      background: #0077ED;
+      transform: translateY(-1.5px);
+      box-shadow: 0 8px 24px -2px rgba(0, 113, 227, 0.42);
+    }
+
+    .btn-submit-form:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .submit-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-submit-form.loading .submit-spinner {
+      display: inline-block;
+    }
+
+    .btn-submit-form.loading .submit-icon {
+      display: none;
+    }
+
+    /* Success Card State */
+    .form-success-state {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .form-success-icon {
+      width: 68px;
+      height: 68px;
+      background: rgba(46, 133, 64, 0.12);
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: #2E8540;
+      margin-bottom: 20px;
+      animation: popIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.6); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .form-success-title {
+      font-size: 1.55rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin: 0 0 10px;
+      letter-spacing: -0.02em;
+    }
+
+    .form-success-desc {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      max-width: 480px;
+      margin: 0 auto 26px;
+      line-height: 1.5;
+    }
+
+    .btn-success-reset {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--accent-blue, #0071E3);
+      background: rgba(0, 113, 227, 0.08);
+      border: 1px solid rgba(0, 113, 227, 0.2);
+      border-radius: 9999px;
+      padding: 9px 20px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .btn-success-reset:hover {
+      background: rgba(0, 113, 227, 0.14);
+    }
+
+    /* Tip Card */
+    .mac-tip-card {
+      margin-top: 24px;
+      padding: 16px 20px;
+      background: rgba(0, 113, 227, 0.05);
+      border: 1px solid rgba(0, 113, 227, 0.12);
+      border-radius: 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .mac-tip-card p {
+      margin: 0;
+      font-size: 0.86rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .mac-tip-card p strong {
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body class="legal-page">
+  <!-- Accessibility Skip Link -->
+  <a href="#main-content" class="skip-link">Salta al contenuto principale</a>
+
+  <!-- Navigation Header -->
+  <header class="site-header">
+    <nav class="nav-container">
+      <a href="index.html" class="nav-brand">
+        <img src="assets/icon.png" alt="uni app icon per macOS" class="brand-icon" width="28" height="28">
+        <span class="brand-slash">///</span>
+        <span class="brand-name">uni</span>
+        <span class="brand-tag">macOS</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="index.html" data-i18n="nav_home">← Torna al sito</a>
+        <a href="index.html#features" data-i18n="nav_features">Funzionalità</a>
+        <a href="index.html#faq" data-i18n="nav_faq">FAQ</a>
+        <a href="help.html" class="active" style="color: var(--text-primary); font-weight: 500;" data-i18n="nav_help">Supporto</a>
+        <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener" class="nav-github-link">
+          <svg class="gh-svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+      </div>
+
+      <div class="nav-actions">
+        <a href="index.html#download" class="btn-nav-download" data-i18n="nav_download">Scarica .dmg</a>
+        <button class="nav-hamburger" id="navHamburger" aria-label="Menu di navigazione" aria-expanded="false" aria-controls="mobileMenu">
+          <span class="hamburger-box">
+            <span class="hamburger-bar top"></span>
+            <span class="hamburger-bar bottom"></span>
+          </span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Fullscreen Mobile Navigation Menu Overlay -->
+  <div class="mobile-menu-overlay" id="mobileMenu" aria-hidden="true">
+    <div class="mobile-menu-container">
+      <div class="mobile-menu-top">
+        <span class="mobile-menu-eyebrow">SELEZIONI • MENU</span>
+      </div>
+
+      <nav class="mobile-menu-list">
+        <a href="index.html" class="mobile-nav-item">
+          <span class="item-num">01</span>
+          <span class="item-label">Home</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="index.html#features" class="mobile-nav-item">
+          <span class="item-num">02</span>
+          <span class="item-label" data-i18n="nav_features">Funzionalità</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="index.html#faq" class="mobile-nav-item">
+          <span class="item-num">03</span>
+          <span class="item-label" data-i18n="nav_faq">FAQ</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="help.html" class="mobile-nav-item">
+          <span class="item-num">04</span>
+          <span class="item-label" data-i18n="footer_help">Supporto &amp; Feedback</span>
+          <span class="item-arrow">→</span>
+        </a>
+        <a href="privacy.html" class="mobile-nav-item">
+          <span class="item-num">05</span>
+          <span class="item-label" data-i18n="footer_privacy">Privacy Policy</span>
+          <span class="item-arrow">→</span>
+        </a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Help & Support Content -->
+  <main class="legal-main" id="main-content">
+    <div class="legal-container">
+      <div class="legal-header">
+        <span class="section-tag" data-i18n="help_badge">SUPPORTO &amp; FEEDBACK • COMUNITÀ UNI</span>
+        <h1 class="legal-title" data-i18n="help_title">Come possiamo aiutarti?</h1>
+        <p class="legal-updated" data-i18n="help_sub">Segnala un bug o richiedi una nuova funzionalità per uni.</p>
+      </div>
+
+      <!-- Native Styled Form Card -->
+      <section class="custom-feedback-card" aria-label="Modulo di Feedback">
+        <!-- Hidden iframe to handle Google Form response seamlessly -->
+        <iframe name="hidden_gform_iframe" id="hidden_gform_iframe" style="display:none;" title="Submission Handler"></iframe>
+
+        <!-- Active Form -->
+        <form 
+          id="customFeedbackForm" 
+          action="https://docs.google.com/forms/d/e/1FAIpQLSfuhE8PKXY8OwtvQuMNbLpGtzy630xY4xOOF1TsB7Wryhwu-A/formResponse" 
+          method="POST" 
+          target="hidden_gform_iframe">
+          
+          <input type="hidden" name="fvv" value="1">
+          <input type="hidden" name="pageHistory" value="0">
+
+          <!-- 1. Tipo di invio (entry.639411743) -->
+          <div class="form-group">
+            <label class="form-group-label">
+              <span data-i18n="help_type_label">TIPO DI SEGNALAZIONE</span>
+              <span class="form-req-star">*</span>
+            </label>
+            <div class="type-picker-grid">
+              <label class="type-picker-label">
+                <input type="radio" name="entry.639411743" value="Bug Report">
+                <div class="type-picker-box">
+                  <span>🐛 <span data-i18n="help_type_bug">Segnala un Bug</span></span>
+                  <span class="type-check"></span>
+                </div>
+              </label>
+
+              <label class="type-picker-label">
+                <input type="radio" name="entry.639411743" value="Feature Request" checked>
+                <div class="type-picker-box">
+                  <span>✨ <span data-i18n="help_type_feat">Suggerisci Funzionalità</span></span>
+                  <span class="type-check"></span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. Oggetto (entry.1637433744) -->
+          <div class="form-group">
+            <label class="form-group-label" for="subjectInput">
+              <span data-i18n="help_subject_label">OGGETTO</span>
+              <span class="form-req-star">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="subjectInput" 
+              name="entry.1637433744" 
+              class="form-input-text" 
+              placeholder="Es. 'Aggiungere filtro per semestre' o 'Errore import iCal'" 
+              data-i18n-placeholder="help_subject_ph"
+              required>
+          </div>
+
+          <!-- 3. Descrizione dettagliata (entry.2050167357) -->
+          <div class="form-group">
+            <label class="form-group-label" for="descTextarea">
+              <span data-i18n="help_desc_label">DESCRIZIONE DETTAGLIATA</span>
+              <span class="form-req-star">*</span>
+            </label>
+            <textarea 
+              id="descTextarea" 
+              name="entry.2050167357" 
+              class="form-textarea" 
+              placeholder="Descrivi il comportamento riscontrato o la novità richiesta..." 
+              data-i18n-placeholder="help_desc_ph"
+              required></textarea>
+          </div>
+
+          <!-- 4. Valutazione Complessiva (entry.410718318) -->
+          <div class="form-group">
+            <label class="form-group-label">
+              <span data-i18n="help_rating_label">VALUTAZIONE GENERALE DI UNI</span>
+            </label>
+            <div class="rating-row">
+              <label class="rating-option">
+                <input type="radio" name="entry.410718318" value="1">
+                <div class="rating-box">★ 1</div>
+              </label>
+              <label class="rating-option">
+                <input type="radio" name="entry.410718318" value="2">
+                <div class="rating-box">★ 2</div>
+              </label>
+              <label class="rating-option">
+                <input type="radio" name="entry.410718318" value="3">
+                <div class="rating-box">★ 3</div>
+              </label>
+              <label class="rating-option">
+                <input type="radio" name="entry.410718318" value="4">
+                <div class="rating-box">★ 4</div>
+              </label>
+              <label class="rating-option">
+                <input type="radio" name="entry.410718318" value="5" checked>
+                <div class="rating-box">★ 5</div>
+              </label>
+            </div>
+            <div class="rating-labels-sub">
+              <span data-i18n="help_rating_low">1 - Molto scarsa</span>
+              <span data-i18n="help_rating_high">5 - Eccellente</span>
+            </div>
+          </div>
+
+          <!-- Submit Button Row -->
+          <div class="form-submit-row">
+            <button type="submit" id="btnSubmitFeedback" class="btn-submit-form">
+              <span class="submit-spinner"></span>
+              <span class="submit-icon">✈</span>
+              <span class="submit-text" data-i18n="help_submit_btn">Invia Feedback</span>
+            </button>
+
+            <a href="https://github.com/zjncoo/uni/issues" target="_blank" rel="noopener" style="font-size: 0.85rem; color: var(--text-secondary); text-decoration: none;">
+              Apri Issue su GitHub ↗
+            </a>
+          </div>
+        </form>
+
+        <!-- Success Confirmation Container -->
+        <div id="formSuccessState" class="form-success-state" role="status" aria-live="polite">
+          <div class="form-success-icon">✓</div>
+          <h2 class="form-success-title" data-i18n="help_success_title">Feedback inviato con successo! 🎉</h2>
+          <p class="form-success-desc" data-i18n="help_success_desc">Grazie per il tuo contributo: la tua risposta è stata registrata direttamente nel database di supporto di uni.</p>
+          <button type="button" id="btnResetForm" class="btn-success-reset">
+            <span>↺</span>
+            <span data-i18n="help_success_another">Invia un'altra segnalazione</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Tip Box for Mac Users -->
+      <div class="mac-tip-card">
+        <span style="font-size: 1.2rem;">💡</span>
+        <p data-i18n="help_tip_desc">
+          Se usi l'app uni per macOS, puoi inviare feedback direttamente dal pulsante <strong>?</strong> nella barra laterale, che allega automaticamente la versione del sistema.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <div class="footer-top-row">
+        <div class="footer-left">
+          <div class="footer-brand">
+            <img src="assets/icon.png" alt="uni app icon" class="footer-icon" width="24" height="24" loading="lazy" decoding="async">
+            <span class="brand-slash">///</span>
+            <span class="brand-name">uni</span>
+            <span class="brand-tag">macOS</span>
+          </div>
+          <p class="footer-desc" data-i18n="footer_sub">Progettata con cura per gli studenti universitari su Mac.</p>
+          <p class="footer-credit" data-i18n="footer_credit">Designed by <a href="https://zinco.cc" target="_blank" rel="noopener">zinco.cc</a></p>
+        </div>
+
+        <div class="footer-back-to-top">
+          <a href="#" class="btn-back-to-top" id="btnBackToTop" aria-label="Torna in cima alla pagina">
+            <span data-i18n="footer_back_to_top">↑ Torna in cima</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-links-grid">
+        <div class="footer-links-col">
+          <span class="footer-col-title" data-i18n="footer_col_project">Progetto</span>
+          <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener">GitHub Repository ↗</a>
+          <a href="https://github.com/zjncoo/uni/releases" target="_blank" rel="noopener">Releases &amp; Changelog ↗</a>
+          <a href="https://github.com/zjncoo/uni/blob/main/LICENSE" target="_blank" rel="noopener">Licenza MIT ↗</a>
+        </div>
+        <div class="footer-links-col">
+          <span class="footer-col-title" data-i18n="footer_col_resources">Info &amp; Risorse</span>
+          <a href="help.html" style="font-weight: 500; color: var(--text-primary);" data-i18n="footer_help">Supporto &amp; Feedback</a>
+          <a href="privacy.html" data-i18n="footer_privacy">Privacy &amp; Cookie Policy</a>
+          <a href="https://zinco.cc" target="_blank" rel="noopener" class="footer-portfolio-link">zinco.cc ↗</a>
+          <a href="llms.txt" target="_blank" rel="noopener">LLMs &amp; AI Context (llms.txt)</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <span class="footer-legal-tag" data-i18n="footer_tagline">100% Locale • Offline First • Swift &amp; AppKit</span>
+        <button class="btn-lang-toggle" id="langSwitch" type="button" aria-label="Cambia lingua / Switch language">
+          <span class="lang-option" data-lang="it">IT</span>
+          <span>/</span>
+          <span class="lang-option" data-lang="en">EN</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    // Custom Feedback Form Submission Handler
+    (function() {
+      const form = document.getElementById('customFeedbackForm');
+      const submitBtn = document.getElementById('btnSubmitFeedback');
+      const submitText = submitBtn ? submitBtn.querySelector('.submit-text') : null;
+      const successState = document.getElementById('formSuccessState');
+      const resetBtn = document.getElementById('btnResetForm');
+      const iframe = document.getElementById('hidden_gform_iframe');
+      let isSubmitting = false;
+
+      if (!form) return;
+
+      form.addEventListener('submit', function(e) {
+        if (isSubmitting) {
+          e.preventDefault();
+          return;
+        }
+
+        isSubmitting = true;
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        if (submitText) {
+          submitText.textContent = (window.i18n && window.currentLanguage && window.i18n[window.currentLanguage])
+            ? (window.i18n[window.currentLanguage].help_submitting || 'Invio in corso...')
+            : 'Invio in corso...';
+        }
+
+        // Timer fallback to reveal success if iframe onload does not fire immediately
+        setTimeout(showSuccess, 1400);
+      });
+
+      if (iframe) {
+        iframe.addEventListener('load', function() {
+          if (isSubmitting) {
+            showSuccess();
+          }
+        });
+      }
+
+      function showSuccess() {
+        if (!isSubmitting) return;
+        isSubmitting = false;
+        form.style.display = 'none';
+        successState.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
+        if (submitText) {
+          submitText.textContent = (window.i18n && window.currentLanguage && window.i18n[window.currentLanguage])
+            ? (window.i18n[window.currentLanguage].help_submit_btn || 'Invia Feedback')
+            : 'Invia Feedback';
+        }
+      }
+
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+          form.reset();
+          successState.style.display = 'none';
+          form.style.display = 'block';
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

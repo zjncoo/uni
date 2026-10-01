@@ -1129,7 +1129,7 @@ struct CalendarView: View {
                                                         .foregroundStyle(deadline.isCompleted ? .secondary : deadline.priority.color)
                                                 }
                                                 .buttonStyle(.plain)
-                                                .help(deadline.isCompleted ? "Segna come da fare" : "Segna come completata")
+                                                .help(deadline.isCompleted ? localizationManager.text(it: "Segna come da fare", en: "Mark as incomplete") : localizationManager.text(it: "Segna come completata", en: "Mark as completed"))
                                                 
                                                 VStack(alignment: .leading, spacing: 3) {
                                                     HStack {
@@ -1138,7 +1138,7 @@ struct CalendarView: View {
                                                             .strikethrough(deadline.isCompleted)
                                                             .foregroundStyle(deadline.isCompleted ? .secondary : .primary)
                                                         Spacer()
-                                                        UniBadge(deadline.priority.rawValue, color: deadline.priority.color)
+                                                        UniBadge(deadline.priority.localizedName, color: deadline.priority.color)
                                                     }
                                                     
                                                     HStack(spacing: 8) {
@@ -1152,7 +1152,7 @@ struct CalendarView: View {
                                                             .font(UniFont.caption())
                                                             .foregroundStyle(.secondary)
                                                         
-                                                        if let link = deadline.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                                        ForEach(deadline.allLinks, id: \.self) { link in
                                                             Button {
                                                                 AppSystemHelper.openWebURL(urlString: link)
                                                             } label: {
@@ -1233,7 +1233,7 @@ struct CalendarView: View {
                                                             .font(UniFont.caption())
                                                             .foregroundStyle(.secondary)
                                                         
-                                                        if let link = assignment.linkURL, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                                        ForEach(assignment.allLinks, id: \.self) { link in
                                                             Button {
                                                                 AppSystemHelper.openWebURL(urlString: link)
                                                             } label: {

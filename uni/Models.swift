@@ -213,6 +213,17 @@ public struct Deadline: Identifiable, Codable, Hashable {
     public var isCompleted: Bool
     public var notes: String
     public var linkURL: String?
+    public var linkURLs: [String] = []
+    
+    public var allLinks: [String] {
+        var result = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        if let single = linkURL?.trimmingCharacters(in: .whitespacesAndNewlines), !single.isEmpty {
+            if !result.contains(single) {
+                result.insert(single, at: 0)
+            }
+        }
+        return result
+    }
     
     public enum Priority: String, Codable, CaseIterable {
         case low = "Bassa"
@@ -236,7 +247,8 @@ public struct Deadline: Identifiable, Codable, Hashable {
         priority: Priority = .medium,
         isCompleted: Bool = false,
         notes: String = "",
-        linkURL: String? = nil
+        linkURL: String? = nil,
+        linkURLs: [String] = []
     ) {
         self.id = id
         self.title = title
@@ -245,7 +257,55 @@ public struct Deadline: Identifiable, Codable, Hashable {
         self.priority = priority
         self.isCompleted = isCompleted
         self.notes = notes
-        self.linkURL = linkURL
+        let cleaned = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        let singleClean = linkURL?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleaned.isEmpty {
+            self.linkURLs = cleaned
+            self.linkURL = cleaned.first
+        } else if let s = singleClean, !s.isEmpty {
+            self.linkURLs = [s]
+            self.linkURL = s
+        } else {
+            self.linkURLs = []
+            self.linkURL = nil
+        }
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, title, courseId, dueDate, priority, isCompleted, notes, linkURL, linkURLs
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        courseId = try container.decodeIfPresent(UUID.self, forKey: .courseId)
+        dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate) ?? Date()
+        priority = try container.decodeIfPresent(Priority.self, forKey: .priority) ?? .medium
+        isCompleted = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
+        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        linkURL = try container.decodeIfPresent(String.self, forKey: .linkURL)
+        let decodedURLs = try container.decodeIfPresent([String].self, forKey: .linkURLs) ?? []
+        if !decodedURLs.isEmpty {
+            linkURLs = decodedURLs
+        } else if let linkURL = linkURL, !linkURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            linkURLs = [linkURL]
+        } else {
+            linkURLs = []
+        }
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encodeIfPresent(courseId, forKey: .courseId)
+        try container.encode(dueDate, forKey: .dueDate)
+        try container.encode(priority, forKey: .priority)
+        try container.encode(isCompleted, forKey: .isCompleted)
+        try container.encode(notes, forKey: .notes)
+        try container.encodeIfPresent(linkURLs.first ?? linkURL, forKey: .linkURL)
+        try container.encode(linkURLs, forKey: .linkURLs)
     }
 }
 
@@ -363,6 +423,17 @@ public struct Assignment: Identifiable, Codable, Hashable {
     public var localFileName: String? // "Relazione_Progetto.pdf"
     public var localFileSize: String? // "3.4 MB"
     public var linkURL: String? // Link web opzionale per la consegna / specifiche
+    public var linkURLs: [String] = []
+    
+    public var allLinks: [String] {
+        var result = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        if let single = linkURL?.trimmingCharacters(in: .whitespacesAndNewlines), !single.isEmpty {
+            if !result.contains(single) {
+                result.insert(single, at: 0)
+            }
+        }
+        return result
+    }
     
     public init(
         id: UUID = UUID(),
@@ -376,7 +447,8 @@ public struct Assignment: Identifiable, Codable, Hashable {
         localFilePath: String? = nil,
         localFileName: String? = nil,
         localFileSize: String? = nil,
-        linkURL: String? = nil
+        linkURL: String? = nil,
+        linkURLs: [String] = []
     ) {
         self.id = id
         self.title = title
@@ -389,7 +461,23 @@ public struct Assignment: Identifiable, Codable, Hashable {
         self.localFilePath = localFilePath
         self.localFileName = localFileName
         self.localFileSize = localFileSize
-        self.linkURL = linkURL
+        let cleaned = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        let singleClean = linkURL?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleaned.isEmpty {
+            self.linkURLs = cleaned
+            self.linkURL = cleaned.first
+        } else if let s = singleClean, !s.isEmpty {
+            self.linkURLs = [s]
+            self.linkURL = s
+        } else {
+            self.linkURLs = []
+            self.linkURL = nil
+        }
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, title, courseId, dueDate, details, weightPercent, isCompleted, status
+        case localFilePath, localFileName, localFileSize, linkURL, linkURLs
     }
     
     public init(from decoder: Decoder) throws {
@@ -406,11 +494,36 @@ public struct Assignment: Identifiable, Codable, Hashable {
         localFileName = try container.decodeIfPresent(String.self, forKey: .localFileName)
         localFileSize = try container.decodeIfPresent(String.self, forKey: .localFileSize)
         linkURL = try container.decodeIfPresent(String.self, forKey: .linkURL)
+        let decodedURLs = try container.decodeIfPresent([String].self, forKey: .linkURLs) ?? []
+        if !decodedURLs.isEmpty {
+            linkURLs = decodedURLs
+        } else if let linkURL = linkURL, !linkURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            linkURLs = [linkURL]
+        } else {
+            linkURLs = []
+        }
         if let s = try container.decodeIfPresent(AssignmentStatus.self, forKey: .status) {
             status = s
         } else {
             status = completed ? .completed : .notStarted
         }
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(courseId, forKey: .courseId)
+        try container.encode(dueDate, forKey: .dueDate)
+        try container.encode(details, forKey: .details)
+        try container.encode(weightPercent, forKey: .weightPercent)
+        try container.encode(isCompleted, forKey: .isCompleted)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(localFilePath, forKey: .localFilePath)
+        try container.encodeIfPresent(localFileName, forKey: .localFileName)
+        try container.encodeIfPresent(localFileSize, forKey: .localFileSize)
+        try container.encodeIfPresent(linkURLs.first ?? linkURL, forKey: .linkURL)
+        try container.encode(linkURLs, forKey: .linkURLs)
     }
 }
 

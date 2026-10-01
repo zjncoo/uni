@@ -1,9 +1,9 @@
 {
-  "tag_name": "v1.4.1",
-  "version": "1.4.1",
-  "name": "uni 1.4.1 — Mac Calendar Sync Hotfix & Real-Time Date Advancement",
-  "body": "Fixes and improvements in uni v1.4.1:\n• Resolved Mac Calendar Sync: Added ad-hoc code signature with dedicated calendar entitlements to allow macOS (Sonoma & Sequoia) full access to all system calendars (iCloud, Google, Exchange)\n• Real-Time Automatic Date Updates: Dashboard and calendar views now advance to the new day automatically at midnight and upon waking from sleep without requiring an app restart\n• Dynamic Event Store Reset: Instantly discovers and loads Mac system calendars upon authorization and system calendar changes",
-  "html_url": "https://github.com/zjncoo/uni/releases/tag/v1.4.1",
-  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/v1.4.1/uni.dmg",
-  "pub_date": "2026-09-29T10:30:00Z"
+  "tag_name": "v1.4.2",
+  "version": "1.4.2",
+  "name": "uni 1.4.2 — Refined Settings Hierarchy, Custom 404 & Polished Update Experience",
+  "body": "Novità e miglioramenti in uni v1.4.2:\n• Riprogettazione Completa delle Impostazioni: Nuova gerarchia a 4 categorie (Generale, Aspetto, Calendari, Sistema) con selettore a pillole native macOS e badge per sezione\n• Flusso di Aggiornamento & Novità Perfezionato: Pop-up a 3 passaggi con chiusura controllata di uni all'apertura del DMG e setup guidato con dati salvati\n• Pagina 404 Personalizzata: Nuova pagina d'errore responsive sul sito web con supporto multilingua (IT/EN) e navigazione rapida\n• Controllo Aggiornamenti Ottimizzato: Verifica a frequenza giornaliera guidata dagli eventi di sistema (risveglio Mac ed apertura app) a consumo zero risorse\n• Risoluzione warning e piena compatibilità macOS 14/15/26 (Sequoia)",
+  "html_url": "https://github.com/zjncoo/uni/releases/tag/v1.4.2",
+  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/v1.4.2/uni.dmg",
+  "pub_date": "2026-10-02T00:30:00Z"
 }
