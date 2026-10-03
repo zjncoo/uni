@@ -21,6 +21,7 @@ public struct CourseLinkedFile: Identifiable, Codable, Hashable {
     public var dateAdded: Date
     public var fileTypeExtension: String
     public var isDirectory: Bool
+    public var title: String { name }
     
     enum CodingKeys: String, CodingKey {
         case id, name, filePath, fileSize, dateAdded, fileTypeExtension, isDirectory
@@ -214,6 +215,8 @@ public struct Deadline: Identifiable, Codable, Hashable {
     public var notes: String
     public var linkURL: String?
     public var linkURLs: [String] = []
+    public var localFilePath: String?
+    public var localFileName: String?
     
     public var allLinks: [String] {
         var result = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
@@ -248,7 +251,9 @@ public struct Deadline: Identifiable, Codable, Hashable {
         isCompleted: Bool = false,
         notes: String = "",
         linkURL: String? = nil,
-        linkURLs: [String] = []
+        linkURLs: [String] = [],
+        localFilePath: String? = nil,
+        localFileName: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -257,6 +262,8 @@ public struct Deadline: Identifiable, Codable, Hashable {
         self.priority = priority
         self.isCompleted = isCompleted
         self.notes = notes
+        self.localFilePath = localFilePath
+        self.localFileName = localFileName
         let cleaned = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         let singleClean = linkURL?.trimmingCharacters(in: .whitespacesAndNewlines)
         if !cleaned.isEmpty {
@@ -272,7 +279,7 @@ public struct Deadline: Identifiable, Codable, Hashable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, title, courseId, dueDate, priority, isCompleted, notes, linkURL, linkURLs
+        case id, title, courseId, dueDate, priority, isCompleted, notes, linkURL, linkURLs, localFilePath, localFileName
     }
     
     public init(from decoder: Decoder) throws {
@@ -285,6 +292,8 @@ public struct Deadline: Identifiable, Codable, Hashable {
         isCompleted = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         linkURL = try container.decodeIfPresent(String.self, forKey: .linkURL)
+        localFilePath = try container.decodeIfPresent(String.self, forKey: .localFilePath)
+        localFileName = try container.decodeIfPresent(String.self, forKey: .localFileName)
         let decodedURLs = try container.decodeIfPresent([String].self, forKey: .linkURLs) ?? []
         if !decodedURLs.isEmpty {
             linkURLs = decodedURLs
@@ -306,6 +315,8 @@ public struct Deadline: Identifiable, Codable, Hashable {
         try container.encode(notes, forKey: .notes)
         try container.encodeIfPresent(linkURLs.first ?? linkURL, forKey: .linkURL)
         try container.encode(linkURLs, forKey: .linkURLs)
+        try container.encodeIfPresent(localFilePath, forKey: .localFilePath)
+        try container.encodeIfPresent(localFileName, forKey: .localFileName)
     }
 }
 
@@ -760,6 +771,20 @@ public struct CalendarEventItem: Identifiable, Codable, Hashable {
     public var calendarTitle: String?
     public var calendarColorHex: String?
     public var isAcademic: Bool
+    
+    public var isAllDay: Bool {
+        let cal = Calendar.current
+        let sH = cal.component(.hour, from: startDate)
+        let sM = cal.component(.minute, from: startDate)
+        let eH = cal.component(.hour, from: endDate)
+        let eM = cal.component(.minute, from: endDate)
+        let durationMinutes = Int(endDate.timeIntervalSince(startDate) / 60)
+        
+        if durationMinutes >= 20 * 60 { return true }
+        if sH == 0 && sM == 0 && ((eH == 23 && eM >= 50) || (eH == 0 && durationMinutes >= 12 * 60)) { return true }
+        if !cal.isDate(startDate, inSameDayAs: endDate) && durationMinutes >= 12 * 60 { return true }
+        return false
+    }
     
     public enum EventCategory: String, Codable {
         case lecture = "Lezione"

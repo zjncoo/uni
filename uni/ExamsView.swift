@@ -18,6 +18,7 @@ struct ExamsView: View {
     @State private var isPresentingNewExam = false
     @State private var examToEdit: Exam? = nil
     @State private var examToRegisterGrade: Exam? = nil
+    @State private var examToDelete: Exam? = nil
     
     fileprivate static let examDayFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -272,7 +273,7 @@ struct ExamsView: View {
                             ExamRowView(
                                 exam: exam,
                                 onEdit: { examToEdit = exam },
-                                onDelete: { deleteExam(exam) },
+                                onDelete: { examToDelete = exam },
                                 onRegisterGrade: { examToRegisterGrade = exam }
                             )
                         }
@@ -328,6 +329,24 @@ struct ExamsView: View {
                     NotificationManager.shared.scheduleAllReminders(deadlines: dataManager.deadlines, exams: dataManager.exams, courses: dataManager.courses)
                 }
             }
+        }
+        .alert(
+            localizationManager.text(it: "Elimina Esame", en: "Delete Exam"),
+            isPresented: Binding(get: { examToDelete != nil }, set: { if !$0 { examToDelete = nil } }),
+            presenting: examToDelete
+        ) { ex in
+            Button(localizationManager.t(.cancel), role: .cancel) {
+                examToDelete = nil
+            }
+            Button(localizationManager.t(.delete), role: .destructive) {
+                deleteExam(ex)
+                examToDelete = nil
+            }
+        } message: { ex in
+            Text(localizationManager.text(
+                it: "Sei sicuro di voler eliminare l'appello d'esame \"\(ex.title)\"? L'operazione non può essere annullata.",
+                en: "Are you sure you want to delete the exam \"\(ex.title)\"? This action cannot be undone."
+            ))
         }
         .onAppear {
             if let targetId = dataManager.selectedExamId,

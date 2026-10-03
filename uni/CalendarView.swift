@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 import AppKit
 #endif
 
-// MARK: - Day Events Summary (Pre-grouped for Instant Performance)
+// MARK: - Day Events Summary
 struct DayEventsSummary {
     var events: [CalendarEventItem] = []
     var deadlines: [Deadline] = []
@@ -26,6 +26,7 @@ struct DayEventsSummary {
     var hasPendingDeadline: Bool { deadlines.contains(where: { !$0.isCompleted }) }
     var hasAssignment: Bool { !assignments.isEmpty }
     var hasPendingAssignment: Bool { assignments.contains(where: { !$0.isCompleted }) }
+    var totalItemsCount: Int { eventsCount + deadlines.count + exams.count + assignments.count }
 }
 
 struct CalendarView: View {
@@ -49,55 +50,71 @@ struct CalendarView: View {
         }
     }
     
+    var selectedTab: Binding<String>? = nil
+    
+    public init(selectedTab: Binding<String>? = nil) {
+        self.selectedTab = selectedTab
+    }
+    
     @State private var currentMonth: Date = Date()
     @State private var selectedDate: Date = Date()
+    @State private var expandedDate: Date? = Date()
     @State private var lastTrackedToday: Date = Date()
     @State private var activeSheet: CalendarSheetType? = nil
-    @State private var isShowingNewItemModal: Bool = false
     @State private var selectedScopeFilter: CalendarScopeFilter = .all
     @State private var specificSourceFilterId: UUID? = nil
-    @State private var upcomingHorizonDays: Int = 7
-    @State private var isShowingUpcoming: Bool = false
+    @State private var miniCalendarSearchText: String = ""
+    @State private var isShowingSearchField: Bool = false
+    @State private var isFiltersDropdownExpanded: Bool = false
     
     private let calendar = Calendar.current
     
-    private var daysOfWeek: [String] {
+    private func openDeadline(_ dl: Deadline) {
+        dataManager.navigateTo(tab: "deadlines", deadlineId: dl.id, expand: true)
+        selectedTab?.wrappedValue = "deadlines"
+    }
+    
+    private func openAssignment(_ asg: Assignment) {
+        dataManager.navigateTo(tab: "assignments", assignmentId: asg.id, expand: true)
+        selectedTab?.wrappedValue = "assignments"
+    }
+    
+    @Environment(\.colorScheme) private var systemColorScheme
+    private var isDarkMode: Bool {
+        if themeManager.themeMode == .dark { return true }
+        if themeManager.themeMode == .light { return false }
+        return systemColorScheme == .dark
+    }
+    
+    private var daysOfWeekMini: [String] {
         if localizationManager.currentLanguage == .english {
-            return ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+            return ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
         } else {
-            return ["LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM"]
+            return ["Do", "Lu", "Ma", "Me", "Gi", "Ve", "Sa"]
         }
     }
     
-    // MARK: - Eventi Filtrati per Ambito (Tutti, Scolastici, Personali o per Singolo Calendario)
+    // MARK: - Eventi Filtrati per Ambito
     private var filteredEvents: [CalendarEventItem] {
         let enabledSources = Set(dataManager.calendarSources.filter { $0.isEnabled }.map { $0.id })
         
         return dataManager.syncedEvents.filter { event in
-            // Se l'evento proviene da un calendario disabilitato dall'utente, escludilo
             if let sId = event.sourceId, !dataManager.calendarSources.isEmpty && !enabledSources.contains(sId) {
                 return false
             }
-            
-            // Se è attivo un filtro per singolo calendario specifico
             if let specId = specificSourceFilterId {
                 return event.sourceId == specId
             }
-            
             switch selectedScopeFilter {
-            case .all:
-                return true
-            case .academicOnly:
-                return event.isAcademic
-            case .nonAcademicOnly:
-                return !event.isAcademic
-            case .source(let id):
-                return event.sourceId == id
+            case .all: return true
+            case .academicOnly: return event.isAcademic
+            case .nonAcademicOnly: return !event.isAcademic
+            case .source(let id): return event.sourceId == id
             }
         }
     }
     
-    // MARK: - Pre-calculated Hash Map (Eliminates O(N*M) Date Calculations)
+    // MARK: - Pre-calculated Hash Map
     private var daySummaries: [Date: DayEventsSummary] {
         var dict: [Date: DayEventsSummary] = [:]
         let cal = Calendar.current
@@ -107,18 +124,14 @@ struct CalendarView: View {
             dict[key, default: DayEventsSummary()].events.append(event)
         }
         
-        // Elementi accademici nativi (esami, scadenze, assignment): mostrati in 'Tutti' o 'Scolastici'
         let showUniAcademicItems: Bool = {
             if let specId = specificSourceFilterId {
                 return dataManager.calendarSources.first(where: { $0.id == specId })?.isAcademic ?? false
             }
             switch selectedScopeFilter {
-            case .all, .academicOnly:
-                return true
-            case .nonAcademicOnly:
-                return false
-            case .source(let id):
-                return dataManager.calendarSources.first(where: { $0.id == id })?.isAcademic ?? false
+            case .all, .academicOnly: return true
+            case .nonAcademicOnly: return false
+            case .source(let id): return dataManager.calendarSources.first(where: { $0.id == id })?.isAcademic ?? false
             }
         }()
         
@@ -127,12 +140,10 @@ struct CalendarView: View {
                 let key = cal.startOfDay(for: deadline.dueDate)
                 dict[key, default: DayEventsSummary()].deadlines.append(deadline)
             }
-            
             for exam in dataManager.exams {
                 let key = cal.startOfDay(for: exam.examDate)
                 dict[key, default: DayEventsSummary()].exams.append(exam)
             }
-            
             for assignment in dataManager.assignments {
                 let key = cal.startOfDay(for: assignment.dueDate)
                 dict[key, default: DayEventsSummary()].assignments.append(assignment)
@@ -142,7 +153,7 @@ struct CalendarView: View {
         return dict
     }
     
-    // MARK: - Cached Static Date Formatters (Eliminates repeated allocations)
+    // MARK: - Cached Formatters
     private static let monthYearFormatterIT: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "it_IT")
@@ -157,1248 +168,74 @@ struct CalendarView: View {
         return f
     }()
     
-    private static let dayNumberFormatterIT: DateFormatter = {
+    private static let editorialHeaderFormatterIT: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "it_IT")
-        f.dateFormat = "EEEE, d MMMM yyyy"
+        f.dateFormat = "EEE — d MMMM"
         return f
     }()
     
-    private static let dayNumberFormatterEN: DateFormatter = {
+    private static let editorialHeaderFormatterEN: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US")
-        f.dateFormat = "EEEE, MMMM d, yyyy"
+        f.dateFormat = "EEE — d MMMM"
         return f
     }()
     
-    private static let syncDateFormatter: DateFormatter = {
+    private static let weekdayNameFormatterIT: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "it_IT")
-        f.dateFormat = "d MMM, 'ore' HH:mm"
+        f.dateFormat = "EEEE"
         return f
     }()
     
-    private static let timeRangeFormatter: DateFormatter = {
+    private static let weekdayNameFormatterEN: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "EEEE"
+        return f
+    }()
+    
+    private static let yearFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy"
+        return f
+    }()
+    
+    private static let timeOnlyFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "it_IT")
-        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
         f.dateFormat = "HH:mm"
         return f
     }()
     
-    private static let shortDayFormatterIT: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "it_IT")
-        f.dateFormat = "EEE d MMM"
-        return f
-    }()
-    
-    private static let shortDayFormatterEN: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US")
-        f.dateFormat = "EEE, MMM d"
-        return f
-    }()
-    
-    private static let dayOfWeekFormatterIT: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "it_IT")
-        f.dateFormat = "EEE"
-        return f
-    }()
-    
-    private static let dayOfWeekFormatterEN: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US")
-        f.dateFormat = "EEE"
-        return f
-    }()
-    
-    private static let fullDayFormatterIT: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "it_IT")
-        f.dateFormat = "EEEE d MMMM yyyy"
-        return f
-    }()
-    
-    private static let fullDayFormatterEN: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US")
-        f.dateFormat = "EEEE, MMMM d, yyyy"
-        return f
-    }()
-    
-    // MARK: - Impegni di Oggi Calcolati (Lezioni, Esami, Scadenze, Assignment)
-    private var todayCommitments: [CalendarCommitmentItem] {
-        var items: [CalendarCommitmentItem] = []
-        let cal = Calendar.current
-        
-        for ev in filteredEvents {
-            if cal.isDateInToday(ev.startDate) {
-                let type: CalendarCommitmentItem.CommitmentType = {
-                    switch ev.category {
-                    case .exam: return .exam
-                    case .deadline: return .deadline
-                    case .lecture: return .lecture
-                    case .personal, .other: return ev.isAcademic ? .lecture : .other
-                    }
-                }()
-                
-                items.append(CalendarCommitmentItem(
-                    id: "event-\(ev.id)-\(Int(ev.startDate.timeIntervalSince1970))",
-                    title: ev.title,
-                    date: ev.startDate,
-                    endDate: ev.endDate,
-                    isAllDay: ev.startDate == ev.endDate || (cal.component(.hour, from: ev.startDate) == 0 && cal.component(.minute, from: ev.startDate) == 0 && cal.component(.hour, from: ev.endDate) == 0),
-                    type: type,
-                    categoryName: ev.category.rawValue,
-                    colorHex: ev.calendarColorHex,
-                    isCompleted: false,
-                    courseName: ev.details.isEmpty ? nil : ev.details
-                ))
-            }
-        }
-        
-        let showUniItems: Bool = {
-            if let specId = specificSourceFilterId {
-                return dataManager.calendarSources.first(where: { $0.id == specId })?.isAcademic ?? false
-            }
-            switch selectedScopeFilter {
-            case .all, .academicOnly: return true
-            case .nonAcademicOnly: return false
-            case .source(let id): return dataManager.calendarSources.first(where: { $0.id == id })?.isAcademic ?? false
-            }
-        }()
-        
-        if showUniItems {
-            for dl in dataManager.deadlines where cal.isDateInToday(dl.dueDate) {
-                let course = dataManager.courses.first(where: { $0.id == dl.courseId })?.name
-                items.append(CalendarCommitmentItem(
-                    id: "deadline-\(dl.id)",
-                    title: dl.title,
-                    date: dl.dueDate,
-                    endDate: nil,
-                    isAllDay: false,
-                    type: .deadline,
-                    categoryName: "Deadline",
-                    colorHex: nil,
-                    isCompleted: dl.isCompleted,
-                    courseName: course
-                ))
-            }
-            for ex in dataManager.exams where cal.isDateInToday(ex.examDate) {
-                let course = dataManager.courses.first(where: { $0.id == ex.courseId })?.name
-                items.append(CalendarCommitmentItem(
-                    id: "exam-\(ex.id)",
-                    title: ex.title,
-                    date: ex.examDate,
-                    endDate: nil,
-                    isAllDay: false,
-                    type: .exam,
-                    categoryName: "Exam",
-                    colorHex: nil,
-                    isCompleted: ex.status == .passed,
-                    courseName: course
-                ))
-            }
-            for asg in dataManager.assignments where cal.isDateInToday(asg.dueDate) {
-                let course = dataManager.courses.first(where: { $0.id == asg.courseId })?.name
-                items.append(CalendarCommitmentItem(
-                    id: "asg-\(asg.id)",
-                    title: asg.title,
-                    date: asg.dueDate,
-                    endDate: nil,
-                    isAllDay: false,
-                    type: .assignment,
-                    categoryName: "Assignment",
-                    colorHex: nil,
-                    isCompleted: asg.isCompleted,
-                    courseName: course
-                ))
-            }
-        }
-        
-        return items.sorted(by: { $0.date < $1.date })
-    }
-    
-    // MARK: - Prossimi Impegni (Orizzonte Dinamico: 3, 7, 20 giorni)
-    private func upcomingCommitments(forDays days: Int) -> [CalendarCommitmentItem] {
-        guard days > 0 else { return [] }
-        var items: [CalendarCommitmentItem] = []
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        guard let tomorrow = cal.date(byAdding: .day, value: 1, to: today),
-              let horizonEnd = cal.date(byAdding: .day, value: days + 1, to: today),
-              horizonEnd > tomorrow else {
-            return []
-        }
-        
-        let range = tomorrow..<horizonEnd
-        
-        for ev in filteredEvents {
-            if range.contains(ev.startDate) {
-                let type: CalendarCommitmentItem.CommitmentType = {
-                    switch ev.category {
-                    case .exam: return .exam
-                    case .deadline: return .deadline
-                    case .lecture: return .lecture
-                    case .personal, .other: return ev.isAcademic ? .lecture : .other
-                    }
-                }()
-                
-                items.append(CalendarCommitmentItem(
-                    id: "up-ev-\(ev.id)-\(Int(ev.startDate.timeIntervalSince1970))",
-                    title: ev.title,
-                    date: ev.startDate,
-                    endDate: ev.endDate,
-                    isAllDay: ev.startDate == ev.endDate,
-                    type: type,
-                    categoryName: ev.category.rawValue,
-                    colorHex: ev.calendarColorHex,
-                    isCompleted: false,
-                    courseName: ev.details.isEmpty ? nil : ev.details
-                ))
-            }
-        }
-        
-        let showUniItems: Bool = {
-            if let specId = specificSourceFilterId {
-                return dataManager.calendarSources.first(where: { $0.id == specId })?.isAcademic ?? false
-            }
-            switch selectedScopeFilter {
-            case .all, .academicOnly: return true
-            case .nonAcademicOnly: return false
-            case .source(let id): return dataManager.calendarSources.first(where: { $0.id == id })?.isAcademic ?? false
-            }
-        }()
-        
-        if showUniItems {
-            for dl in dataManager.deadlines where range.contains(dl.dueDate) {
-                let course = dataManager.courses.first(where: { $0.id == dl.courseId })?.name
-                items.append(CalendarCommitmentItem(
-                    id: "up-dl-\(dl.id)",
-                    title: dl.title,
-                    date: dl.dueDate,
-                    endDate: nil,
-                    isAllDay: false,
-                    type: .deadline,
-                    categoryName: "Deadline",
-                    colorHex: nil,
-                    isCompleted: dl.isCompleted,
-                    courseName: course
-                ))
-            }
-            for ex in dataManager.exams where range.contains(ex.examDate) {
-                let course = dataManager.courses.first(where: { $0.id == ex.courseId })?.name
-                items.append(CalendarCommitmentItem(
-                    id: "up-ex-\(ex.id)",
-                    title: ex.title,
-                    date: ex.examDate,
-                    endDate: nil,
-                    isAllDay: false,
-                    type: .exam,
-                    categoryName: "Exam",
-                    colorHex: nil,
-                    isCompleted: ex.status == .passed,
-                    courseName: course
-                ))
-            }
-            for asg in dataManager.assignments where range.contains(asg.dueDate) {
-                let course = dataManager.courses.first(where: { $0.id == asg.courseId })?.name
-                items.append(CalendarCommitmentItem(
-                    id: "up-asg-\(asg.id)",
-                    title: asg.title,
-                    date: asg.dueDate,
-                    endDate: nil,
-                    isAllDay: false,
-                    type: .assignment,
-                    categoryName: "Assignment",
-                    colorHex: nil,
-                    isCompleted: asg.isCompleted,
-                    courseName: course
-                ))
-            }
-        }
-        
-        return items.sorted(by: { $0.date < $1.date })
-    }
-    
+    // MARK: - Body
     var body: some View {
-        let summaries = daySummaries
-        let selectedDayKey = calendar.startOfDay(for: selectedDate)
-        let selectedDaySummary = summaries[selectedDayKey] ?? DayEventsSummary()
-        let days = generateDaysInMonth(for: currentMonth)
-        let todayItems = todayCommitments
-        
-        ZStack {
-            HStack(alignment: .top, spacing: 0) {
-                // Colonna Sinistra: Griglia Calendario & Barra Sincronizzazione
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 16) {
-                // Banner Prominente: Data Odierna, Impegni di Oggi & Prossimi Impegni (Tendina 3, 7, 20 giorni)
-                UniCard(padding: 14) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        // 1. Barra Data Odierna e Pulsante "Oggi"
-                        HStack(alignment: .center, spacing: 14) {
-                            // Riquadro data di oggi
-                            VStack(spacing: 0) {
-                                Text(todayDayOfWeekName().uppercased())
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(themeManager.accentTextColor)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 3)
-                                    .background(themeManager.accentColor)
-                                
-                                Text("\(calendar.component(.day, from: Date()))")
-                                    .font(UniFont.display(24))
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(.primary)
-                                    .frame(width: 52, height: 34)
-                                    .background(Color.primary.opacity(0.04))
-                            }
-                            .frame(width: 52)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-                            )
-                            
-                            VStack(alignment: .leading, spacing: 3) {
-                                HStack(spacing: 6) {
-                                    Text(localizationManager.text(it: "OGGI", en: "TODAY"))
-                                        .font(UniFont.caption())
-                                        .fontWeight(.bold)
-                                        .foregroundStyle(themeManager.accentColor)
-                                        .tracking(1.0)
-                                    
-                                    Text("•")
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Text(todayFullFormatted())
-                                        .font(UniFont.headline())
-                                        .foregroundStyle(.primary)
-                                        .lineLimit(1)
-                                }
-                                
-                                if todayItems.isEmpty {
-                                    Text(localizationManager.text(it: "Nessun impegno in programma per oggi", en: "No commitments scheduled for today"))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                } else {
-                                    Text(localizationManager.text(
-                                        it: "\(todayItems.count) impegni previsti per la giornata",
-                                        en: "\(todayItems.count) commitments scheduled for today"
-                                    ))
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
-                                }
-                            }
-                            
-                            Spacer()
-                            
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    currentMonth = Date()
-                                    selectedDate = Date()
-                                }
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "calendar")
-                                        .font(.system(size: 11))
-                                    Text(localizationManager.t(.today))
-                                        .font(UniFont.caption())
-                                        .fontWeight(.medium)
-                                }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(themeManager.accentColor)
-                            .help(localizationManager.text(it: "Visualizza oggi", en: "Show today"))
-                        }
-                        
-                        // 2. Impegni di Oggi a Colpo d'Occhio (Cards Rettangolari in Griglia)
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 6) {
-                                Text(localizationManager.text(it: "IMPEGNI DI OGGI A COLPO D'OCCHIO", en: "TODAY'S COMMITMENTS AT A GLANCE"))
-                                    .font(.system(size: 9.5, weight: .bold))
-                                    .foregroundStyle(.secondary)
-                                    .tracking(0.8)
-                                
-                                Text("\(todayItems.count)")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1)
-                                    .background(todayItems.isEmpty ? Color.primary.opacity(0.06) : themeManager.accentColor.opacity(0.15))
-                                    .foregroundStyle(todayItems.isEmpty ? Color.secondary : themeManager.accentColor)
-                                    .clipShape(Capsule())
-                            }
-                            
-                            if todayItems.isEmpty {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "checkmark.seal")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(themeManager.accentColor)
-                                    Text(localizationManager.text(it: "Giornata libera! Nessuna lezione, scadenza o esame oggi.", en: "Day off! No lectures, deadlines, or exams today."))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(.vertical, 3)
-                            } else {
-                                let todayGrid = LazyVGrid(
-                                    columns: [GridItem(.adaptive(minimum: 140, maximum: 175), spacing: 10, alignment: .top)],
-                                    alignment: .leading,
-                                    spacing: 10
-                                ) {
-                                    ForEach(todayItems) { item in
-                                        todayCommitmentCard(item)
-                                    }
-                                }
-                                .padding(.vertical, 2)
-                                
-                                if todayItems.count > 4 {
-                                    ScrollView(.vertical, showsIndicators: true) {
-                                        todayGrid
-                                    }
-                                    .frame(maxHeight: 330)
-                                } else {
-                                    todayGrid
-                                }
-                            }
-                        }
-                        
-                        Divider()
-                            .padding(.vertical, 1)
-                        
-                        // 3. Prossimi Giorni (Cliccabile: espande e mostra gli altri sotto)
-                        let upcomingItems = upcomingCommitments(forDays: upcomingHorizonDays)
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(alignment: .center) {
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.22)) {
-                                        isShowingUpcoming.toggle()
-                                    }
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: isShowingUpcoming ? "chevron.down" : "chevron.right")
-                                            .font(.system(size: 9.5, weight: .bold))
-                                            .foregroundStyle(themeManager.accentColor)
-                                        
-                                        Text(localizationManager.text(it: "PROSSIMI GIORNI", en: "UPCOMING DAYS"))
-                                            .font(.system(size: 9.5, weight: .bold))
-                                            .foregroundStyle(.secondary)
-                                            .tracking(0.8)
-                                        
-                                        Text("\(upcomingItems.count)")
-                                            .font(.system(size: 9, weight: .bold))
-                                            .padding(.horizontal, 5)
-                                            .padding(.vertical, 1)
-                                            .background(upcomingItems.isEmpty ? Color.primary.opacity(0.06) : themeManager.accentColor.opacity(0.15))
-                                            .foregroundStyle(upcomingItems.isEmpty ? Color.secondary : themeManager.accentColor)
-                                            .clipShape(Capsule())
-                                        
-                                        Text(localizationManager.text(
-                                            it: isShowingUpcoming ? "(nascondi)" : "(mostra)",
-                                            en: isShowingUpcoming ? "(hide)" : "(show)"
-                                        ))
-                                        .font(.system(size: 9))
-                                        .foregroundStyle(.secondary.opacity(0.8))
-                                    }
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .help(localizationManager.text(
-                                    it: isShowingUpcoming ? "Clicca per nascondere i prossimi giorni" : "Clicca per mostrare i prossimi giorni",
-                                    en: isShowingUpcoming ? "Click to hide upcoming days" : "Click to show upcoming days"
-                                ))
-                                
-                                Spacer()
-                                
-                                // Tendina Selezione Orizzonte (3, 7, 20 Giorni) con Stile Raffinato
-                                Menu {
-                                    Button {
-                                        upcomingHorizonDays = 3
-                                    } label: {
-                                        if upcomingHorizonDays == 3 {
-                                            Label(localizationManager.text(it: "Prossimi 3 giorni", en: "Next 3 days"), systemImage: "checkmark")
-                                        } else {
-                                            Text(localizationManager.text(it: "Prossimi 3 giorni", en: "Next 3 days"))
-                                        }
-                                    }
-                                    Button {
-                                        upcomingHorizonDays = 7
-                                    } label: {
-                                        if upcomingHorizonDays == 7 {
-                                            Label(localizationManager.text(it: "Prossimi 7 giorni", en: "Next 7 days"), systemImage: "checkmark")
-                                        } else {
-                                            Text(localizationManager.text(it: "Prossimi 7 giorni", en: "Next 7 days"))
-                                        }
-                                    }
-                                    Button {
-                                        upcomingHorizonDays = 20
-                                    } label: {
-                                        if upcomingHorizonDays == 20 {
-                                            Label(localizationManager.text(it: "Prossimi 20 giorni", en: "Next 20 days"), systemImage: "checkmark")
-                                        } else {
-                                            Text(localizationManager.text(it: "Prossimi 20 giorni", en: "Next 20 days"))
-                                        }
-                                    }
-                                } label: {
-                                    HStack(spacing: 5) {
-                                        Image(systemName: "calendar.badge.clock")
-                                            .font(.system(size: 10))
-                                            .foregroundStyle(themeManager.accentColor)
-                                        Text(localizationManager.text(it: "Prossimi \(upcomingHorizonDays) giorni", en: "Next \(upcomingHorizonDays) days"))
-                                            .font(UniFont.caption())
-                                            .fontWeight(.medium)
-                                        Image(systemName: "chevron.up.chevron.down")
-                                            .font(.system(size: 9))
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3.5)
-                                    .background(Color.primary.opacity(0.04))
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
-                                    )
-                                }
-                                .menuStyle(.borderlessButton)
-                            }
-                            
-                            // Appaiono solo quando isShowingUpcoming è true
-                            if isShowingUpcoming {
-                                if upcomingItems.isEmpty {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "calendar")
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(.secondary)
-                                        Text(localizationManager.text(
-                                            it: "Nessun impegno nei prossimi \(upcomingHorizonDays) giorni.",
-                                            en: "No commitments scheduled in the next \(upcomingHorizonDays) days."
-                                        ))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                    }
-                                    .padding(.vertical, 3)
-                                } else {
-                                    let upcomingGrid = LazyVGrid(
-                                        columns: [GridItem(.adaptive(minimum: 140, maximum: 175), spacing: 10, alignment: .top)],
-                                        alignment: .leading,
-                                        spacing: 10
-                                    ) {
-                                        ForEach(upcomingItems) { item in
-                                            upcomingCommitmentCard(item)
-                                        }
-                                    }
-                                    .padding(.vertical, 2)
-                                    
-                                    if upcomingItems.count > 4 {
-                                        ScrollView(.vertical, showsIndicators: true) {
-                                            upcomingGrid
-                                        }
-                                        .frame(maxHeight: 330)
-                                    } else {
-                                        upcomingGrid
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        ScrollViewReader { scrollProxy in
+            HStack(spacing: 0) {
+                // LEFT SIDEBAR (Photo 2 reference): Mini calendar, Filters, Events & Tasks
+                leftMiniCalendarSidebar(scrollProxy: scrollProxy)
+                    .frame(width: 270)
+                    .background(isDarkMode ? Color(red: 0.12, green: 0.12, blue: 0.14) : Color(red: 0.96, green: 0.96, blue: 0.94))
+                    .overlay(
+                        Rectangle()
+                            .fill(isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.08))
+                            .frame(width: 1),
+                        alignment: .trailing
+                    )
                 
-                // Header Calendario Mese/Anno
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(localizationManager.t(.schoolCalendar))
-                            .font(UniFont.caption())
-                            .foregroundStyle(.secondary)
-                            .tracking(0.8)
-                        Text(formatMonthYear(currentMonth))
-                            .font(UniFont.largeTitle())
-                            .fontWeight(.bold)
-                    }
+                // MAIN SCROLLABLE DAYS AREA (Photo 1 reference + Photo 3 expanded view)
+                VStack(spacing: 0) {
+                    // Minimalist Top Bar: "Wed — 27 March" and "2026"
+                    editorialTopBar(scrollProxy: scrollProxy)
                     
-                    Spacer()
+                    Divider().opacity(isDarkMode ? 0.2 : 0.4)
                     
-                    HStack(spacing: 6) {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                currentMonth = Date()
-                                selectedDate = Date()
-                            }
-                        } label: {
-                            Text(localizationManager.t(.today))
-                                .font(UniFont.caption())
-                                .fontWeight(.medium)
-                        }
-                        .buttonStyle(.bordered)
-                        
-                        Button {
-                            changeMonth(by: -1)
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .buttonStyle(.bordered)
-                        
-                        Button {
-                            changeMonth(by: 1)
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .buttonStyle(.bordered)
-                    }
+                    // Main Scrollable List of Days
+                    scrollableDaysList(scrollProxy: scrollProxy)
                 }
-                
-                // Barra Sincronizzazione Multi-Calendario & Gestione
-                UniCard(padding: 12) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 10) {
-                            ZStack {
-                                Rectangle()
-                                    .fill(themeManager.accentColor.opacity(0.12))
-                                    .frame(width: 32, height: 32)
-                                    .overlay(Rectangle().stroke(themeManager.accentColor.opacity(0.3), lineWidth: 1))
-                                Image(systemName: "calendar.badge.clock")
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(themeManager.accentColor)
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 1) {
-                                HStack(spacing: 6) {
-                                    Text(localizationManager.text(it: "Calendari Collegati", en: "Connected Calendars"))
-                                        .font(UniFont.headline())
-                                    
-                                    let activeCount = dataManager.calendarSources.filter { $0.isEnabled }.count
-                                    Text("\(activeCount)")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 1.5)
-                                        .background(themeManager.accentColor.opacity(0.15))
-                                        .foregroundStyle(themeManager.accentColor)
-                                        .clipShape(Capsule())
-                                }
-                                
-                                if let lastSync = dataManager.lastSyncDate {
-                                    Text(localizationManager.t(.feedLastUpdate(Self.syncDateFormatter.string(from: lastSync))))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                } else {
-                                    Text(localizationManager.text(it: "Nessun calendario sincronizzato", en: "No calendar synced"))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            
-                            Spacer()
-                            
-                            // Pulsante Gestisci Calendari
-                            Button {
-                                activeSheet = .calendarManager
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "slider.horizontal.3")
-                                        .font(.system(size: 11))
-                                    Text(localizationManager.text(it: "Gestisci", en: "Manage"))
-                                        .font(UniFont.caption())
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            .help(localizationManager.text(it: "Aggiungi feed iCal o replica i calendari del tuo PC", en: "Add iCal feeds or replicate PC calendars"))
-                            
-                            // Sincronizza tutti
-                            if dataManager.isSyncingCalendar {
-                                ProgressView()
-                                    .controlSize(.small)
-                            } else {
-                                Button {
-                                    Task {
-                                        await dataManager.syncAllCalendars()
-                                    }
-                                } label: {
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                        .font(.system(size: 11))
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(themeManager.accentColor)
-                                .help(localizationManager.text(it: "Sincronizza tutti i calendari", en: "Sync all calendars"))
-                            }
-                            // NOTA: Terzo bottoncino rimossa su richiesta utente
-                        }
-                        
-                        Divider()
-                        
-                        // Barra Filtri Rapidi (Tutti / Scolastici / Personali) + Menu Singolo Calendario (SENZA EMOJI)
-                        HStack(spacing: 8) {
-                            Picker("", selection: $selectedScopeFilter) {
-                                Text(localizationManager.text(it: "Tutti", en: "All")).tag(CalendarScopeFilter.all)
-                                Text(localizationManager.text(it: "Scolastici", en: "Academic")).tag(CalendarScopeFilter.academicOnly)
-                                Text(localizationManager.text(it: "Personali", en: "Personal")).tag(CalendarScopeFilter.nonAcademicOnly)
-                            }
-                            .pickerStyle(.segmented)
-                            .frame(maxWidth: 240)
-                            .onChange(of: selectedScopeFilter) { _, _ in
-                                specificSourceFilterId = nil
-                            }
-                            
-                            Spacer()
-                            
-                            // Dropdown filtro singolo calendario (SENZA EMOJI)
-                            Menu {
-                                Button {
-                                    specificSourceFilterId = nil
-                                } label: {
-                                    if specificSourceFilterId == nil {
-                                        Label(localizationManager.text(it: "Tutti i Calendari", en: "All Calendars"), systemImage: "checkmark")
-                                    } else {
-                                        Text(localizationManager.text(it: "Tutti i Calendari", en: "All Calendars"))
-                                    }
-                                }
-                                
-                                if !dataManager.calendarSources.isEmpty {
-                                    Divider()
-                                    ForEach(dataManager.calendarSources) { src in
-                                        Button {
-                                            specificSourceFilterId = src.id
-                                        } label: {
-                                            if specificSourceFilterId == src.id {
-                                                Label("\(src.title) (\(src.eventCount))", systemImage: "checkmark")
-                                            } else {
-                                                Label("\(src.title) (\(src.eventCount))", systemImage: src.isAcademic ? "graduationcap" : "person")
-                                            }
-                                        }
-                                    }
-                                }
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: specificSourceFilterId == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                                        .foregroundStyle(specificSourceFilterId != nil ? themeManager.accentColor : .secondary)
-                                    
-                                    if let specId = specificSourceFilterId, let src = dataManager.calendarSources.first(where: { $0.id == specId }) {
-                                        Text(src.title)
-                                            .font(UniFont.caption())
-                                            .lineLimit(1)
-                                    } else {
-                                        Text(localizationManager.text(it: "Filtra per calendario", en: "Filter calendar"))
-                                            .font(UniFont.caption())
-                                    }
-                                }
-                            }
-                            .menuStyle(.borderlessButton)
-                            .fixedSize()
-                        }
-                        
-                        // Badge indicatore se è attivo un filtro calendario specifico
-                        if let specId = specificSourceFilterId, let src = dataManager.calendarSources.first(where: { $0.id == specId }) {
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(Color(hex: src.colorHex) ?? themeManager.accentColor)
-                                    .frame(width: 8, height: 8)
-                                
-                                Text(localizationManager.text(it: "Filtro attivo:", en: "Active filter:") + " \(src.title)")
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
-                                
-                                Button {
-                                    specificSourceFilterId = nil
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                                
-                                Spacer()
-                            }
-                            .padding(.top, 2)
-                        }
-                        
-                        // Messaggi di stato sync
-                        if let success = dataManager.syncSuccessMessage {
-                            HStack(spacing: 6) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                                    .font(.system(size: 11))
-                                Text(success)
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.green)
-                                Spacer()
-                            }
-                            .padding(.vertical, 1)
-                        } else if let err = dataManager.syncErrorMessage {
-                            HStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.red)
-                                    .font(.system(size: 11))
-                                Text(err)
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.red)
-                                Spacer()
-                            }
-                            .padding(.vertical, 1)
-                        }
-                    }
-                }
-                
-                // Intestazione Giorni della Settimana (LUN, MAR...)
-                HStack {
-                    ForEach(daysOfWeek, id: \.self) { day in
-                        Text(day)
-                            .font(UniFont.caption())
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                
-                // Griglia dei Giorni del Mese (Ottimizzata a O(1), Clic Istantaneo & Hover)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
-                    ForEach(days) { item in
-                        if let date = item.date {
-                            let dayKey = calendar.startOfDay(for: date)
-                            let summary = summaries[dayKey] ?? DayEventsSummary()
-                            
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.15)) {
-                                    selectedDate = date
-                                }
-                            } label: {
-                                DayCellView(
-                                    date: date,
-                                    isSelected: calendar.isDate(date, inSameDayAs: selectedDate),
-                                    isToday: calendar.isDateInToday(date),
-                                    eventsCount: summary.eventsCount,
-                                    academicEventsCount: summary.academicEventsCount,
-                                    nonAcademicEventsCount: summary.nonAcademicEventsCount,
-                                    hasExam: summary.hasExam,
-                                    hasDeadline: summary.hasDeadline,
-                                    hasPendingDeadline: summary.hasPendingDeadline,
-                                    hasAssignment: summary.hasAssignment,
-                                    hasPendingAssignment: summary.hasPendingAssignment,
-                                    accentColor: themeManager.accentColor
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            .contentShape(Rectangle())
-                            .help(localizationManager.text(it: "Clicca per visualizzare questo giorno", en: "Click to view this day"))
-                        } else {
-                            Color.clear
-                                .frame(height: 50)
-                        }
-                    }
-                }
-                
-                Spacer()
-            }
-            .padding(18)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            
-            Divider()
-            
-            // Colonna Destra: Eventi del Giorno Selezionato & Gestione Scadenze
-            VStack(alignment: .leading, spacing: 14) {
-                // Header Agenda con Navigazione Rapida Giorni e "+ Nuova Scadenza"
-                HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(localizationManager.t(.dayAgenda))
-                            .font(UniFont.caption())
-                            .foregroundStyle(.secondary)
-                            .tracking(0.8)
-                        Text(formatSelectedDay(selectedDate))
-                            .font(UniFont.title())
-                            .fontWeight(.bold)
-                            .lineLimit(1)
-                    }
-                    
-                    Spacer()
-                    
-                    // Frecce navigazione rapida giorno precedente / successivo
-                    HStack(spacing: 4) {
-                        Button {
-                            if let prev = calendar.date(byAdding: .day, value: -1, to: selectedDate) {
-                                withAnimation(.easeInOut(duration: 0.15)) {
-                                    selectedDate = prev
-                                    currentMonth = prev
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .buttonStyle(.bordered)
-                        .help(localizationManager.text(it: "Giorno precedente", en: "Previous day"))
-                        
-                        Button {
-                            if let next = calendar.date(byAdding: .day, value: 1, to: selectedDate) {
-                                withAnimation(.easeInOut(duration: 0.15)) {
-                                    selectedDate = next
-                                    currentMonth = next
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .buttonStyle(.bordered)
-                        .help(localizationManager.text(it: "Giorno successivo", en: "Next day"))
-                    }
-                }
-                .padding(.top, 22)
-                .padding(.horizontal, 18)
-                
-                let dayEvents = selectedDaySummary.events
-                let dayDeadlines = selectedDaySummary.deadlines
-                let dayExams = selectedDaySummary.exams
-                let dayAssignments = selectedDaySummary.assignments
-                
-                if dayEvents.isEmpty && dayDeadlines.isEmpty && dayExams.isEmpty && dayAssignments.isEmpty {
-                    VStack {
-                        Spacer()
-                        UniEmptyStateView(
-                            icon: "calendar",
-                            title: localizationManager.t(.noEventsToday),
-                            subtitle: localizationManager.t(.noEventsThisDay),
-                            buttonTitle: localizationManager.currentLanguage == .italian ? "Aggiungi Scadenza" : "Add Deadline"
-                        ) {
-                            activeSheet = .deadline
-                        }
-                        .padding(.horizontal, 16)
-                        Spacer()
-                    }
-                } else {
-                    ScrollView {
-                        VStack(spacing: 12) {
-                            // 1. ESAMI DEL GIORNO
-                            if !dayExams.isEmpty {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(localizationManager.currentLanguage == .italian ? "ESAMI DEL GIORNO" : "EXAMS")
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                        .tracking(0.8)
-                                    
-                                    ForEach(dayExams) { exam in
-                                        UniCard(padding: 12) {
-                                            HStack(spacing: 12) {
-                                                Rectangle()
-                                                    .fill(Color.red)
-                                                    .frame(width: 3)
-                                                VStack(alignment: .leading, spacing: 2) {
-                                                    HStack {
-                                                        Text(exam.title)
-                                                            .font(UniFont.headline())
-                                                        Spacer()
-                                                        UniBadge(localizationManager.text(it: "Esame", en: "Exam"), color: .red)
-                                                    }
-                                                    if !exam.room.isEmpty {
-                                                        Label(exam.room, systemImage: "mappin")
-                                                            .font(UniFont.caption())
-                                                            .foregroundStyle(.secondary)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // 2. SCADENZE DEL GIORNO (Aggiornate e Interattive)
-                            if !dayDeadlines.isEmpty {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text(localizationManager.currentLanguage == .italian ? "SCADENZE DEL GIORNO" : "DEADLINES")
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                            .tracking(0.8)
-                                        Spacer()
-                                        Text("\(dayDeadlines.filter { !$0.isCompleted }.count) in sospeso")
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    
-                                    ForEach(dayDeadlines) { deadline in
-                                        UniCard(padding: 12) {
-                                            HStack(spacing: 10) {
-                                                // Checkbox interattiva completamento rapido
-                                                Button {
-                                                    toggleDeadline(deadline)
-                                                } label: {
-                                                    Image(systemName: deadline.isCompleted ? "checkmark.circle.fill" : "circle")
-                                                        .font(.system(size: 16))
-                                                        .foregroundStyle(deadline.isCompleted ? .secondary : deadline.priority.color)
-                                                }
-                                                .buttonStyle(.plain)
-                                                .help(deadline.isCompleted ? localizationManager.text(it: "Segna come da fare", en: "Mark as incomplete") : localizationManager.text(it: "Segna come completata", en: "Mark as completed"))
-                                                
-                                                VStack(alignment: .leading, spacing: 3) {
-                                                    HStack {
-                                                        Text(deadline.title)
-                                                            .font(UniFont.headline())
-                                                            .strikethrough(deadline.isCompleted)
-                                                            .foregroundStyle(deadline.isCompleted ? .secondary : .primary)
-                                                        Spacer()
-                                                        UniBadge(deadline.priority.localizedName, color: deadline.priority.color)
-                                                    }
-                                                    
-                                                    HStack(spacing: 8) {
-                                                        if let courseId = deadline.courseId, let course = dataManager.courses.first(where: { $0.id == courseId }) {
-                                                            Label(course.name, systemImage: "book.closed")
-                                                                .font(UniFont.caption())
-                                                                .foregroundStyle(.secondary)
-                                                        }
-                                                        
-                                                        Label(Self.timeRangeFormatter.string(from: deadline.dueDate), systemImage: "clock")
-                                                            .font(UniFont.caption())
-                                                            .foregroundStyle(.secondary)
-                                                        
-                                                        ForEach(deadline.allLinks, id: \.self) { link in
-                                                            Button {
-                                                                AppSystemHelper.openWebURL(urlString: link)
-                                                            } label: {
-                                                                HStack(spacing: 3) {
-                                                                    Image(systemName: "arrow.up.forward.square")
-                                                                    Text("Link")
-                                                                }
-                                                                .font(UniFont.caption())
-                                                                .foregroundStyle(themeManager.accentColor)
-                                                            }
-                                                            .buttonStyle(.plain)
-                                                            .help(link)
-                                                        }
-                                                    }
-                                                    
-                                                    if !deadline.notes.isEmpty {
-                                                        Text(deadline.notes)
-                                                            .font(UniFont.caption())
-                                                            .foregroundStyle(.secondary)
-                                                            .lineLimit(2)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // 2.5 ASSIGNMENTS DEL GIORNO
-                            if !dayAssignments.isEmpty {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text(localizationManager.currentLanguage == .italian ? "ASSIGNMENT DEL GIORNO" : "ASSIGNMENTS")
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                            .tracking(0.8)
-                                        Spacer()
-                                        let pending = dayAssignments.filter { !$0.isCompleted }.count
-                                        if pending > 0 {
-                                            Text(localizationManager.text(it: "\(pending) in sospeso", en: "\(pending) pending"))
-                                                .font(UniFont.caption())
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    
-                                    ForEach(dayAssignments) { assignment in
-                                        UniCard(padding: 12) {
-                                            HStack(spacing: 10) {
-                                                Button {
-                                                    toggleAssignment(assignment)
-                                                } label: {
-                                                    Image(systemName: assignment.isCompleted ? "checkmark.circle.fill" : "circle")
-                                                        .font(.system(size: 16))
-                                                        .foregroundStyle(assignment.isCompleted ? .secondary : Color.purple)
-                                                }
-                                                .buttonStyle(.plain)
-                                                .help(localizationManager.text(it: assignment.isCompleted ? "Segna come da fare" : "Segna come completato", en: assignment.isCompleted ? "Mark as pending" : "Mark as completed"))
-                                                
-                                                VStack(alignment: .leading, spacing: 3) {
-                                                    HStack {
-                                                        Text(assignment.title)
-                                                            .font(UniFont.headline())
-                                                            .strikethrough(assignment.isCompleted)
-                                                            .foregroundStyle(assignment.isCompleted ? .secondary : .primary)
-                                                        Spacer()
-                                                        if assignment.weightPercent > 0 {
-                                                            UniBadge("\(assignment.weightPercent)%", color: .purple)
-                                                        }
-                                                    }
-                                                    
-                                                    HStack(spacing: 8) {
-                                                        if let course = dataManager.courses.first(where: { $0.id == assignment.courseId }) {
-                                                            Label(course.name, systemImage: "book.closed")
-                                                                .font(UniFont.caption())
-                                                                .foregroundStyle(.secondary)
-                                                        }
-                                                        Label(Self.timeRangeFormatter.string(from: assignment.dueDate), systemImage: "clock")
-                                                            .font(UniFont.caption())
-                                                            .foregroundStyle(.secondary)
-                                                        
-                                                        ForEach(assignment.allLinks, id: \.self) { link in
-                                                            Button {
-                                                                AppSystemHelper.openWebURL(urlString: link)
-                                                            } label: {
-                                                                HStack(spacing: 3) {
-                                                                    Image(systemName: "arrow.up.forward.square")
-                                                                    Text("Link")
-                                                                }
-                                                                .font(UniFont.caption())
-                                                                .foregroundStyle(themeManager.accentColor)
-                                                            }
-                                                            .buttonStyle(.plain)
-                                                            .help(link)
-                                                        }
-                                                    }
-                                                    
-                                                    if !assignment.details.isEmpty {
-                                                        Text(assignment.details)
-                                                            .font(UniFont.caption())
-                                                            .foregroundStyle(.secondary)
-                                                            .lineLimit(2)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // 3. LEZIONI ED EVENTI ACCADEMICI / UNIVERSITARI
-                            let academicEvents = dayEvents.filter { $0.isAcademic }
-                            if !academicEvents.isEmpty {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text(localizationManager.text(it: "LEZIONI & APPUNTAMENTI SCOLASTICI", en: "LECTURES & ACADEMIC EVENTS"))
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                            .tracking(0.8)
-                                        Spacer()
-                                        Text("\(academicEvents.count)")
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    
-                                    ForEach(academicEvents) { event in
-                                        let calColor = Color(hex: event.calendarColorHex ?? "") ?? themeManager.accentColor
-                                        UniCard(padding: 12) {
-                                            HStack(spacing: 12) {
-                                                Rectangle()
-                                                    .fill(calColor)
-                                                    .frame(width: 3)
-                                                VStack(alignment: .leading, spacing: 3) {
-                                                    HStack {
-                                                        Text(event.title)
-                                                            .font(UniFont.headline())
-                                                        Spacer()
-                                                        if let calTitle = event.calendarTitle, !calTitle.isEmpty {
-                                                            UniBadge(calTitle, color: calColor)
-                                                        } else {
-                                                            UniBadge(event.category.rawValue, color: calColor)
-                                                        }
-                                                    }
-                                                    
-                                                    HStack(spacing: 10) {
-                                                        Label(formatTimeRange(start: event.startDate, end: event.endDate), systemImage: "clock")
-                                                        if !event.location.isEmpty {
-                                                            Label(event.location, systemImage: "mappin")
-                                                        }
-                                                    }
-                                                    .font(UniFont.caption())
-                                                    .foregroundStyle(.secondary)
-                                                    
-                                                    if !event.details.isEmpty {
-                                                        Text(event.details)
-                                                            .font(UniFont.caption())
-                                                            .foregroundStyle(.secondary)
-                                                            .lineLimit(2)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // 4. EVENTI PERSONALI & EXTRA-SCOLASTICI (MAC / ALTRI CALENDARI)
-                            let nonAcademicEvents = dayEvents.filter { !$0.isAcademic }
-                            if !nonAcademicEvents.isEmpty {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text(localizationManager.text(it: "IMPEGNI PERSONALI & EXTRA-SCOLASTICI", en: "PERSONAL & NON-ACADEMIC EVENTS"))
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                            .tracking(0.8)
-                                        Spacer()
-                                        Text("\(nonAcademicEvents.count)")
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    
-                                    ForEach(nonAcademicEvents) { event in
-                                        let calColor = Color(hex: event.calendarColorHex ?? "") ?? Color.purple
-                                        UniCard(padding: 12) {
-                                            HStack(spacing: 12) {
-                                                Rectangle()
-                                                    .fill(calColor)
-                                                    .frame(width: 3)
-                                                VStack(alignment: .leading, spacing: 3) {
-                                                    HStack {
-                                                        Text(event.title)
-                                                            .font(UniFont.headline())
-                                                        Spacer()
-                                                        HStack(spacing: 4) {
-                                                            Image(systemName: "person.fill")
-                                                                .font(.system(size: 9))
-                                                            Text(event.calendarTitle ?? localizationManager.text(it: "Personale", en: "Personal"))
-                                                        }
-                                                        .font(.system(size: 10, weight: .semibold))
-                                                        .padding(.horizontal, 6)
-                                                        .padding(.vertical, 2)
-                                                        .background(calColor.opacity(0.15))
-                                                        .foregroundStyle(calColor)
-                                                        .clipShape(Capsule())
-                                                    }
-                                                    
-                                                    HStack(spacing: 10) {
-                                                        Label(formatTimeRange(start: event.startDate, end: event.endDate), systemImage: "clock")
-                                                        if !event.location.isEmpty {
-                                                            Label(event.location, systemImage: "mappin")
-                                                        }
-                                                    }
-                                                    .font(UniFont.caption())
-                                                    .foregroundStyle(.secondary)
-                                                    
-                                                    if !event.details.isEmpty {
-                                                        Text(event.details)
-                                                            .font(UniFont.caption())
-                                                            .foregroundStyle(.secondary)
-                                                            .lineLimit(2)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 18)
-                        .padding(.bottom, 18)
-                    }
-                }
-                }
-                .frame(width: 350)
-                .frame(maxHeight: .infinity, alignment: .topLeading)
-            }
-            
-            // Overview New Item Modal Overlay (Triggered by + in Calendar)
-            if isShowingNewItemModal {
-                OverviewNewItemModalView(
-                    isPresented: $isShowingNewItemModal,
-                    onSelectAssignment: { activeSheet = .assignment },
-                    onSelectDeadline: { activeSheet = .deadline },
-                    onSelectExam: { activeSheet = .exam }
-                )
-                .transition(.opacity)
-                .zIndex(1001)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(isDarkMode ? Color(red: 0.08, green: 0.08, blue: 0.09) : Color(red: 0.98, green: 0.98, blue: 0.98))
             }
         }
         .sheet(item: $activeSheet) { sheetType in
@@ -1407,10 +244,9 @@ struct CalendarView: View {
                 DeadlineEditorSheet(deadlineToEdit: nil, initialDate: selectedDate) { newDeadline in
                     dataManager.deadlines.append(newDeadline)
                     dataManager.saveData()
-                    
                     NotificationManager.shared.notify(
                         title: localizationManager.text(it: "Scadenza creata", en: "Deadline created"),
-                        message: localizationManager.text(it: "\(newDeadline.title) inserita nel calendario", en: "\(newDeadline.title) added to calendar"),
+                        message: newDeadline.title,
                         type: .success,
                         icon: "calendar.badge.clock"
                     )
@@ -1424,11 +260,10 @@ struct CalendarView: View {
                 ExamEditorSheet(examToEdit: nil) { newExam in
                     dataManager.exams.append(newExam)
                     dataManager.saveData()
-                    
                     NotificationManager.shared.notify(
-                        title: localizationManager.text(it: "Esame creato", en: "Exam created"),
-                        message: localizationManager.text(it: "\(newExam.title) inserito nel calendario", en: "\(newExam.title) added to calendar"),
-                        type: .success,
+                        title: localizationManager.text(it: "Esame programmato", en: "Exam scheduled"),
+                        message: newExam.title,
+                        type: .info,
                         icon: "graduationcap"
                     )
                     NotificationManager.shared.scheduleAllReminders(deadlines: dataManager.deadlines, exams: dataManager.exams, courses: dataManager.courses)
@@ -1441,14 +276,12 @@ struct CalendarView: View {
                 AssignmentEditorSheet(assignmentToEdit: nil) { newAssignment in
                     dataManager.assignments.append(newAssignment)
                     dataManager.saveData()
-                    
                     NotificationManager.shared.notify(
-                        title: localizationManager.text(it: "Assignment creato", en: "Assignment created"),
-                        message: localizationManager.text(it: "\(newAssignment.title) inserito nel calendario", en: "\(newAssignment.title) added to calendar"),
+                        title: localizationManager.text(it: "Compito registrato", en: "Assignment recorded"),
+                        message: newAssignment.title,
                         type: .success,
                         icon: "doc.text.fill"
                     )
-                    NotificationManager.shared.scheduleAllReminders(deadlines: dataManager.deadlines, exams: dataManager.exams, courses: dataManager.courses)
                 }
                 .environmentObject(dataManager)
                 .environmentObject(themeManager)
@@ -1467,61 +300,719 @@ struct CalendarView: View {
             if calendar.isDate(selectedDate, inSameDayAs: lastTrackedToday) {
                 selectedDate = now
                 currentMonth = now
+                expandedDate = now
             }
             lastTrackedToday = now
         }
-        .onReceive(dataManager.$currentDate) { newDate in
-            if calendar.isDate(selectedDate, inSameDayAs: lastTrackedToday) {
-                selectedDate = newDate
-                currentMonth = newDate
+    }
+    
+    // MARK: - Minimalist Top Bar (Photo 1 reference)
+    private func editorialTopBar(scrollProxy: ScrollViewProxy) -> some View {
+        HStack(alignment: .center) {
+            // Left: "Wed — 27 March"
+            HStack(spacing: 8) {
+                Text(formatEditorialDate(selectedDate))
+                    .font(UniFont.headline())
+                    .fontWeight(.bold)
+                    .foregroundStyle(.primary)
+                
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        let now = Date()
+                        selectedDate = now
+                        currentMonth = now
+                        expandedDate = now
+                        scrollProxy.scrollTo(dayScrollId(for: now), anchor: .center)
+                    }
+                } label: {
+                    Text(localizationManager.t(.today).uppercased())
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(themeManager.accentTextColor)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(themeManager.accentColor)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .help(localizationManager.text(it: "Torna ad oggi", en: "Go to today"))
             }
-            lastTrackedToday = newDate
+            
+            Spacer()
+            
+            // Design icons & Year (Photo 1 reference: "2019" / "2026")
+            HStack(spacing: 12) {
+                // Quick add button
+                Menu {
+                    Button {
+                        activeSheet = .assignment
+                    } label: {
+                        Label(localizationManager.t(.navAssignments), systemImage: "doc.text")
+                    }
+                    Button {
+                        activeSheet = .exam
+                    } label: {
+                        Label(localizationManager.t(.navExams), systemImage: "graduationcap")
+                    }
+                    Button {
+                        activeSheet = .deadline
+                    } label: {
+                        Label(localizationManager.t(.navDeadlines), systemImage: "clock")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(themeManager.accentColor)
+                        .padding(6)
+                        .background(isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.06))
+                        .clipShape(Circle())
+                }
+                .menuStyle(.borderlessButton)
+                .help(localizationManager.text(it: "Aggiungi evento", en: "Add event"))
+                
+                Text(Self.yearFormatter.string(from: selectedDate))
+                    .font(UniFont.title())
+                    .fontWeight(.light)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
+    }
+    
+    // MARK: - Left Mini Calendar Sidebar (Photo 2 reference)
+    private func leftMiniCalendarSidebar(scrollProxy: ScrollViewProxy) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 18) {
+                // Header: "Calendar" + Search & Filter icons
+                HStack {
+                    HStack(spacing: 8) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(themeManager.accentColor)
+                        Text(localizationManager.text(it: "Calendario", en: "Calendar"))
+                            .font(UniFont.headline())
+                            .fontWeight(.bold)
+                            .foregroundStyle(.primary)
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            isShowingSearchField.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        activeSheet = .calendarManager
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(localizationManager.text(it: "Gestisci Calendari Collegati", en: "Manage Connected Calendars"))
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                
+                if isShowingSearchField {
+                    HStack(spacing: 6) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        TextField(localizationManager.text(it: "Filtra per testo...", en: "Filter text..."), text: $miniCalendarSearchText)
+                            .textFieldStyle(.plain)
+                            .font(UniFont.caption())
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .padding(.horizontal, 16)
+                }
+                
+                // Mini Calendar Month Navigation & Grid
+                miniMonthGrid(scrollProxy: scrollProxy)
+                    .padding(.horizontal, 16)
+                
+                Divider()
+                    .opacity(isDarkMode ? 0.2 : 0.4)
+                    .padding(.horizontal, 14)
+                
+                // Filters with design icons
+                filtersSection
+                    .padding(.horizontal, 16)
+                
+                Divider()
+                    .opacity(isDarkMode ? 0.2 : 0.4)
+                    .padding(.horizontal, 14)
+                
+                // Quick Events List (Photo 2 style: "Events +")
+                quickEventsSection
+                    .padding(.horizontal, 16)
+                
+                // Quick Tasks List (Photo 2 style: "Tasks +")
+                quickTasksSection
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 20)
+            }
         }
     }
     
-    // MARK: - Actions & Helpers
-    private func toggleDeadline(_ deadline: Deadline) {
-        if let idx = dataManager.deadlines.firstIndex(where: { $0.id == deadline.id }) {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                dataManager.deadlines[idx].isCompleted.toggle()
-                let isNowCompleted = dataManager.deadlines[idx].isCompleted
-                dataManager.saveData()
+    // MARK: - Mini Month Calendar Grid
+    private func miniMonthGrid(scrollProxy: ScrollViewProxy) -> some View {
+        let summaries = daySummaries
+        let days = generateDaysInMonth(for: currentMonth)
+        
+        return VStack(alignment: .leading, spacing: 10) {
+            // Month Header with < > buttons
+            HStack {
+                Text(formatMonthYear(currentMonth))
+                    .font(UniFont.body())
+                    .fontWeight(.bold)
+                    .foregroundStyle(.primary)
                 
-                NotificationManager.shared.notify(
-                    title: isNowCompleted ? "Scadenza completata! 🎉" : "Scadenza riattivata",
-                    message: deadline.title,
-                    type: isNowCompleted ? .success : .info,
-                    icon: isNowCompleted ? "checkmark.circle.fill" : "circle",
-                    postToSystem: true
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Button {
+                        changeMonth(by: -1)
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .padding(4)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        changeMonth(by: 1)
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .padding(4)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            
+            // Weekday Initials (Su Mo Tu We Th Fr Sa)
+            HStack(spacing: 0) {
+                ForEach(daysOfWeekMini, id: \.self) { day in
+                    Text(day)
+                        .font(.system(size: 9.5, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            
+            // Day Numbers Grid
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7), spacing: 4) {
+                ForEach(days) { item in
+                    if let date = item.date {
+                        let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
+                        let isToday = calendar.isDateInToday(date)
+                        let dayKey = calendar.startOfDay(for: date)
+                        let summary = summaries[dayKey] ?? DayEventsSummary()
+                        let hasAnyEvents = summary.totalItemsCount > 0
+                        
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                selectedDate = date
+                                expandedDate = date
+                                scrollProxy.scrollTo(dayScrollId(for: date), anchor: .top)
+                            }
+                        } label: {
+                            VStack(spacing: 2) {
+                                ZStack {
+                                    if isSelected || isToday {
+                                        Circle()
+                                            .fill(isSelected ? Color.red : themeManager.accentColor.opacity(0.18))
+                                            .frame(width: 24, height: 24)
+                                    }
+                                    
+                                    Text("\(calendar.component(.day, from: date))")
+                                        .font(.system(size: 11, weight: isSelected || isToday ? .bold : .regular))
+                                        .foregroundStyle(isSelected ? Color.white : (isToday ? themeManager.accentColor : Color.primary))
+                                }
+                                
+                                // Event indicator dots per typology (All categories present on this day)
+                                HStack(spacing: 2) {
+                                    if summary.hasExam {
+                                        Circle().fill(Color.red).frame(width: 3.5, height: 3.5)
+                                    }
+                                    if summary.hasDeadline {
+                                        Circle().fill(Color.orange).frame(width: 3.5, height: 3.5)
+                                    }
+                                    if summary.hasAssignment {
+                                        Circle().fill(Color.purple).frame(width: 3.5, height: 3.5)
+                                    }
+                                    if summary.academicEventsCount > 0 {
+                                        Circle().fill(Color.blue).frame(width: 3.5, height: 3.5)
+                                    }
+                                    if summary.nonAcademicEventsCount > 0 {
+                                        Circle().fill(Color.green).frame(width: 3.5, height: 3.5)
+                                    }
+                                    if !hasAnyEvents {
+                                        Color.clear.frame(width: 3.5, height: 3.5)
+                                    }
+                                }
+                                .frame(height: 4)
+                            }
+                            .frame(height: 32)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Color.clear.frame(height: 32)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(isDarkMode ? Color.white.opacity(0.03) : Color.white.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.06), lineWidth: 1)
+        )
+    }
+    
+    // MARK: - Filters Section with Dropdown Menu
+    private var currentFilterTitle: String {
+        if let sid = specificSourceFilterId, let src = dataManager.calendarSources.first(where: { $0.id == sid }) {
+            return src.title
+        }
+        switch selectedScopeFilter {
+        case .academicOnly:
+            return localizationManager.text(it: "Solo Scolastici", en: "Academic Only")
+        case .nonAcademicOnly:
+            return localizationManager.text(it: "Solo Personali", en: "Personal Only")
+        case .source(let id):
+            return dataManager.calendarSources.first(where: { $0.id == id })?.title ?? localizationManager.text(it: "Calendario", en: "Calendar")
+        case .all:
+            return localizationManager.text(it: "Tutti gli impegni", en: "All commitments")
+        }
+    }
+    
+    private var currentFilterIcon: String {
+        if specificSourceFilterId != nil {
+            return "circle.fill"
+        }
+        switch selectedScopeFilter {
+        case .academicOnly:
+            return "graduationcap.fill"
+        case .nonAcademicOnly:
+            return "person.fill"
+        case .source:
+            return "circle.fill"
+        case .all:
+            return "line.3.horizontal.decrease.circle"
+        }
+    }
+    
+    private var filtersSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(localizationManager.text(it: "FILTRI CALENDARIO", en: "CALENDAR FILTERS").uppercased())
+                .font(UniFont.sectionLabel())
+                .foregroundStyle(.secondary)
+                .tracking(1.0)
+            
+            // Dropdown trigger button
+            Button {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                    isFiltersDropdownExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: currentFilterIcon)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(themeManager.accentColor)
+                    
+                    Text(currentFilterTitle)
+                        .font(UniFont.caption())
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
+                    Image(systemName: isFiltersDropdownExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 9.5, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.06), lineWidth: 1)
                 )
-                NotificationManager.shared.scheduleAllReminders(deadlines: dataManager.deadlines, exams: dataManager.exams, courses: dataManager.courses)
+            }
+            .buttonStyle(.plain)
+            
+            // Expanded Dropdown List
+            if isFiltersDropdownExpanded {
+                VStack(spacing: 3) {
+                    filterRow(
+                        icon: "line.3.horizontal",
+                        title: localizationManager.text(it: "Tutti gli impegni", en: "All commitments"),
+                        isSelected: selectedScopeFilter == .all && specificSourceFilterId == nil
+                    ) {
+                        selectedScopeFilter = .all
+                        specificSourceFilterId = nil
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            isFiltersDropdownExpanded = false
+                        }
+                    }
+                    
+                    filterRow(
+                        icon: "graduationcap.fill",
+                        title: localizationManager.text(it: "Solo Scolastici", en: "Academic Only"),
+                        isSelected: selectedScopeFilter == .academicOnly
+                    ) {
+                        selectedScopeFilter = .academicOnly
+                        specificSourceFilterId = nil
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            isFiltersDropdownExpanded = false
+                        }
+                    }
+                    
+                    filterRow(
+                        icon: "person.fill",
+                        title: localizationManager.text(it: "Solo Personali", en: "Personal Only"),
+                        isSelected: selectedScopeFilter == .nonAcademicOnly
+                    ) {
+                        selectedScopeFilter = .nonAcademicOnly
+                        specificSourceFilterId = nil
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            isFiltersDropdownExpanded = false
+                        }
+                    }
+                    
+                    ForEach(dataManager.calendarSources) { src in
+                        filterRow(
+                            icon: "circle.fill",
+                            iconColor: Color(hex: src.colorHex) ?? themeManager.accentColor,
+                            title: src.title,
+                            count: src.eventCount,
+                            isSelected: specificSourceFilterId == src.id
+                        ) {
+                            if specificSourceFilterId == src.id {
+                                specificSourceFilterId = nil
+                            } else {
+                                specificSourceFilterId = src.id
+                            }
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isFiltersDropdownExpanded = false
+                            }
+                        }
+                    }
+                }
+                .padding(6)
+                .background(isDarkMode ? Color(red: 0.14, green: 0.14, blue: 0.16) : Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .shadow(color: Color.black.opacity(isDarkMode ? 0.35 : 0.08), radius: 8, x: 0, y: 4)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
     
-    private func toggleAssignment(_ assignment: Assignment) {
-        if let idx = dataManager.assignments.firstIndex(where: { $0.id == assignment.id }) {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                dataManager.assignments[idx].isCompleted.toggle()
-                let isNowCompleted = dataManager.assignments[idx].isCompleted
-                dataManager.saveData()
+    private func filterRow(icon: String, iconColor: Color? = nil, title: String, count: Int? = nil, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(iconColor ?? (isSelected ? themeManager.accentColor : .secondary))
+                    .frame(width: 16)
                 
-                NotificationManager.shared.notify(
-                    title: isNowCompleted
-                        ? LocalizationManager.shared.text(it: "Assignment completato! 🎉", en: "Assignment completed! 🎉")
-                        : LocalizationManager.shared.text(it: "Assignment riattivato", en: "Assignment reopened"),
-                    message: assignment.title,
-                    type: isNowCompleted ? .success : .info,
-                    icon: isNowCompleted ? "checkmark.circle.fill" : "circle",
-                    postToSystem: false
-                )
+                Text(title)
+                    .font(UniFont.caption())
+                    .fontWeight(isSelected ? .bold : .regular)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .lineLimit(1)
+                
+                Spacer()
+                
+                if let c = count, c > 0 {
+                    Text("\(c)")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+                
+                if isSelected {
+                    Circle()
+                        .fill(themeManager.accentColor)
+                        .frame(width: 5, height: 5)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(isSelected ? themeManager.accentColor.opacity(0.10) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+    }
+    
+    // MARK: - Quick Events Section (Photo 2 style: "Events +")
+    private var quickEventsSection: some View {
+        let dayEvents = daySummaries[calendar.startOfDay(for: selectedDate)]?.events ?? []
+        
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(localizationManager.text(it: "Eventi del Giorno", en: "Events"))
+                    .font(UniFont.headline())
+                    .fontWeight(.bold)
+                    .foregroundStyle(.primary)
+                
+                Spacer()
+                
+                Button {
+                    activeSheet = .exam
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(localizationManager.text(it: "Aggiungi evento o esame", en: "Add event or exam"))
+            }
+            
+            if dayEvents.isEmpty {
+                Text(localizationManager.text(it: "Nessun evento registrato", en: "No events recorded"))
+                    .font(UniFont.caption())
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 2)
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(dayEvents.prefix(4)) { ev in
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(Color(hex: ev.calendarColorHex ?? "#007AFF") ?? themeManager.accentColor)
+                                .frame(width: 8, height: 8)
+                            
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(ev.title)
+                                    .font(UniFont.caption())
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                    .foregroundStyle(.primary)
+                                
+                                Text(ev.isAllDay ? localizationManager.text(it: "Tutto il giorno", en: "All day") : localizationManager.formatTime(ev.startDate))
+                                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(6)
+                        .background(isDarkMode ? Color.white.opacity(0.03) : Color.white.opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
             }
         }
+    }
+    
+    // MARK: - Quick Tasks Section (Photo 2 style: "Tasks +")
+    private var quickTasksSection: some View {
+        let dayDeadlines = daySummaries[calendar.startOfDay(for: selectedDate)]?.deadlines ?? []
+        let dayAssignments = daySummaries[calendar.startOfDay(for: selectedDate)]?.assignments ?? []
+        
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(localizationManager.text(it: "Compiti & Attività", en: "Tasks"))
+                    .font(UniFont.headline())
+                    .fontWeight(.bold)
+                    .foregroundStyle(.primary)
+                
+                Spacer()
+                
+                Button {
+                    activeSheet = .deadline
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(localizationManager.text(it: "Aggiungi scadenza o compito", en: "Add deadline or task"))
+            }
+            
+            if dayDeadlines.isEmpty && dayAssignments.isEmpty {
+                Text(localizationManager.text(it: "Nessuna attività in sospeso", en: "No tasks pending"))
+                    .font(UniFont.caption())
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 2)
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(dayDeadlines) { dl in
+                        HStack(spacing: 8) {
+                            Button {
+                                toggleDeadline(dl)
+                            } label: {
+                                Image(systemName: dl.isCompleted ? "checkmark.square.fill" : "square")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(dl.isCompleted ? Color.secondary : dl.priority.color)
+                            }
+                            .buttonStyle(.plain)
+                            
+                            Text(dl.title)
+                                .font(UniFont.caption())
+                                .strikethrough(dl.isCompleted)
+                                .foregroundStyle(dl.isCompleted ? .secondary : .primary)
+                                .lineLimit(1)
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 8, weight: .semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(6)
+                        .background(isDarkMode ? Color.white.opacity(0.03) : Color.white.opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            openDeadline(dl)
+                        }
+                        .help(localizationManager.text(it: "Apri ed espandi dettagli scadenza", en: "Open and expand deadline details"))
+                    }
+                    
+                    ForEach(dayAssignments) { asg in
+                        HStack(spacing: 8) {
+                            Button {
+                                toggleAssignment(asg)
+                            } label: {
+                                Image(systemName: asg.isCompleted ? "checkmark.square.fill" : "square")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(asg.isCompleted ? Color.secondary : themeManager.accentColor)
+                            }
+                            .buttonStyle(.plain)
+                            
+                            Text(asg.title)
+                                .font(UniFont.caption())
+                                .strikethrough(asg.isCompleted)
+                                .foregroundStyle(asg.isCompleted ? .secondary : .primary)
+                                .lineLimit(1)
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 8, weight: .semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(6)
+                        .background(isDarkMode ? Color.white.opacity(0.03) : Color.white.opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            openAssignment(asg)
+                        }
+                        .help(localizationManager.text(it: "Apri ed espandi dettagli compito", en: "Open and expand assignment details"))
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Scrollable Days List (Photo 1 reference)
+    private func scrollableDaysList(scrollProxy: ScrollViewProxy) -> some View {
+        let daysList = generateAllDaysInCurrentMonth()
+        let summaries = daySummaries
+        
+        return ScrollView(.vertical, showsIndicators: true) {
+            LazyVStack(spacing: 0) {
+                ForEach(daysList, id: \.self) { date in
+                    let dayKey = calendar.startOfDay(for: date)
+                    let summary = summaries[dayKey] ?? DayEventsSummary()
+                    let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
+                    let isExpanded = expandedDate != nil && calendar.isDate(date, inSameDayAs: expandedDate!)
+                    
+                    DayRowGeometricView(
+                        date: date,
+                        isSelected: isSelected,
+                        isExpanded: isExpanded,
+                        summary: summary,
+                        isDarkMode: isDarkMode,
+                        themeManager: themeManager,
+                        localizationManager: localizationManager,
+                        onSelect: {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                selectedDate = date
+                                if expandedDate == date {
+                                    expandedDate = nil
+                                } else {
+                                    expandedDate = date
+                                }
+                            }
+                        },
+                        onToggleDeadline: { dl in toggleDeadline(dl) },
+                        onToggleAssignment: { asg in toggleAssignment(asg) },
+                        onOpenDeadline: { dl in openDeadline(dl) },
+                        onOpenAssignment: { asg in openAssignment(asg) },
+                        onAddNewItem: { activeSheet = .deadline }
+                    )
+                    .id(dayScrollId(for: date))
+                }
+            }
+            .padding(.bottom, 40)
+        }
+    }
+    
+    // MARK: - Helpers
+    private func dayScrollId(for date: Date) -> String {
+        let comp = calendar.dateComponents([.year, .month, .day], from: date)
+        return "day_\(comp.year ?? 0)_\(comp.month ?? 0)_\(comp.day ?? 0)"
+    }
+    
+    private func generateAllDaysInCurrentMonth() -> [Date] {
+        guard let monthInterval = calendar.dateInterval(of: .month, for: currentMonth) else { return [] }
+        var result: [Date] = []
+        var d = monthInterval.start
+        while d < monthInterval.end {
+            result.append(d)
+            guard let next = calendar.date(byAdding: .day, value: 1, to: d) else { break }
+            d = next
+        }
+        return result
+    }
+    
+    private func generateDaysInMonth(for date: Date) -> [CalendarGridDay] {
+        guard let monthInterval = calendar.dateInterval(of: .month, for: date) else { return [] }
+        let startOfMonth = monthInterval.start
+        let weekday = calendar.component(.weekday, from: startOfMonth)
+        let leadingSpaces = (weekday + 6) % 7 // Sunday = 1, so Monday = 2
+        
+        var days: [CalendarGridDay] = []
+        var idCounter = 0
+        for _ in 0..<leadingSpaces {
+            days.append(CalendarGridDay(id: idCounter, date: nil))
+            idCounter += 1
+        }
+        guard let range = calendar.range(of: .day, in: .month, for: date) else { return days }
+        for day in 1...range.count {
+            if let dayDate = calendar.date(byAdding: .day, value: day - 1, to: startOfMonth) {
+                days.append(CalendarGridDay(id: idCounter, date: dayDate))
+                idCounter += 1
+            }
+        }
+        return days
     }
     
     private func changeMonth(by value: Int) {
         if let newDate = calendar.date(byAdding: .month, value: value, to: currentMonth) {
-            currentMonth = newDate
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                currentMonth = newDate
+                selectedDate = newDate
+            }
         }
     }
     
@@ -1533,325 +1024,763 @@ struct CalendarView: View {
         }
     }
     
-    private func formatSelectedDay(_ date: Date) -> String {
+    private func formatEditorialDate(_ date: Date) -> String {
         if localizationManager.currentLanguage == .italian {
-            return Self.dayNumberFormatterIT.string(from: date).capitalized
+            return Self.editorialHeaderFormatterIT.string(from: date).capitalized
         } else {
-            return Self.dayNumberFormatterEN.string(from: date).capitalized
+            return Self.editorialHeaderFormatterEN.string(from: date).capitalized
         }
     }
     
-    private func todayDayOfWeekName() -> String {
-        let f = localizationManager.currentLanguage == .italian ? Self.dayOfWeekFormatterIT : Self.dayOfWeekFormatterEN
-        return f.string(from: Date()).uppercased()
-    }
-    
-    private func todayFullFormatted() -> String {
-        let f = localizationManager.currentLanguage == .italian ? Self.fullDayFormatterIT : Self.fullDayFormatterEN
-        return f.string(from: Date()).capitalized
-    }
-    
-    @ViewBuilder
-    private func todayCommitmentCard(_ item: CalendarCommitmentItem) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header: Icona e Tipo
-            HStack(alignment: .center) {
-                Image(systemName: item.type.icon)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(item.type.color(theme: themeManager))
-                    .frame(width: 24, height: 24)
-                    .background(item.type.color(theme: themeManager).opacity(0.14))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                
-                Spacer(minLength: 4)
-                
-                Text(item.type.localizedName(using: localizationManager))
-                    .font(.system(size: 8.5, weight: .bold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2.5)
-                    .background(item.type.color(theme: themeManager).opacity(0.12))
-                    .foregroundStyle(item.type.color(theme: themeManager))
-                    .clipShape(Capsule())
-            }
-            
-            Spacer(minLength: 6)
-            
-            // Titolo in evidenza
-            Text(item.title)
-                .font(UniFont.headline())
-                .fontWeight(.bold)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-            
-            // Materia / Dettagli
-            if let course = item.courseName, !course.isEmpty {
-                Text(course)
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .padding(.top, 2)
-            }
-            
-            Spacer(minLength: 8)
-            
-            Divider()
-                .opacity(0.4)
-                .padding(.bottom, 6)
-            
-            // Orario sotto al titolo
-            HStack(spacing: 4) {
-                Image(systemName: "clock.fill")
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(themeManager.accentColor)
-                
-                Text(formatCommitmentTime(item))
-                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.primary.opacity(0.9))
-                    .lineLimit(1)
-                
-                Spacer(minLength: 0)
+    private func toggleDeadline(_ deadline: Deadline) {
+        if let idx = dataManager.deadlines.firstIndex(where: { $0.id == deadline.id }) {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                dataManager.deadlines[idx].isCompleted.toggle()
+                dataManager.saveData()
+                NotificationManager.shared.scheduleAllReminders(deadlines: dataManager.deadlines, exams: dataManager.exams, courses: dataManager.courses)
             }
         }
-        .padding(10)
-        .frame(minWidth: 135, maxWidth: 165, minHeight: 150, maxHeight: 160, alignment: .topLeading)
-        .background(Color.primary.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(item.type.color(theme: themeManager).opacity(0.25), lineWidth: 1)
-        )
     }
     
-    @ViewBuilder
-    private func upcomingCommitmentCard(_ item: CalendarCommitmentItem) -> some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                selectedDate = item.date
-                currentMonth = item.date
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header: Data in evidenza + Badge tipo
-                HStack(alignment: .center) {
-                    Text(formatShortDay(item.date))
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(themeManager.accentColor)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(themeManager.accentColor.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                    
-                    Spacer(minLength: 4)
-                    
-                    Text(item.type.localizedName(using: localizationManager))
-                        .font(.system(size: 8.5, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2.5)
-                        .background(item.type.color(theme: themeManager).opacity(0.12))
-                        .foregroundStyle(item.type.color(theme: themeManager))
-                        .clipShape(Capsule())
-                }
-                
-                Spacer(minLength: 6)
-                
-                // Titolo in evidenza
-                Text(item.title)
-                    .font(UniFont.headline())
-                    .fontWeight(.bold)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                if let course = item.courseName, !course.isEmpty {
-                    Text(course)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .padding(.top, 2)
-                }
-                
-                Spacer(minLength: 8)
-                
-                Divider()
-                    .opacity(0.4)
-                    .padding(.bottom, 6)
-                
-                // Orario sotto + Icona Salto
-                HStack(spacing: 4) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 9.5))
-                        .foregroundStyle(.secondary)
-                    
-                    Text(formatCommitmentTime(item))
-                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.primary.opacity(0.9))
-                        .lineLimit(1)
-                    
-                    Spacer(minLength: 0)
-                    
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 8.5, weight: .bold))
-                        .foregroundStyle(themeManager.accentColor)
-                }
-            }
-            .padding(10)
-            .frame(minWidth: 135, maxWidth: 165, minHeight: 150, maxHeight: 160, alignment: .topLeading)
-            .background(Color.primary.opacity(0.025))
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .help(localizationManager.text(it: "Seleziona questa data nel calendario", en: "Select this date in the calendar"))
-    }
-    
-    private func formatShortDay(_ date: Date) -> String {
-        if localizationManager.currentLanguage == .italian {
-            return Self.shortDayFormatterIT.string(from: date).capitalized
-        } else {
-            return Self.shortDayFormatterEN.string(from: date)
-        }
-    }
-    
-    private func formatCommitmentTime(_ item: CalendarCommitmentItem) -> String {
-        if item.isAllDay {
-            return localizationManager.text(it: "Tutto il giorno", en: "All day")
-        }
-        let cal = Calendar.current
-        let hour = cal.component(.hour, from: item.date)
-        let min = cal.component(.minute, from: item.date)
-        if hour == 0 && min == 0 && item.endDate == nil {
-            return localizationManager.text(it: "Tutto il giorno", en: "All day")
-        }
-        if let end = item.endDate, end > item.date {
-            return "\(Self.timeRangeFormatter.string(from: item.date)) - \(Self.timeRangeFormatter.string(from: end))"
-        }
-        return Self.timeRangeFormatter.string(from: item.date)
-    }
-
-    
-    private func formatTimeRange(start: Date, end: Date) -> String {
-        let s = Self.timeRangeFormatter.string(from: start)
-        let e = Self.timeRangeFormatter.string(from: end)
-        return "\(s) - \(e)"
-    }
-    
-    private func generateDaysInMonth(for date: Date) -> [CalendarGridDay] {
-        guard let monthInterval = calendar.dateInterval(of: .month, for: date) else { return [] }
-        let startOfMonth = monthInterval.start
-        
-        let weekday = calendar.component(.weekday, from: startOfMonth)
-        let leadingSpaces = (weekday + 5) % 7
-        
-        var days: [CalendarGridDay] = []
-        var idCounter = 0
-        
-        for _ in 0..<leadingSpaces {
-            days.append(CalendarGridDay(id: idCounter, date: nil))
-            idCounter += 1
-        }
-        
-        guard let range = calendar.range(of: .day, in: .month, for: date), range.count > 0 else {
-            return days
-        }
-        for day in 1...range.count {
-            if let dayDate = calendar.date(byAdding: .day, value: day - 1, to: startOfMonth) {
-                days.append(CalendarGridDay(id: idCounter, date: dayDate))
-                idCounter += 1
+    private func toggleAssignment(_ assignment: Assignment) {
+        if let idx = dataManager.assignments.firstIndex(where: { $0.id == assignment.id }) {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                dataManager.assignments[idx].isCompleted.toggle()
+                dataManager.saveData()
             }
         }
-        
-        return days
-    }
-    
-    private func selectAndImportICSFile() {
-        #if canImport(AppKit)
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.canCreateDirectories = false
-        panel.canChooseFiles = true
-        panel.allowedContentTypes = [.init(filenameExtension: "ics") ?? .text]
-        panel.prompt = "Importa Calendario"
-        panel.message = "Seleziona il file .ics del tuo corso di studi"
-        
-        if panel.runModal() == .OK, let selectedURL = panel.url {
-            dataManager.importICSFromFile(url: selectedURL)
-        }
-        #endif
     }
 }
 
-// MARK: - Day Cell (High Performance, Instant Single-Click & Hover)
-struct DayCellView: View {
+// MARK: - Day Row Geometric View (Photos 1 & 3 reference)
+struct DayRowGeometricView: View {
     let date: Date
     let isSelected: Bool
-    let isToday: Bool
-    let eventsCount: Int
-    let academicEventsCount: Int
-    let nonAcademicEventsCount: Int
-    let hasExam: Bool
-    let hasDeadline: Bool
-    let hasPendingDeadline: Bool
-    let hasAssignment: Bool
-    let hasPendingAssignment: Bool
-    let accentColor: Color
+    let isExpanded: Bool
+    let summary: DayEventsSummary
+    let isDarkMode: Bool
+    let themeManager: ThemeManager
+    let localizationManager: LocalizationManager
+    let onSelect: () -> Void
+    let onToggleDeadline: (Deadline) -> Void
+    let onToggleAssignment: (Assignment) -> Void
+    let onOpenDeadline: (Deadline) -> Void
+    let onOpenAssignment: (Assignment) -> Void
+    let onAddNewItem: () -> Void
+    
+    private let calendar = Calendar.current
+    
+    private var dayNumber: Int {
+        calendar.component(.day, from: date)
+    }
+    
+    private var weekdayName: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: localizationManager.currentLanguage == .italian ? "it_IT" : "en_US")
+        f.dateFormat = "EEEE"
+        return f.string(from: date).capitalized
+    }
     
     @State private var isHovered: Bool = false
     
+    private var rowTextColor: Color {
+        if isSelected && !isExpanded {
+            return themeManager.accentColor
+        }
+        return isDarkMode ? Color.white.opacity(0.92) : Color.black.opacity(0.88)
+    }
+    
+    private var dividerLineColor: Color {
+        isDarkMode ? Color.white.opacity(0.14) : Color.black.opacity(0.12)
+    }
+    
     var body: some View {
-        VStack(spacing: 3) {
-            Text("\(Calendar.current.component(.day, from: date))")
-                .font(UniFont.body())
-                .fontWeight(isToday ? .bold : (isSelected ? .semibold : .regular))
-                .foregroundStyle(isToday ? accentColor : .primary)
-            
-            // Indicatori di eventi
-            HStack(spacing: 3) {
-                if hasExam {
-                    Circle().fill(Color.red).frame(width: 5, height: 5)
+        VStack(spacing: 0) {
+            // Main Day Row: No all-around rectangles, just clean lines, bigger section, slimmer big numerals
+            Button(action: onSelect) {
+                HStack(alignment: .center, spacing: 18) {
+                    // Left: Category Dots (Photo 1 reference)
+                    HStack(spacing: 6) {
+                        if summary.hasExam {
+                            Circle().fill(Color.red).frame(width: 8, height: 8)
+                        }
+                        if summary.hasDeadline {
+                            Circle().fill(Color.orange).frame(width: 8, height: 8)
+                        }
+                        if summary.hasAssignment {
+                            Circle().fill(Color.purple).frame(width: 8, height: 8)
+                        }
+                        if summary.academicEventsCount > 0 {
+                            Circle().fill(Color.blue).frame(width: 8, height: 8)
+                        }
+                        if summary.nonAcademicEventsCount > 0 {
+                            Circle().fill(Color.green).frame(width: 8, height: 8)
+                        }
+                        if summary.totalItemsCount == 0 {
+                            Circle().fill(Color.secondary.opacity(0.3)).frame(width: 6, height: 6)
+                        }
+                    }
+                    .frame(minWidth: 44, alignment: .leading)
+                    
+                    // Weekday Name (Bigger day section)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(weekdayName)
+                            .font(.system(size: 26, weight: isSelected ? .semibold : .medium))
+                            .tracking(-0.6)
+                            .foregroundStyle(rowTextColor)
+                        
+                        if summary.totalItemsCount > 0 {
+                            Text("\(summary.totalItemsCount) " + localizationManager.text(it: "impegni", en: "items"))
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    // Right: Slimmer, Large Geometric Numeral - less opaque when hovered
+                    Text("\(dayNumber)")
+                        .font(.system(size: 58, weight: .light, design: .default))
+                        .foregroundStyle(rowTextColor)
+                        .tracking(-2.0)
+                        .frame(minWidth: 70, alignment: .trailing)
+                        .opacity(isHovered ? 0.35 : 1.0)
+                        .animation(.easeInOut(duration: 0.15), value: isHovered)
+                    
+                    // Vertical category tag indicator on far right
+                    Rectangle()
+                        .fill(summary.hasExam ? Color.red : (summary.hasDeadline ? Color.orange : (summary.totalItemsCount > 0 ? Color.blue : Color.clear)))
+                        .frame(width: 3, height: 44)
+                        .padding(.leading, 8)
                 }
-                if hasDeadline {
-                    Circle()
-                        .fill(hasPendingDeadline ? Color.orange : Color.secondary.opacity(0.5))
-                        .frame(width: 5, height: 5)
-                }
-                if hasAssignment {
-                    Circle()
-                        .fill(hasPendingAssignment ? Color.purple : Color.secondary.opacity(0.5))
-                        .frame(width: 5, height: 5)
-                }
-                if academicEventsCount > 0 {
-                    Circle().fill(accentColor).frame(width: 5, height: 5)
-                }
-                if nonAcademicEventsCount > 0 {
-                    Circle().fill(Color.purple).frame(width: 5, height: 5)
+                .padding(.horizontal, 28)
+                .frame(height: 94)
+                .background(Color.clear)
+                .contentShape(Rectangle())
+                .opacity(isHovered ? 0.50 : 1.0)
+            }
+            .buttonStyle(.plain)
+            .onHover { h in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isHovered = h
                 }
             }
-            .frame(height: 5)
-        }
-        .frame(height: 50)
-        .frame(maxWidth: .infinity)
-        .background(
+            
+            // EXPANDED DAY VIEW (Photo 3 reference: geometric hour timeline)
+            if isExpanded {
+                expandedGeometricTimelineView
+                    .background(isDarkMode ? Color(red: 0.10, green: 0.10, blue: 0.12) : Color(red: 0.94, green: 0.93, blue: 0.90))
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            
+            // Architectural 1.5pt Divider line like in attached photo
             Rectangle()
-                .fill(isSelected ? accentColor.opacity(0.14) : (isHovered ? Color.primary.opacity(0.06) : (isToday ? Color.primary.opacity(0.04) : Color.primary.opacity(0.001))))
-        )
+                .fill(dividerLineColor)
+                .frame(height: 1.5)
+        }
+    }
+    
+    // MARK: - Photo 3 Expanded Geometric Schedule
+    private var expandedGeometricTimelineView: some View {
+        HStack(alignment: .top, spacing: 32) {
+            // Left Column (Photo 3: "DAY 1 \n SATURDAY")
+            VStack(alignment: .leading, spacing: 8) {
+                Text("DAY \(dayNumber)")
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .tracking(1.4)
+                
+                Text(weekdayName.uppercased())
+                    .font(UniFont.title())
+                    .fontWeight(.bold)
+                    .foregroundStyle(.primary)
+                    .tracking(0.5)
+                
+                Spacer().frame(height: 12)
+                
+                Button {
+                    onAddNewItem()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 11, weight: .bold))
+                        Text(localizationManager.text(it: "Aggiungi", en: "Add"))
+                            .font(UniFont.caption())
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(width: 140, alignment: .leading)
+            .padding(.leading, 28)
+            .padding(.vertical, 24)
+            
+            // Right Timeline with proportional event extension on timetable
+            timetableTimelineContent
+                .padding(.trailing, 28)
+                .padding(.vertical, 16)
+        }
+    }
+    
+    // MARK: - Proportional Timetable Constants & Types
+    private let hourHeight: CGFloat = 58.0
+    
+    private struct HourCommitmentItem: Identifiable {
+        let id: String
+        let title: String
+        let subtitle: String?
+        let timeRange: String
+        let startMinutes: Int      // Minutes from timetable start hour
+        let durationMinutes: Int   // Length in minutes (proportional visual extension)
+        let isSolidBlack: Bool
+        let isDeadline: Bool
+        let isCompleted: Bool
+        let accentColor: Color?
+        let rawDeadline: Deadline?
+        let rawAssignment: Assignment?
+        
+        var laneIndex: Int = 0
+        var totalLanes: Int = 1
+    }
+    
+    // Dynamic Hour Range covering all timed events of the day
+    private var timetableHourRange: (start: Int, end: Int) {
+        let cal = Calendar.current
+        var minH = 24
+        var maxH = 0
+        var hasTimedItems = false
+        
+        for ev in summary.events where !ev.isAllDay {
+            let sh = cal.component(.hour, from: ev.startDate)
+            let eh = cal.component(.hour, from: ev.endDate)
+            let em = cal.component(.minute, from: ev.endDate)
+            minH = min(minH, sh)
+            maxH = max(maxH, em > 0 ? eh + 1 : eh)
+            hasTimedItems = true
+        }
+        for ex in summary.exams {
+            let sh = cal.component(.hour, from: ex.examDate)
+            minH = min(minH, sh)
+            maxH = max(maxH, sh + 2)
+            hasTimedItems = true
+        }
+        for dl in summary.deadlines {
+            let sh = cal.component(.hour, from: dl.dueDate)
+            let sm = cal.component(.minute, from: dl.dueDate)
+            if !(sh == 23 && sm >= 50) && sh >= 6 && sh <= 22 {
+                minH = min(minH, sh)
+                maxH = max(maxH, sh + 1)
+                hasTimedItems = true
+            }
+        }
+        for asg in summary.assignments {
+            let sh = cal.component(.hour, from: asg.dueDate)
+            let sm = cal.component(.minute, from: asg.dueDate)
+            if !(sh == 23 && sm >= 50) && sh >= 6 && sh <= 22 {
+                minH = min(minH, sh)
+                maxH = max(maxH, sh + 1)
+                hasTimedItems = true
+            }
+        }
+        
+        if !hasTimedItems {
+            // Default daytime timetable for days without timed events
+            return (8, 19)
+        }
+        
+        let start = max(6, minH > 0 ? minH - 1 : minH)
+        let end = min(24, max(maxH + 1, start + 8))
+        return (start, end)
+    }
+    
+    // Items due all-day or at midnight
+    private var allDayItems: [HourCommitmentItem] {
+        var results: [HourCommitmentItem] = []
+        let cal = Calendar.current
+        let range = timetableHourRange
+        
+        // 1. All-Day Calendar Events (Public holidays, full-day conferences, etc.)
+        for ev in summary.events where ev.isAllDay {
+            results.append(HourCommitmentItem(
+                id: "ev_allday_\(ev.id)",
+                title: ev.title,
+                subtitle: ev.details.isEmpty ? (ev.location.isEmpty ? nil : ev.location) : ev.details,
+                timeRange: localizationManager.text(it: "Tutto il giorno", en: "All day"),
+                startMinutes: 0,
+                durationMinutes: 0,
+                isSolidBlack: false,
+                isDeadline: false,
+                isCompleted: false,
+                accentColor: ev.isAcademic ? themeManager.accentColor : Color.purple,
+                rawDeadline: nil,
+                rawAssignment: nil
+            ))
+        }
+        
+        // 2. Deadlines due today or at midnight
+        for dl in summary.deadlines {
+            let h = cal.component(.hour, from: dl.dueDate)
+            let m = cal.component(.minute, from: dl.dueDate)
+            if (h == 23 && m >= 50) || h < range.start || h >= range.end {
+                results.append(HourCommitmentItem(
+                    id: "dl_allday_\(dl.id)",
+                    title: dl.title,
+                    subtitle: dl.priority.rawValue,
+                    timeRange: localizationManager.text(it: "Scadenza oggi", en: "Due today"),
+                    startMinutes: 0,
+                    durationMinutes: 0,
+                    isSolidBlack: false,
+                    isDeadline: true,
+                    isCompleted: dl.isCompleted,
+                    accentColor: .orange,
+                    rawDeadline: dl,
+                    rawAssignment: nil
+                ))
+            }
+        }
+        
+        // 3. Assignments due today or at midnight
+        for asg in summary.assignments {
+            let h = cal.component(.hour, from: asg.dueDate)
+            let m = cal.component(.minute, from: asg.dueDate)
+            if (h == 23 && m >= 50) || h < range.start || h >= range.end {
+                results.append(HourCommitmentItem(
+                    id: "asg_allday_\(asg.id)",
+                    title: asg.title,
+                    subtitle: asg.status.localized(with: localizationManager),
+                    timeRange: localizationManager.text(it: "Compito", en: "Assignment"),
+                    startMinutes: 0,
+                    durationMinutes: 0,
+                    isSolidBlack: false,
+                    isDeadline: true,
+                    isCompleted: asg.isCompleted,
+                    accentColor: .blue,
+                    rawDeadline: nil,
+                    rawAssignment: asg
+                ))
+            }
+        }
+        return results
+    }
+    
+    // Positioned Timetable Items with Exact Durations and Starts
+    private var positionedTimetableItems: [HourCommitmentItem] {
+        var items: [HourCommitmentItem] = []
+        let cal = Calendar.current
+        let range = timetableHourRange
+        let startHour = range.start
+        let totalTimetableMinutes = max(60, (range.end - range.start) * 60)
+        
+        // 1. Timed Calendar Events (Lectures, meetings, etc.)
+        for ev in summary.events where !ev.isAllDay {
+            let startH = cal.component(.hour, from: ev.startDate)
+            let startM = cal.component(.minute, from: ev.startDate)
+            let endH = cal.component(.hour, from: ev.endDate)
+            let endM = cal.component(.minute, from: ev.endDate)
+            
+            let startMinutes = max(0, (startH - startHour) * 60 + startM)
+            guard startMinutes < totalTimetableMinutes else { continue }
+            
+            let rawDuration = (endH - startH) * 60 + (endM - startM)
+            let baseDuration = max(25, rawDuration > 0 ? rawDuration : 60)
+            let durationMinutes = min(baseDuration, totalTimetableMinutes - startMinutes)
+            
+            let timeStr = formatEventTimeRange(startH: startH, startM: startM, endH: endH, endM: endM)
+            
+            items.append(HourCommitmentItem(
+                id: "ev_\(ev.id)",
+                title: ev.title,
+                subtitle: ev.details.isEmpty ? (ev.location.isEmpty ? nil : ev.location) : ev.details,
+                timeRange: timeStr,
+                startMinutes: startMinutes,
+                durationMinutes: durationMinutes,
+                isSolidBlack: true,
+                isDeadline: false,
+                isCompleted: false,
+                accentColor: ev.isAcademic ? themeManager.accentColor : Color.purple,
+                rawDeadline: nil,
+                rawAssignment: nil
+            ))
+        }
+        
+        // 2. Exams (2 hours standard visual duration)
+        for ex in summary.exams {
+            let startH = cal.component(.hour, from: ex.examDate)
+            let startM = cal.component(.minute, from: ex.examDate)
+            let startMinutes = max(0, (startH - startHour) * 60 + startM)
+            guard startMinutes < totalTimetableMinutes else { continue }
+            
+            let durationMinutes = min(120, totalTimetableMinutes - startMinutes)
+            let totalEndMin = startH * 60 + startM + 120
+            let endH = (totalEndMin / 60) % 24
+            let endM = totalEndMin % 60
+            let timeStr = formatEventTimeRange(startH: startH, startM: startM, endH: endH, endM: endM)
+            
+            items.append(HourCommitmentItem(
+                id: "exam_\(ex.id)",
+                title: ex.title,
+                subtitle: ex.room.isEmpty ? localizationManager.text(it: "Esame Universitario", en: "University Exam") : "Aula: \(ex.room)",
+                timeRange: timeStr,
+                startMinutes: startMinutes,
+                durationMinutes: durationMinutes,
+                isSolidBlack: true,
+                isDeadline: false,
+                isCompleted: ex.status == .passed,
+                accentColor: .red,
+                rawDeadline: nil,
+                rawAssignment: nil
+            ))
+        }
+        
+        // 3. Timed Deadlines
+        for dl in summary.deadlines {
+            let h = cal.component(.hour, from: dl.dueDate)
+            let m = cal.component(.minute, from: dl.dueDate)
+            if !(h == 23 && m >= 50) && h >= range.start && h < range.end {
+                let startMinutes = (h - startHour) * 60 + m
+                guard startMinutes < totalTimetableMinutes else { continue }
+                let durationMinutes = min(38, totalTimetableMinutes - startMinutes)
+                
+                let timeStr = formatSingleTime(h: h, m: m)
+                
+                items.append(HourCommitmentItem(
+                    id: "dl_\(dl.id)",
+                    title: dl.title,
+                    subtitle: dl.priority.rawValue,
+                    timeRange: timeStr,
+                    startMinutes: startMinutes,
+                    durationMinutes: durationMinutes,
+                    isSolidBlack: false,
+                    isDeadline: true,
+                    isCompleted: dl.isCompleted,
+                    accentColor: .orange,
+                    rawDeadline: dl,
+                    rawAssignment: nil
+                ))
+            }
+        }
+        
+        // 4. Timed Assignments
+        for asg in summary.assignments {
+            let h = cal.component(.hour, from: asg.dueDate)
+            let m = cal.component(.minute, from: asg.dueDate)
+            if !(h == 23 && m >= 50) && h >= range.start && h < range.end {
+                let startMinutes = (h - startHour) * 60 + m
+                guard startMinutes < totalTimetableMinutes else { continue }
+                let durationMinutes = min(38, totalTimetableMinutes - startMinutes)
+                
+                let timeStr = formatSingleTime(h: h, m: m)
+                
+                items.append(HourCommitmentItem(
+                    id: "asg_\(asg.id)",
+                    title: asg.title,
+                    subtitle: asg.status.localized(with: localizationManager),
+                    timeRange: timeStr,
+                    startMinutes: startMinutes,
+                    durationMinutes: durationMinutes,
+                    isSolidBlack: false,
+                    isDeadline: true,
+                    isCompleted: asg.isCompleted,
+                    accentColor: .blue,
+                    rawDeadline: nil,
+                    rawAssignment: asg
+                ))
+            }
+        }
+        
+        // Assign overlapping lanes so concurrent events share columns side by side
+        assignOverlappingLanes(items: &items)
+        return items
+    }
+    
+    // Collision detection and lane splitting for overlapping events
+    private func assignOverlappingLanes(items: inout [HourCommitmentItem]) {
+        guard !items.isEmpty else { return }
+        items.sort {
+            if $0.startMinutes != $1.startMinutes {
+                return $0.startMinutes < $1.startMinutes
+            }
+            return $0.durationMinutes > $1.durationMinutes
+        }
+        
+        var clusters: [[Int]] = []
+        var currentCluster: [Int] = []
+        var clusterEnd = -1
+        
+        for i in 0..<items.count {
+            let s = items[i].startMinutes
+            let e = items[i].startMinutes + items[i].durationMinutes
+            
+            if currentCluster.isEmpty {
+                currentCluster.append(i)
+                clusterEnd = e
+            } else {
+                if s < clusterEnd {
+                    currentCluster.append(i)
+                    clusterEnd = max(clusterEnd, e)
+                } else {
+                    clusters.append(currentCluster)
+                    currentCluster = [i]
+                    clusterEnd = e
+                }
+            }
+        }
+        if !currentCluster.isEmpty {
+            clusters.append(currentCluster)
+        }
+        
+        for cluster in clusters {
+            var laneEndTimes: [Int] = []
+            
+            for itemIdx in cluster {
+                let s = items[itemIdx].startMinutes
+                let e = s + items[itemIdx].durationMinutes
+                
+                var assignedLane = -1
+                for l in 0..<laneEndTimes.count {
+                    if laneEndTimes[l] <= s {
+                        assignedLane = l
+                        laneEndTimes[l] = e
+                        break
+                    }
+                }
+                if assignedLane == -1 {
+                    assignedLane = laneEndTimes.count
+                    laneEndTimes.append(e)
+                }
+                items[itemIdx].laneIndex = assignedLane
+            }
+            
+            let total = max(1, laneEndTimes.count)
+            for itemIdx in cluster {
+                items[itemIdx].totalLanes = total
+            }
+        }
+    }
+    
+    // MARK: - Proportional Timetable Content
+    private var timetableTimelineContent: some View {
+        let range = timetableHourRange
+        let hoursCount = max(1, range.end - range.start)
+        let totalHeight = CGFloat(hoursCount) * hourHeight
+        let items = positionedTimetableItems
+        let allDay = allDayItems
+        
+        return VStack(alignment: .leading, spacing: 14) {
+            // All-Day / Midnight Deadlines Strip
+            if !allDay.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(localizationManager.text(it: "TUTTO IL GIORNO & SCADENZE", en: "ALL-DAY & DEADLINES"))
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .tracking(1.0)
+                    
+                    VStack(spacing: 5) {
+                        ForEach(allDay) { item in
+                            geometricCommitmentCard(commitment: item, height: 38)
+                                .frame(height: 38)
+                        }
+                    }
+                }
+                .padding(.bottom, 6)
+            }
+            
+            // Timetable Grid with Proportional Items
+            GeometryReader { geo in
+                let labelWidth: CGFloat = 64.0
+                let availableWidth = max(120, geo.size.width - labelWidth - 14)
+                
+                ZStack(alignment: .topLeading) {
+                    // 1. Hour Lines & Labels
+                    VStack(spacing: 0) {
+                        ForEach(range.start..<range.end, id: \.self) { hour in
+                            VStack(spacing: 0) {
+                                HStack(alignment: .top, spacing: 14) {
+                                    Text(formatHourLabel(hour: hour))
+                                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: labelWidth, alignment: .leading)
+                                        .offset(y: -6)
+                                    
+                                    Rectangle()
+                                        .fill(dividerLineColor.opacity(0.7))
+                                        .frame(height: 0.8)
+                                }
+                                
+                                Spacer(minLength: 0)
+                            }
+                            .frame(height: hourHeight)
+                        }
+                    }
+                    
+                    // 2. Positioned Events with Proportional Height Extension
+                    ForEach(items) { item in
+                        let topY = CGFloat(item.startMinutes) * (hourHeight / 60.0)
+                        let rawHeight = CGFloat(item.durationMinutes) * (hourHeight / 60.0) - 2.0
+                        let height = max(32.0, min(totalHeight - topY - 2.0, rawHeight))
+                        
+                        let spacingBetweenLanes: CGFloat = 8.0
+                        let laneWidth = (availableWidth - CGFloat(item.totalLanes - 1) * spacingBetweenLanes) / CGFloat(item.totalLanes)
+                        let leftX = labelWidth + 14 + CGFloat(item.laneIndex) * (laneWidth + spacingBetweenLanes)
+                        
+                        geometricCommitmentCard(commitment: item, height: height)
+                            .frame(width: laneWidth, height: height)
+                            .offset(x: leftX, y: topY)
+                    }
+                }
+            }
+            .frame(height: totalHeight)
+            .clipped()
+        }
+    }
+    
+    // MARK: - Geometric Event Block (Refined with Proportional Height Support)
+    private func geometricCommitmentCard(commitment: HourCommitmentItem, height: CGFloat) -> some View {
+        let isDark = isDarkMode
+        
+        let cardBg: Color = {
+            if commitment.isSolidBlack {
+                return isDark ? Color(red: 0.17, green: 0.17, blue: 0.20) : Color(red: 0.10, green: 0.10, blue: 0.12)
+            } else {
+                return isDark ? Color.white.opacity(0.06) : Color.white.opacity(0.92)
+            }
+        }()
+        
+        let cardBorder: Color = {
+            if commitment.isSolidBlack {
+                return isDark ? Color.white.opacity(0.20) : Color.black.opacity(0.85)
+            } else {
+                return isDark ? Color.white.opacity(0.12) : Color.black.opacity(0.15)
+            }
+        }()
+        
+        let primaryText: Color = {
+            if commitment.isSolidBlack {
+                return Color.white
+            } else {
+                return isDark ? Color.white.opacity(0.95) : Color.black.opacity(0.88)
+            }
+        }()
+        
+        let secondaryText: Color = {
+            if commitment.isSolidBlack {
+                return Color.white.opacity(0.70)
+            } else {
+                return isDark ? Color.white.opacity(0.60) : Color.black.opacity(0.60)
+            }
+        }()
+        
+        return HStack(spacing: 10) {
+            // Accent indicator or Checkbox for actionable items
+            if commitment.isDeadline {
+                Button {
+                    if let dl = commitment.rawDeadline {
+                        onToggleDeadline(dl)
+                    } else if let asg = commitment.rawAssignment {
+                        onToggleAssignment(asg)
+                    }
+                } label: {
+                    Image(systemName: commitment.isCompleted ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(primaryText)
+                }
+                .buttonStyle(.plain)
+            } else if let acc = commitment.accentColor {
+                Rectangle()
+                    .fill(acc)
+                    .frame(width: 3.5)
+                    .padding(.vertical, 3)
+            }
+            
+            // Title & Details
+            VStack(alignment: .leading, spacing: height >= 60 ? 3 : 1) {
+                Text(commitment.title)
+                    .font(UniFont.headline())
+                    .fontWeight(.bold)
+                    .strikethrough(commitment.isCompleted)
+                    .foregroundStyle(primaryText)
+                    .lineLimit(height >= 60 ? 2 : 1)
+                
+                if height >= 46, let sub = commitment.subtitle, !sub.isEmpty {
+                    Text(sub)
+                        .font(UniFont.caption())
+                        .foregroundStyle(secondaryText)
+                        .lineLimit(1)
+                }
+            }
+            
+            Spacer(minLength: 4)
+            
+            // Time range badge
+            Text(commitment.timeRange)
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundStyle(secondaryText)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, height >= 60 ? 8 : 4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(cardBg)
         .overlay(
             Rectangle()
-                .stroke(isSelected ? accentColor : (isHovered ? accentColor.opacity(0.35) : Color.clear), lineWidth: isSelected ? 1.5 : 1)
+                .stroke(cardBorder, lineWidth: 1)
         )
+        .clipShape(Rectangle())
         .contentShape(Rectangle())
-        .onHover { hovering in
-            isHovered = hovering
+        .onTapGesture {
+            if let dl = commitment.rawDeadline {
+                onOpenDeadline(dl)
+            } else if let asg = commitment.rawAssignment {
+                onOpenAssignment(asg)
+            }
+        }
+    }
+    
+    private func formatEventTimeRange(startH: Int, startM: Int, endH: Int, endM: Int) -> String {
+        if localizationManager.currentLanguage == .english {
+            let sPeriod = startH < 12 ? "AM" : "PM"
+            let sHour = startH == 0 ? 12 : (startH > 12 ? startH - 12 : startH)
+            let ePeriod = endH < 12 ? "AM" : "PM"
+            let eHour = endH == 0 ? 12 : (endH > 12 ? endH - 12 : endH)
+            return String(format: "%d:%02d %@ - %d:%02d %@", sHour, startM, sPeriod, eHour, endM, ePeriod)
+        } else {
+            return String(format: "%02d:%02d - %02d:%02d", startH, startM, endH, endM)
+        }
+    }
+    
+    private func formatSingleTime(h: Int, m: Int) -> String {
+        if localizationManager.currentLanguage == .english {
+            let period = h < 12 ? "AM" : "PM"
+            let displayHour = h == 0 ? 12 : (h > 12 ? h - 12 : h)
+            return String(format: "%d:%02d %@", displayHour, m, period)
+        } else {
+            return String(format: "%02d:%02d", h, m)
+        }
+    }
+    
+    private func formatHourLabel(hour: Int) -> String {
+        if localizationManager.currentLanguage == .english {
+            let period = hour < 12 ? "AM" : "PM"
+            let displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour)
+            return "\(displayHour) \(period)"
+        } else {
+            return String(format: "%02d:00", hour)
         }
     }
 }
 
 // MARK: - Calendar Grid Day
-struct CalendarGridDay: Identifiable {
-    let id: Int
-    let date: Date?
+public struct CalendarGridDay: Identifiable {
+    public let id: Int
+    public let date: Date?
+    
+    public init(id: Int, date: Date?) {
+        self.id = id
+        self.date = date
+    }
 }
+

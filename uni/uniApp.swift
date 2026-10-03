@@ -65,9 +65,7 @@ struct uniApp: App {
                 }
         }
         .windowStyle(.titleBar)
-        .windowToolbarStyle(.unified)
         .commands {
-            SidebarCommands()
             CommandGroup(after: .appInfo) {
                 Button(localizationManager.text(it: "Controlla Aggiornamenti...", en: "Check for Updates...")) {
                     Task {

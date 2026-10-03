@@ -87,6 +87,49 @@ struct DashboardView: View {
         return f
     }()
     
+    private static let photo4MonthYearFormatterIT: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.dateFormat = "MMM''yy"
+        return f
+    }()
+    
+    private static let photo4MonthYearFormatterEN: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "MMM''yy"
+        return f
+    }()
+    
+    private static let photo4WeekdayFormatterIT: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.dateFormat = "EEEE"
+        return f
+    }()
+    
+    private static let photo4WeekdayFormatterEN: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "EEEE"
+        return f
+    }()
+    
+    private var photo4DayNumber: String {
+        let day = Calendar.current.component(.day, from: Date())
+        return String(format: "%02d", day)
+    }
+    
+    private var photo4MonthYear: String {
+        let f = localizationManager.currentLanguage == .italian ? Self.photo4MonthYearFormatterIT : Self.photo4MonthYearFormatterEN
+        return f.string(from: Date()).capitalized
+    }
+    
+    private var photo4Weekday: String {
+        let f = localizationManager.currentLanguage == .italian ? Self.photo4WeekdayFormatterIT : Self.photo4WeekdayFormatterEN
+        return f.string(from: Date()).capitalized
+    }
+    
     private struct DashboardLayoutRow: Identifiable {
         let id: String
         let sections: [DashboardSection]
@@ -127,70 +170,47 @@ struct DashboardView: View {
         GeometryReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    // Header Architettonico Display
-                    HStack(alignment: .top, spacing: 20) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 8) {
-                                Text(todayDateFormatted().uppercased())
-                                    .font(UniFont.sectionLabel())
-                                    .foregroundStyle(.secondary)
-                                    .tracking(1.4)
-                                
-                                Text("•")
-                                    .foregroundStyle(.secondary)
-                                
-                                Text(dataManager.studentName.isEmpty ? "UNI WORKSPACE" : dataManager.studentName.uppercased())
-                                    .font(UniFont.sectionLabel())
-                                    .foregroundStyle(themeManager.accentColor)
-                                    .tracking(1.2)
-                            }
-                            
-                            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                                if dataManager.weightedAverage > 0 {
-                                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                        Text(String(format: "%.2f", dataManager.weightedAverage))
-                                            .font(UniFont.displayGigantic())
-                                        Text("/ 30")
-                                            .font(UniFont.headline())
-                                            .foregroundStyle(.secondary)
-                                    }
-                                } else {
-                                    Text(dataManager.studentName.isEmpty ? localizationManager.t(.overviewTitle) : localizationManager.text(it: "Ciao, \(dataManager.studentName)", en: "Hey, \(dataManager.studentName)"))
-                                        .font(UniFont.displayGigantic())
+                    // Header Architettonico Display (Photo 4 Reference)
+                    VStack(alignment: .leading, spacing: 18) {
+                        HStack(alignment: .top, spacing: 20) {
+                            // Date Header (Photo 4 Reference: "09 •" + "Jan'24\nTuesday")
+                            HStack(alignment: .center, spacing: 12) {
+                                HStack(spacing: 3) {
+                                    Text(photo4DayNumber)
+                                        .font(.system(size: 60, weight: .bold, design: .default))
+                                        .tracking(-2)
+                                        .foregroundStyle(.primary)
+                                    
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 12, height: 12)
+                                        .offset(y: -4)
                                 }
                                 
-                                if dataManager.totalCfuTarget > 0 {
-                                    Text("• \(dataManager.totalCfuAcquired)/\(dataManager.totalCfuTarget) CFU")
-                                        .font(UniFont.title())
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(photo4MonthYear)
+                                        .font(.system(size: 13, weight: .bold, design: .monospaced))
                                         .foregroundStyle(.secondary)
+                                    
+                                    Text(photo4Weekday)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(.primary)
                                 }
                             }
                             
-                            let cfuRatio: Double = dataManager.totalCfuTarget > 0 ? Double(dataManager.totalCfuAcquired) / Double(dataManager.totalCfuTarget) : 0.0
-                            HStack(spacing: 8) {
-                                Text("\(Int(round(cfuRatio * 100)))% \(localizationManager.text(it: "CARRIERA COMPLETATA", en: "CAREER COMPLETED"))")
-                                    .font(.system(size: 9.5, weight: .medium))
-                                    .foregroundStyle(.secondary)
-                                    .tracking(1.0)
-                                
-                                if nextExam != nil {
-                                    Text("•")
-                                        .foregroundStyle(.secondary)
-                                    Text("\(localizationManager.text(it: "PROSSIMO ESAME", en: "NEXT EXAM")): \(nextExamCountdown.uppercased())")
-                                        .font(.system(size: 9.5, weight: .medium))
-                                        .foregroundStyle(themeManager.accentColor)
-                                        .tracking(0.8)
-                                }
-                            }
-                            .padding(.top, 2)
+                            Spacer()
+                            
+                            // Widget Impegni del Giorno Odierno in alto a destra
+                            topHeaderTodayWidget
                         }
                         
-                        Spacer()
+                        // Brief sentence that summarizes each day big aligned left, with clickable sections underlines (Photo 4)
+                        overviewSummaryHeadlineView
                         
-                        // Widget Impegni del Giorno Odierno in alto a destra
-                        topHeaderTodayWidget
+                        // Quick Status Bar below summary (Photo 4 reference)
+                        overviewQuickStatsStrip
                     }
-                    .padding(.bottom, 4)
+                    .padding(.bottom, 6)
                     
                     // Elementi Ordinabili Dinamicamente
                     let isWide = proxy.size.width > 720
@@ -451,18 +471,33 @@ struct DashboardView: View {
     
     // MARK: - Sezione Prossime Scadenze (Con Link opening)
     private var upcomingDeadlinesSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(localizationManager.t(.upcomingDeadlines).uppercased())
-                    .font(UniFont.sectionLabel())
-                    .foregroundStyle(.secondary)
-                    .tracking(1.4)
-                Spacer()
-                Button(localizationManager.t(.allCount(pendingDeadlines.count))) {
-                    selectedTab = "deadlines"
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center) {
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(themeManager.accentColor)
+                    
+                    Text(localizationManager.t(.upcomingDeadlines).uppercased())
+                        .font(UniFont.sectionLabel())
+                        .foregroundStyle(.secondary)
+                        .tracking(1.4)
                 }
-                .font(UniFont.caption())
-                .foregroundStyle(themeManager.accentColor)
+                
+                Spacer()
+                
+                Button {
+                    selectedTab = "deadlines"
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(localizationManager.t(.allCount(pendingDeadlines.count)))
+                            .font(UniFont.caption())
+                            .fontWeight(.medium)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .foregroundStyle(themeManager.accentColor)
+                }
                 .buttonStyle(.plain)
             }
             
@@ -477,88 +512,156 @@ struct DashboardView: View {
                 }
             } else {
                 VStack(spacing: 8) {
-                    ForEach(pendingDeadlines.prefix(4)) { deadline in
-                        UniCard(padding: 12) {
-                            HStack(alignment: .top, spacing: 10) {
-                                Button {
-                                    toggleDeadline(deadline)
-                                } label: {
-                                    Image(systemName: deadline.isCompleted ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(deadline.isCompleted ? .green : .secondary)
-                                        .font(.system(size: 16))
-                                }
-                                .buttonStyle(.plain)
-                                .padding(.top, 1)
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(deadline.title)
-                                        .font(UniFont.headline())
-                                        .strikethrough(deadline.isCompleted)
-                                        .lineLimit(1)
-                                    
-                                    HStack(spacing: 6) {
-                                        if let course = dataManager.courses.first(where: { $0.id == deadline.courseId }) {
-                                            Text(course.name)
-                                                .font(UniFont.caption())
-                                                .foregroundStyle(.secondary)
-                                                .lineLimit(1)
-                                            Text("•")
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        Text(formatDueDate(deadline.dueDate))
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(isDueDateUrgent(deadline.dueDate) ? .red : .secondary)
-                                        
-                                        ForEach(deadline.allLinks, id: \.self) { link in
-                                            Text("•")
-                                                .foregroundStyle(.secondary)
-                                            Button {
-                                                AppSystemHelper.openWebURL(urlString: link)
-                                            } label: {
-                                                HStack(spacing: 3) {
-                                                    Image(systemName: "arrow.up.forward.square")
-                                                        .font(.system(size: 10))
-                                                    Text(localizationManager.text(it: "Link", en: "Link"))
-                                                        .font(UniFont.caption())
-                                                }
-                                                .foregroundStyle(themeManager.accentColor)
-                                            }
-                                            .buttonStyle(.plain)
-                                            .help(link)
-                                        }
-                                    }
-                                }
-                                
-                                Spacer()
-                                
-                                UniBadge(deadline.priority.localizedName, color: deadline.priority.color)
-                            }
-                        }
+                    ForEach(pendingDeadlines.prefix(5)) { deadline in
+                        overviewDeadlineCard(deadline)
                     }
                 }
             }
         }
     }
     
+    // MARK: - Overview Deadline Card
+    @ViewBuilder
+    private func overviewDeadlineCard(_ deadline: Deadline) -> some View {
+        let dueBadge = computeDueBadge(for: deadline.dueDate)
+        let course = dataManager.courses.first(where: { $0.id == deadline.courseId })
+        let courseColor = course != nil ? (Color(hex: course!.colorHex) ?? themeManager.accentColor) : nil
+        
+        UniCard(padding: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                // RIGA 1: Checkbox + Corso + Titolo + Spacer + Link Rapido + Priorità
+                HStack(alignment: .center, spacing: 9) {
+                    // Checkbox
+                    Button {
+                        toggleDeadline(deadline)
+                    } label: {
+                        Image(systemName: deadline.isCompleted ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 16))
+                            .foregroundStyle(deadline.isCompleted ? .green : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(deadline.isCompleted ? localizationManager.text(it: "Segna come incompleta", en: "Mark as incomplete") : localizationManager.text(it: "Segna come completata", en: "Mark as completed"))
+                    
+                    // Corso Chip
+                    if let c = course, let cColor = courseColor {
+                        HStack(spacing: 4.5) {
+                            Circle()
+                                .fill(cColor)
+                                .frame(width: 6, height: 6)
+                            Text(c.name)
+                                .font(UniFont.caption())
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(cColor.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    }
+                    
+                    // Titolo
+                    Text(deadline.title)
+                        .font(UniFont.headline())
+                        .strikethrough(deadline.isCompleted)
+                        .lineLimit(1)
+                        .foregroundStyle(deadline.isCompleted ? .secondary : .primary)
+                    
+                    Spacer(minLength: 8)
+                    
+                    // Link Rapido
+                    if let firstLink = deadline.allLinks.first {
+                        Button {
+                            AppSystemHelper.openWebURL(urlString: firstLink)
+                        } label: {
+                            HStack(spacing: 3) {
+                                Text(localizationManager.text(it: "Link", en: "Link"))
+                                    .font(UniFont.caption())
+                                    .fontWeight(.medium)
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 9, weight: .bold))
+                            }
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3.5)
+                            .background(Color.primary.opacity(0.06))
+                            .foregroundStyle(themeManager.accentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .help(firstLink)
+                    }
+                    
+                    // Badge Priorità
+                    UniBadge(deadline.priority.localizedName, color: deadline.priority.color)
+                }
+                
+                // RIGA 2: Due Badge pill + Note
+                HStack(alignment: .center, spacing: 8) {
+                    HStack(spacing: 4.5) {
+                        Image(systemName: dueBadge.icon)
+                            .font(.system(size: 10, weight: .bold))
+                        Text(dueBadge.label)
+                            .font(UniFont.caption())
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3.5)
+                    .background(dueBadge.color.opacity(dueBadge.isUrgent ? 0.14 : 0.08))
+                    .foregroundStyle(dueBadge.color)
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    
+                    if !deadline.notes.isEmpty {
+                        Text("•")
+                            .foregroundStyle(.secondary.opacity(0.5))
+                        Text(deadline.notes)
+                            .font(UniFont.caption())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    
+                    Spacer()
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                dataManager.selectedDeadlineId = deadline.id
+                selectedTab = "deadlines"
+            }
+        }
+    }
+
     // MARK: - Sezione Assignments & File (Con Link opening)
     private var assignmentsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(localizationManager.t(.assignmentsAndFiles).uppercased())
-                    .font(UniFont.sectionLabel())
-                    .foregroundStyle(.secondary)
-                    .tracking(1.4)
-                Spacer()
-                Button(localizationManager.t(.allCount(dataManager.assignments.count))) {
-                    selectedTab = "assignments"
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center) {
+                HStack(spacing: 8) {
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(themeManager.accentColor)
+                    
+                    Text(localizationManager.t(.assignmentsAndFiles).uppercased())
+                        .font(UniFont.sectionLabel())
+                        .foregroundStyle(.secondary)
+                        .tracking(1.4)
                 }
-                .font(UniFont.caption())
-                .foregroundStyle(themeManager.accentColor)
+                
+                Spacer()
+                
+                Button {
+                    selectedTab = "assignments"
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(localizationManager.t(.allCount(pendingAssignments.count)))
+                            .font(UniFont.caption())
+                            .fontWeight(.medium)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .foregroundStyle(themeManager.accentColor)
+                }
                 .buttonStyle(.plain)
             }
             
-            let activeAssignments = dataManager.assignments.filter { !$0.isCompleted }
-            if activeAssignments.isEmpty {
+            if pendingAssignments.isEmpty {
                 UniEmptyStateView(
                     icon: "doc.text",
                     title: localizationManager.text(it: "Nessun assignment in corso", en: "No active assignments"),
@@ -569,84 +672,149 @@ struct DashboardView: View {
                 }
             } else {
                 VStack(spacing: 8) {
-                    ForEach(activeAssignments.prefix(3)) { assignment in
-                        UniCard(padding: 12) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack {
-                                    Text(assignment.title)
-                                        .font(UniFont.headline())
-                                        .lineLimit(1)
-                                    Spacer()
-                                    if assignment.weightPercent > 0 {
-                                        Text("\(assignment.weightPercent)%")
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(themeManager.accentColor)
-                                    }
-                                }
-                                
-                                HStack(spacing: 5) {
-                                    Image(systemName: "calendar.badge.clock")
-                                        .font(.system(size: 10))
-                                    Text(DateFormatter.shortDate.string(from: assignment.dueDate))
-                                        .font(UniFont.caption())
-                                        .fontWeight(.medium)
-                                }
-                                .foregroundStyle(assignment.dueDate < Date().addingTimeInterval(86400 * 2) ? Color.red : Color.secondary)
-                                
-                                if let fileName = assignment.localFileName, let filePath = assignment.localFilePath {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "doc.fill")
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(themeManager.accentColor)
-                                        Text(fileName)
-                                            .font(UniFont.caption())
-                                            .lineLimit(1)
-                                        if let size = assignment.localFileSize {
-                                            Text("(\(size))")
-                                                .font(UniFont.caption())
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        Spacer()
-                                        Button(localizationManager.text(it: "Apri File", en: "Open File")) {
-                                            AppSystemHelper.openLocalFile(path: filePath)
-                                        }
-                                        .font(UniFont.caption())
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                    }
-                                    .padding(5)
-                                    .background(Color.primary.opacity(0.03))
-                                    .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
-                                    .clipShape(Rectangle())
-                                }
-                                
-                                ForEach(assignment.allLinks, id: \.self) { link in
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "link")
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(themeManager.accentColor)
-                                        Text(link)
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                            .truncationMode(.middle)
-                                        Spacer()
-                                        Button(localizationManager.text(it: "Apri Link", en: "Open Link")) {
-                                            AppSystemHelper.openWebURL(urlString: link)
-                                        }
-                                        .font(UniFont.caption())
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                    }
-                                    .padding(5)
-                                    .background(Color.primary.opacity(0.03))
-                                    .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
-                                    .clipShape(Rectangle())
-                                }
-                            }
-                        }
+                    ForEach(pendingAssignments.prefix(5)) { assignment in
+                        overviewAssignmentCard(assignment)
                     }
                 }
+            }
+        }
+    }
+    
+    // MARK: - Overview Assignment Card
+    @ViewBuilder
+    private func overviewAssignmentCard(_ assignment: Assignment) -> some View {
+        let dueBadge = computeDueBadge(for: assignment.dueDate)
+        let course = dataManager.courses.first(where: { $0.id == assignment.courseId })
+        let courseColor = course != nil ? (Color(hex: course!.colorHex) ?? themeManager.accentColor) : nil
+        
+        UniCard(padding: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                // RIGA 1: Checkbox + Corso + Titolo + Spacer + Peso % + Pulsante "Consegna ↗"
+                HStack(alignment: .center, spacing: 9) {
+                    // Checkbox
+                    Button {
+                        toggleAssignment(assignment)
+                    } label: {
+                        Image(systemName: assignment.isCompleted ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 16))
+                            .foregroundStyle(assignment.isCompleted ? .green : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(assignment.isCompleted ? localizationManager.text(it: "Segna come incompleto", en: "Mark as incomplete") : localizationManager.text(it: "Segna come completato", en: "Mark as completed"))
+                    
+                    // Corso Chip
+                    if let c = course, let cColor = courseColor {
+                        HStack(spacing: 4.5) {
+                            Circle()
+                                .fill(cColor)
+                                .frame(width: 6, height: 6)
+                            Text(c.name)
+                                .font(UniFont.caption())
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(cColor.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    }
+                    
+                    // Titolo
+                    Text(assignment.title)
+                        .font(UniFont.headline())
+                        .strikethrough(assignment.isCompleted)
+                        .lineLimit(1)
+                        .foregroundStyle(assignment.isCompleted ? .secondary : .primary)
+                    
+                    // Peso percentuale
+                    if assignment.weightPercent > 0 {
+                        Text("\(assignment.weightPercent)%")
+                            .font(UniFont.caption())
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2.5)
+                            .background(themeManager.accentColor.opacity(0.12))
+                            .foregroundStyle(themeManager.accentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    }
+                    
+                    Spacer(minLength: 8)
+                    
+                    // PULSANTE "HAND IN ↗" (Consegna rapida se c'è un link)
+                    if let firstLink = assignment.allLinks.first {
+                        Button {
+                            AppSystemHelper.openWebURL(urlString: firstLink)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(localizationManager.text(it: "Consegna", en: "Hand in"))
+                                    .font(UniFont.caption())
+                                    .fontWeight(.semibold)
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 9, weight: .bold))
+                            }
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 4.5)
+                            .background(themeManager.accentColor)
+                            .foregroundStyle(themeManager.accentTextColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .help(firstLink)
+                    }
+                }
+                
+                // RIGA 2: Due Badge pill + File allegato (se presente)
+                HStack(alignment: .center, spacing: 8) {
+                    HStack(spacing: 4.5) {
+                        Image(systemName: dueBadge.icon)
+                            .font(.system(size: 10, weight: .bold))
+                        Text(dueBadge.label)
+                            .font(UniFont.caption())
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3.5)
+                    .background(dueBadge.color.opacity(dueBadge.isUrgent ? 0.14 : 0.08))
+                    .foregroundStyle(dueBadge.color)
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    
+                    // File allegato diretto
+                    if let fileName = assignment.localFileName, let filePath = assignment.localFilePath {
+                        Button {
+                            AppSystemHelper.openLocalFile(path: filePath)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "doc.fill")
+                                    .font(.system(size: 9.5))
+                                    .foregroundStyle(themeManager.accentColor)
+                                Text(fileName)
+                                    .font(UniFont.caption())
+                                    .lineLimit(1)
+                                if let size = assignment.localFileSize {
+                                    Text("(\(size))")
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                }
+                                Image(systemName: "arrow.up.forward")
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Color.primary.opacity(0.04))
+                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.primary.opacity(0.09), lineWidth: 1))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                        .buttonStyle(.plain)
+                        .help(filePath)
+                    }
+                    
+                    Spacer()
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                selectedTab = "assignments"
             }
         }
     }
@@ -678,6 +846,12 @@ struct DashboardView: View {
     
     private var pendingDeadlines: [Deadline] {
         dataManager.deadlines
+            .filter { !$0.isCompleted }
+            .sorted { $0.dueDate < $1.dueDate }
+    }
+    
+    private var pendingAssignments: [Assignment] {
+        dataManager.assignments
             .filter { !$0.isCompleted }
             .sorted { $0.dueDate < $1.dueDate }
     }
@@ -727,9 +901,80 @@ struct DashboardView: View {
     }
     
     private func toggleDeadline(_ deadline: Deadline) {
-        if let idx = dataManager.deadlines.firstIndex(where: { $0.id == deadline.id }) {
-            dataManager.deadlines[idx].isCompleted.toggle()
-            dataManager.saveData()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if let idx = dataManager.deadlines.firstIndex(where: { $0.id == deadline.id }) {
+                dataManager.deadlines[idx].isCompleted.toggle()
+                dataManager.saveData()
+            }
+        }
+    }
+    
+    private func toggleAssignment(_ assignment: Assignment) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if let idx = dataManager.assignments.firstIndex(where: { $0.id == assignment.id }) {
+                dataManager.assignments[idx].isCompleted.toggle()
+                dataManager.saveData()
+            }
+        }
+    }
+    
+    private struct OverviewDueBadge {
+        let label: String
+        let icon: String
+        let color: Color
+        let isUrgent: Bool
+    }
+    
+    private func computeDueBadge(for date: Date) -> OverviewDueBadge {
+        let cal = Calendar.current
+        let now = Date()
+        let timeStr = localizationManager.formatTime(date)
+        let isEn = localizationManager.currentLanguage == .english
+        let dmFormatter = isEn ? Self.dayMonthFormatterEN : Self.dayMonthFormatterIT
+        let dmStr = dmFormatter.string(from: date)
+        
+        if date < now {
+            let diff = cal.dateComponents([.day, .hour], from: date, to: now)
+            let days = diff.day ?? 0
+            let hours = diff.hour ?? 0
+            let label: String
+            if days > 0 {
+                label = localizationManager.text(it: "Scaduto da \(days)g", en: "Overdue by \(days)d")
+            } else {
+                label = localizationManager.text(it: "Scaduto da \(max(1, hours))h", en: "Overdue by \(max(1, hours))h")
+            }
+            return OverviewDueBadge(label: "\(label) • \(timeStr)", icon: "exclamationmark.triangle.fill", color: .red, isUrgent: true)
+        } else if cal.isDateInToday(date) {
+            return OverviewDueBadge(
+                label: localizationManager.text(it: "Scade oggi • \(timeStr)", en: "Due today • \(timeStr)"),
+                icon: "flame.fill",
+                color: .orange,
+                isUrgent: true
+            )
+        } else if cal.isDateInTomorrow(date) {
+            return OverviewDueBadge(
+                label: localizationManager.text(it: "Domani • \(timeStr)", en: "Tomorrow • \(timeStr)"),
+                icon: "clock.badge.exclamationmark",
+                color: .orange,
+                isUrgent: true
+            )
+        } else {
+            let days = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: date)).day ?? 0
+            if days <= 7 {
+                return OverviewDueBadge(
+                    label: localizationManager.text(it: "Tra \(days) gg (\(dmStr)) • \(timeStr)", en: "In \(days)d (\(dmStr)) • \(timeStr)"),
+                    icon: "calendar",
+                    color: themeManager.accentColor,
+                    isUrgent: false
+                )
+            } else {
+                return OverviewDueBadge(
+                    label: "\(dmStr) • \(timeStr)",
+                    icon: "calendar",
+                    color: .secondary,
+                    isUrgent: false
+                )
+            }
         }
     }
     
@@ -740,7 +985,7 @@ struct DashboardView: View {
     
     private func formatDueDate(_ date: Date) -> String {
         let cal = Calendar.current
-        let timeStr = Self.timeOnlyFormatter.string(from: date)
+        let timeStr = localizationManager.formatTime(date)
         
         if cal.isDateInToday(date) {
             return localizationManager.text(it: "Oggi alle \(timeStr)", en: "Today at \(timeStr)")
@@ -757,8 +1002,8 @@ struct DashboardView: View {
     }
     
     private func formatTimeRange(start: Date, end: Date) -> String {
-        let s = Self.timeOnlyFormatter.string(from: start)
-        let e = Self.timeOnlyFormatter.string(from: end)
+        let s = localizationManager.formatTime(start)
+        let e = localizationManager.formatTime(end)
         return "\(s) - \(e)"
     }
     
@@ -815,25 +1060,67 @@ struct DashboardView: View {
         }
     }
     
+    private struct NextUpcomingCommitment {
+        let id: UUID
+        let title: String
+        let courseName: String?
+        let dueDate: Date
+        let isAssignment: Bool
+        let badgeText: String
+    }
+    
+    private var nextUpcomingCommitment: NextUpcomingCommitment? {
+        let nextDeadline = pendingDeadlines.first
+        let nextAssignment = pendingAssignments.first
+        
+        if let d = nextDeadline, let a = nextAssignment {
+            if a.dueDate < d.dueDate {
+                let course = dataManager.courses.first(where: { $0.id == a.courseId })?.name
+                let badge = a.weightPercent > 0 ? "\(a.weightPercent)%" : (localizationManager.currentLanguage == .english ? "ASSIGNMENT" : "COMPITO")
+                return NextUpcomingCommitment(id: a.id, title: a.title, courseName: course, dueDate: a.dueDate, isAssignment: true, badgeText: badge)
+            } else {
+                let course = dataManager.courses.first(where: { $0.id == d.courseId })?.name
+                return NextUpcomingCommitment(id: d.id, title: d.title, courseName: course, dueDate: d.dueDate, isAssignment: false, badgeText: d.priority.localizedName.uppercased())
+            }
+        } else if let a = nextAssignment {
+            let course = dataManager.courses.first(where: { $0.id == a.courseId })?.name
+            let badge = a.weightPercent > 0 ? "\(a.weightPercent)%" : (localizationManager.currentLanguage == .english ? "ASSIGNMENT" : "COMPITO")
+            return NextUpcomingCommitment(id: a.id, title: a.title, courseName: course, dueDate: a.dueDate, isAssignment: true, badgeText: badge)
+        } else if let d = nextDeadline {
+            let course = dataManager.courses.first(where: { $0.id == d.courseId })?.name
+            return NextUpcomingCommitment(id: d.id, title: d.title, courseName: course, dueDate: d.dueDate, isAssignment: false, badgeText: d.priority.localizedName.uppercased())
+        }
+        return nil
+    }
+
     // 1. Hero Card ad Accento Pieno
     private var bentoHeroCard: some View {
         Button {
-            selectedTab = "deadlines"
-            if let first = pendingDeadlines.first {
-                dataManager.selectedDeadlineId = first.id
+            if let next = nextUpcomingCommitment {
+                if next.isAssignment {
+                    selectedTab = "assignments"
+                } else {
+                    selectedTab = "deadlines"
+                    dataManager.selectedDeadlineId = next.id
+                }
+            } else {
+                selectedTab = "deadlines"
             }
         } label: {
             UniCard(padding: 16, cornerRadius: 0, style: .accentHero) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(localizationManager.text(it: "PROSSIMA SCADENZA", en: "NEXT DEADLINE"))
+                            let headerTitle = nextUpcomingCommitment?.isAssignment == true
+                                ? localizationManager.text(it: "PROSSIMO COMPITO", en: "NEXT ASSIGNMENT")
+                                : localizationManager.text(it: "PROSSIMA SCADENZA", en: "NEXT DEADLINE")
+                            Text(headerTitle)
                                 .font(UniFont.sectionLabel())
                                 .foregroundStyle(themeManager.accentTextColor.opacity(0.85))
                                 .tracking(1.4)
                             
-                            if let first = pendingDeadlines.first {
-                                Text(formatDueDate(first.dueDate).uppercased())
+                            if let next = nextUpcomingCommitment {
+                                Text(formatDueDate(next.dueDate).uppercased())
                                     .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(themeManager.accentTextColor)
                             } else {
@@ -852,16 +1139,14 @@ struct DashboardView: View {
                     
                     Spacer(minLength: 16)
                     
-                    if let first = pendingDeadlines.first {
-                        let courseName = dataManager.courses.first(where: { $0.id == first.courseId })?.name
-                        
+                    if let next = nextUpcomingCommitment {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(first.title)
+                            Text(next.title)
                                 .font(UniFont.title())
                                 .foregroundStyle(themeManager.accentTextColor)
                                 .lineLimit(2)
                             
-                            if let cName = courseName {
+                            if let cName = next.courseName {
                                 Text(cName)
                                     .font(UniFont.caption())
                                     .foregroundStyle(themeManager.accentTextColor.opacity(0.85))
@@ -884,8 +1169,8 @@ struct DashboardView: View {
                         
                         Spacer()
                         
-                        if let first = pendingDeadlines.first {
-                            Text(first.priority.localizedName.uppercased())
+                        if let next = nextUpcomingCommitment {
+                            Text(next.badgeText)
                                 .font(.system(size: 9, weight: .medium))
                                 .tracking(1.0)
                                 .padding(.horizontal, 7)
@@ -1187,9 +1472,9 @@ struct DashboardView: View {
             return localizationManager.text(it: "Tutto il giorno", en: "All day")
         }
         if let end = item.endDate, end > item.date {
-            return "\(Self.timeRangeFormatter.string(from: item.date)) - \(Self.timeRangeFormatter.string(from: end))"
+            return "\(localizationManager.formatTime(item.date)) - \(localizationManager.formatTime(end))"
         }
-        return Self.timeRangeFormatter.string(from: item.date)
+        return localizationManager.formatTime(item.date)
     }
     
     // MARK: - Header Top-Right Today Commitments Widget
@@ -1333,6 +1618,307 @@ struct DashboardView: View {
         }
         .buttonStyle(.plain)
         .help(localizationManager.text(it: "Clicca per visualizzare sul calendario", en: "Click to view on calendar"))
+    }
+    
+    // MARK: - Overview Summary Headline (Photo 4 Reference)
+    @ViewBuilder
+    private var overviewSummaryHeadlineView: some View {
+        let now = Date()
+        let cal = Calendar.current
+        let hour = cal.component(.hour, from: now)
+        
+        let greeting: String = {
+            let name = dataManager.studentName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let nameSuffix = name.isEmpty ? "" : ", \(name)"
+            if localizationManager.currentLanguage == .italian {
+                if hour < 12 { return "Buongiorno\(nameSuffix)." }
+                if hour < 18 { return "Buon pomeriggio\(nameSuffix)." }
+                return "Buonasera\(nameSuffix)."
+            } else {
+                if hour < 12 { return "Good morning\(nameSuffix)." }
+                if hour < 18 { return "Good afternoon\(nameSuffix)." }
+                return "Good evening\(nameSuffix)."
+            }
+        }()
+        
+        let enabledSources = Set(dataManager.calendarSources.filter { $0.isEnabled }.map { $0.id })
+        let todayLectures = dataManager.syncedEvents.filter {
+            if let sId = $0.sourceId, !dataManager.calendarSources.isEmpty && !enabledSources.contains(sId) {
+                return false
+            }
+            return cal.isDateInToday($0.startDate) && ($0.isAcademic || $0.category == .lecture)
+        }.count
+        
+        let todayAllEvents = dataManager.syncedEvents.filter {
+            if let sId = $0.sourceId, !dataManager.calendarSources.isEmpty && !enabledSources.contains(sId) {
+                return false
+            }
+            return cal.isDateInToday($0.startDate)
+        }.count
+        
+        let todayDeadlines = dataManager.deadlines.filter { cal.isDateInToday($0.dueDate) && !$0.isCompleted }.count
+        let todayExams = dataManager.exams.filter { cal.isDateInToday($0.examDate) }.count
+        let todayAssignments = dataManager.assignments.filter { cal.isDateInToday($0.dueDate) && !$0.isCompleted }.count
+        
+        let freedomSummary: String = {
+            let todayItems = dataManager.getTodayCommitments()
+            if todayItems.isEmpty {
+                return localizationManager.text(it: "Sei completamente libero oggi.", en: "You're completely free today.")
+            }
+            var latestHour = 0
+            for item in todayItems {
+                if let end = item.endDate {
+                    let h = cal.component(.hour, from: end)
+                    latestHour = max(latestHour, h)
+                } else {
+                    let h = cal.component(.hour, from: item.date)
+                    latestHour = max(latestHour, h + 1)
+                }
+            }
+            if latestHour > 0 {
+                if localizationManager.currentLanguage == .italian {
+                    return "Sei per lo più libero dopo le \(latestHour):00."
+                } else {
+                    let hour12 = latestHour > 12 ? "\(latestHour - 12) pm" : "\(latestHour) am"
+                    return "You're mostly free after \(hour12)."
+                }
+            }
+            return localizationManager.text(it: "Buona giornata di studio!", en: "Have a great study day!")
+        }()
+        
+        VStack(alignment: .leading, spacing: 8) {
+            // Big Greeting
+            Text(greeting)
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+            
+            // Sentence with Clickable Underlines (Photo 4)
+            FlowSentenceLayout(spacing: 6, lineSpacing: 8) {
+                PlainWordToken(text: localizationManager.text(it: "Oggi hai", en: "You have"))
+                
+                if todayLectures > 0 {
+                    ClickableUnderlineWord(
+                        text: localizationManager.text(
+                            it: "\(todayLectures) \(todayLectures == 1 ? "lezione" : "lezioni") nel Calendario",
+                            en: "\(todayLectures) \(todayLectures == 1 ? "class" : "classes") in Calendar"
+                        ),
+                        icon: "calendar",
+                        destinationTab: "calendar",
+                        selectedTab: $selectedTab
+                    )
+                } else if todayAllEvents > 0 {
+                    ClickableUnderlineWord(
+                        text: localizationManager.text(
+                            it: "\(todayAllEvents) \(todayAllEvents == 1 ? "impegno" : "impegni") nel Calendario",
+                            en: "\(todayAllEvents) \(todayAllEvents == 1 ? "event" : "events") in Calendar"
+                        ),
+                        icon: "calendar",
+                        destinationTab: "calendar",
+                        selectedTab: $selectedTab
+                    )
+                } else {
+                    ClickableUnderlineWord(
+                        text: localizationManager.text(it: "Calendario", en: "Calendar"),
+                        icon: "calendar",
+                        destinationTab: "calendar",
+                        selectedTab: $selectedTab
+                    )
+                }
+                
+                PlainWordToken(text: ",")
+                
+                if todayDeadlines > 0 {
+                    ClickableUnderlineWord(
+                        text: localizationManager.text(it: "\(todayDeadlines) scadenze", en: "\(todayDeadlines) deadlines"),
+                        icon: "clock",
+                        destinationTab: "deadlines",
+                        selectedTab: $selectedTab
+                    )
+                } else {
+                    ClickableUnderlineWord(
+                        text: localizationManager.text(it: "scadenze", en: "deadlines"),
+                        icon: "clock",
+                        destinationTab: "deadlines",
+                        selectedTab: $selectedTab
+                    )
+                }
+                
+                if todayExams > 0 {
+                    PlainWordToken(text: ",")
+                    ClickableUnderlineWord(
+                        text: localizationManager.text(it: "\(todayExams) esami", en: "\(todayExams) exams"),
+                        icon: "graduationcap",
+                        destinationTab: "exams",
+                        selectedTab: $selectedTab
+                    )
+                }
+                
+                PlainWordToken(text: localizationManager.text(it: "e", en: "and"))
+                
+                if todayAssignments > 0 {
+                    ClickableUnderlineWord(
+                        text: localizationManager.text(it: "\(todayAssignments) compiti", en: "\(todayAssignments) assignments"),
+                        icon: "doc.text",
+                        destinationTab: "assignments",
+                        selectedTab: $selectedTab
+                    )
+                } else {
+                    ClickableUnderlineWord(
+                        text: localizationManager.text(it: "compiti", en: "assignments"),
+                        icon: "doc.text",
+                        destinationTab: "assignments",
+                        selectedTab: $selectedTab
+                    )
+                }
+                
+                PlainWordToken(text: localizationManager.text(it: "oggi.", en: "today."))
+                PlainWordToken(text: freedomSummary)
+            }
+        }
+    }
+    
+    // MARK: - Overview Quick Stats Strip (Photo 4 bottom row)
+    @ViewBuilder
+    private var overviewQuickStatsStrip: some View {
+        HStack(spacing: 12) {
+            if dataManager.weightedAverage > 0 {
+                HStack(spacing: 5) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(themeManager.accentColor)
+                    Text("\(String(format: "%.2f", dataManager.weightedAverage)) / 30")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.primary)
+                    Text(localizationManager.text(it: "Media", en: "GPA"))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4.5)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(Capsule())
+            }
+            
+            if dataManager.totalCfuTarget > 0 {
+                HStack(spacing: 5) {
+                    Image(systemName: "graduationcap.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.purple)
+                    Text("\(dataManager.totalCfuAcquired)/\(dataManager.totalCfuTarget) CFU")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.primary)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4.5)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(Capsule())
+            }
+            
+            if nextExam != nil {
+                HStack(spacing: 5) {
+                    Image(systemName: "clock.badge.exclamationmark.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.orange)
+                    Text("\(localizationManager.text(it: "Prossimo Esame:", en: "Next Exam:")) \(nextExamCountdown)")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(.primary)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4.5)
+                .background(Color.primary.opacity(0.04))
+                .clipShape(Capsule())
+            }
+            
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Flow Sentence Layout (Wraps words naturally with interactive tokens)
+struct FlowSentenceLayout: Layout {
+    var spacing: CGFloat = 8
+    var lineSpacing: CGFloat = 8
+    
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentX + size.width > width && currentX > 0 {
+                currentX = 0
+                currentY += lineHeight + lineSpacing
+                lineHeight = 0
+            }
+            currentX += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+        return CGSize(width: width, height: currentY + lineHeight)
+    }
+    
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var currentX: CGFloat = bounds.minX
+        var currentY: CGFloat = bounds.minY
+        var lineHeight: CGFloat = 0
+        
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentX + size.width > bounds.maxX && currentX > bounds.minX {
+                currentX = bounds.minX
+                currentY += lineHeight + lineSpacing
+                lineHeight = 0
+            }
+            subview.place(at: CGPoint(x: currentX, y: currentY), proposal: .unspecified)
+            currentX += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+    }
+}
+
+// MARK: - Clickable Underlined Word
+struct ClickableUnderlineWord: View {
+    let text: String
+    var icon: String? = nil
+    let destinationTab: String
+    @Binding var selectedTab: String
+    @EnvironmentObject var themeManager: ThemeManager
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                selectedTab = destinationTab
+            }
+        } label: {
+            HStack(spacing: 5) {
+                if let ic = icon {
+                    Image(systemName: ic)
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundStyle(themeManager.accentColor)
+                }
+                Text(text)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(isHovered ? themeManager.accentColor : .primary)
+                    .underline(true, color: isHovered ? themeManager.accentColor : (themeManager.accentColor.opacity(0.8)))
+            }
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help("Vai a \(text)")
+    }
+}
+
+// MARK: - Plain Word Token
+struct PlainWordToken: View {
+    let text: String
+    
+    var body: some View {
+        Text(text)
+            .font(.system(size: 24, weight: .bold))
+            .foregroundStyle(.primary)
     }
 }
 

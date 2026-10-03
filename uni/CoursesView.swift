@@ -21,6 +21,7 @@ struct CoursesView: View {
     @State private var isPresentingEditCourseSheet = false
     @State private var isPresentingAddLinkSheet = false
     @State private var isPresentingAddScheduleSheet = false
+    @State private var courseToDelete: Course? = nil
     
     @State private var searchText = ""
     
@@ -36,19 +37,63 @@ struct CoursesView: View {
     }
     
     var body: some View {
-        HSplitView {
-            // Colonna Elenco Corsi
-            VStack(alignment: .leading, spacing: 12) {
-                UniHeader(
-                    localizationManager.t(.coursesTitle),
-                    subtitle: "\(dataManager.courses.count) \(localizationManager.t(.navCourses).lowercased())"
-                )
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+        VStack(spacing: 0) {
+            // Header Superiore con Titolo, Azioni e Barra di Ricerca
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .center) {
+                    UniHeader(
+                        localizationManager.t(.coursesTitle),
+                        subtitle: "\(dataManager.courses.count) \(localizationManager.t(.navCourses).lowercased())"
+                    )
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 10) {
+                        if !dataManager.syncedEvents.isEmpty {
+                            Button {
+                                dataManager.resyncAllCourseSchedules()
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                    Text(localizationManager.text(it: "Ricalcola orari da calendario", en: "Recalculate schedule"))
+                                }
+                                .font(UniFont.caption())
+                                .foregroundStyle(themeManager.accentColor)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(themeManager.accentColor.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .help(localizationManager.text(it: "Ricalcola automaticamente tutti gli orari settimanali dei corsi dagli eventi sincronizzati", en: "Automatically recalculate course weekly schedules from synced events"))
+                        }
+                        
+                        Button {
+                            isPresentingNewCourseSheet = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 11, weight: .bold))
+                                Text(localizationManager.t(.addCourseButton))
+                                    .font(UniFont.subheadline())
+                                    .fontWeight(.semibold)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(themeManager.accentColor)
+                            .foregroundStyle(themeManager.accentTextColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .shadow(color: themeManager.accentColor.opacity(0.25), radius: 4, x: 0, y: 2)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
                 
-                // Barra di Ricerca (Glasslike)
+                // Barra Ricerca Compatta (se ci sono corsi)
                 if !dataManager.courses.isEmpty {
-                    HStack(spacing: 7) {
+                    HStack(spacing: 8) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.secondary)
@@ -61,90 +106,88 @@ struct CoursesView: View {
                                 searchText = ""
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 10))
+                                    .font(.system(size: 11))
                                     .foregroundStyle(.secondary)
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .stroke(Color.primary.opacity(0.1), lineWidth: 1)
                     )
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 24)
                 }
                 
-                if !dataManager.syncedEvents.isEmpty {
-                    HStack {
-                        Button {
-                            dataManager.resyncAllCourseSchedules()
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                                Text(localizationManager.text(it: "Ricalcola orari da calendario", en: "Recalculate schedule from calendar"))
+                // Barra Orizzontale Card Verticali dei Corsi
+                if !dataManager.courses.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(filteredCourses) { course in
+                                CourseVerticalCardView(
+                                    course: course,
+                                    isSelected: selectedCourse?.id == course.id,
+                                    onSelect: {
+                                        withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                                            selectedCourse = course
+                                        }
+                                    }
+                                )
                             }
-                            .font(UniFont.caption())
-                            .foregroundStyle(themeManager.accentColor)
+                            
+                            AddCourseVerticalCardView {
+                                isPresentingNewCourseSheet = true
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .help(localizationManager.text(it: "Ricalcola automaticamente tutti gli orari settimanali dei corsi dagli eventi sincronizzati", en: "Automatically recalculate course weekly schedules from synced events"))
-                        Spacer()
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 6)
                     }
-                    .padding(.horizontal, 16)
-                }
-                
-                if dataManager.courses.isEmpty {
-                    VStack {
-                        Spacer()
-                        UniEmptyStateView(
-                            icon: "book.closed",
-                            title: localizationManager.t(.noCoursesEmptyTitle),
-                            subtitle: localizationManager.t(.noCoursesEmptyDesc),
-                            buttonTitle: localizationManager.t(.addCourseButton)
-                        ) {
-                            isPresentingNewCourseSheet = true
-                        }
-                        .padding(.horizontal, 16)
-                        Spacer()
-                    }
-                } else {
-                    List(selection: $selectedCourse) {
-                        ForEach(filteredCourses) { course in
-                            CourseRowView(course: course, isSelected: selectedCourse?.id == course.id)
-                                .tag(course)
-                                .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
-                                .listRowBackground(Color.clear)
-                        }
-                    }
-                    .listStyle(.sidebar)
                 }
             }
-            .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
+            .padding(.bottom, 12)
+            .background(Color.primary.opacity(0.015))
             
-            // Colonna Dettaglio Corso Selezionato
-            if let course = selectedCourse {
+            Divider()
+            
+            // Area Dettaglio Corso Selezionato
+            if dataManager.courses.isEmpty {
+                VStack {
+                    Spacer()
+                    UniEmptyStateView(
+                        icon: "book.closed",
+                        title: localizationManager.t(.noCoursesEmptyTitle),
+                        subtitle: localizationManager.t(.noCoursesEmptyDesc),
+                        buttonTitle: localizationManager.t(.addCourseButton)
+                    ) {
+                        isPresentingNewCourseSheet = true
+                    }
+                    .padding(.horizontal, 24)
+                    Spacer()
+                }
+            } else if let course = selectedCourse {
                 CourseDetailView(
                     course: binding(for: course),
                     onEdit: { isPresentingEditCourseSheet = true },
-                    onDelete: { deleteCourse(course) },
+                    onDelete: { courseToDelete = course },
                     onAddLink: { isPresentingAddLinkSheet = true },
                     onAddSchedule: { isPresentingAddScheduleSheet = true }
                 )
-                .frame(minWidth: 360)
             } else {
-                VStack(spacing: 10) {
+                VStack(spacing: 12) {
+                    Spacer()
                     Image(systemName: "book.closed")
-                        .font(.system(size: 34))
-                        .foregroundStyle(.secondary.opacity(0.5))
+                        .font(.system(size: 38))
+                        .foregroundStyle(.secondary.opacity(0.4))
                     Text(localizationManager.t(.selectCoursePlaceholder))
                         .font(UniFont.headline())
                         .foregroundStyle(.secondary)
                     Text(localizationManager.t(.selectCourseDesc))
                         .font(UniFont.caption())
                         .foregroundStyle(.secondary)
+                    Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -162,6 +205,13 @@ struct CoursesView: View {
             if let newId = newId, let found = dataManager.courses.first(where: { $0.id == newId }) {
                 selectedCourse = found
                 dataManager.selectedCourseId = nil
+            }
+        }
+        .onChange(of: dataManager.courses) { _, newCourses in
+            if let sel = selectedCourse, !newCourses.contains(where: { $0.id == sel.id }) {
+                selectedCourse = newCourses.first
+            } else if selectedCourse == nil {
+                selectedCourse = newCourses.first
             }
         }
         .sheet(isPresented: $isPresentingNewCourseSheet) {
@@ -234,6 +284,24 @@ struct CoursesView: View {
                 }
             }
         }
+        .alert(
+            localizationManager.text(it: "Elimina Corso", en: "Delete Course"),
+            isPresented: Binding(get: { courseToDelete != nil }, set: { if !$0 { courseToDelete = nil } }),
+            presenting: courseToDelete
+        ) { c in
+            Button(localizationManager.t(.cancel), role: .cancel) {
+                courseToDelete = nil
+            }
+            Button(localizationManager.t(.delete), role: .destructive) {
+                deleteCourse(c)
+                courseToDelete = nil
+            }
+        } message: { c in
+            Text(localizationManager.text(
+                it: "Sei sicuro di voler eliminare \"\(c.name)\"? Verranno eliminati anche tutti gli esami, i compiti e le scadenze associate. L'operazione non può essere annullata.",
+                en: "Are you sure you want to delete \"\(c.name)\"? All associated exams, assignments, and deadlines will also be deleted. This action cannot be undone."
+            ))
+        }
     }
     
     private func binding(for course: Course) -> Binding<Course> {
@@ -268,46 +336,185 @@ struct CoursesView: View {
     }
 }
 
-// MARK: - Course Row
-struct CourseRowView: View {
+// MARK: - Course Vertical Card (Card Verticale nella Barra)
+struct CourseVerticalCardView: View {
     let course: Course
     let isSelected: Bool
+    let onSelect: () -> Void
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var localizationManager: LocalizationManager
+    @State private var isHovered = false
+    
+    var courseColor: Color {
+        Color(hex: course.colorHex) ?? themeManager.accentColor
+    }
     
     var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(Color(hex: course.colorHex) ?? themeManager.accentColor)
-                .frame(width: 7, height: 7)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(course.name)
-                    .font(UniFont.headline())
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Top Color Accent Bar
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(courseColor)
+                    .frame(height: 5)
+                    .padding(.horizontal, 10)
+                    .padding(.top, 8)
                 
-                HStack(spacing: 5) {
-                    Text("\(course.cfu) CFU")
-                    if !course.code.isEmpty {
-                        Text("•")
-                        Text(course.code)
+                VStack(alignment: .leading, spacing: 6) {
+                    // Badge CFU & Codice
+                    HStack(spacing: 5) {
+                        Text("\(course.cfu) CFU")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(courseColor)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(courseColor.opacity(0.14), in: Capsule())
+                        
+                        if !course.code.isEmpty {
+                            Text(course.code)
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 4))
+                                .lineLimit(1)
+                        }
+                        
+                        Spacer()
+                        
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 13))
+                                .foregroundStyle(courseColor)
+                        }
+                    }
+                    
+                    // Titolo Corso
+                    Text(course.name)
+                        .font(UniFont.headline())
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    Spacer(minLength: 4)
+                    
+                    // Docente
+                    if !course.professor.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 9))
+                            Text(course.professor)
+                                .lineLimit(1)
+                        }
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    }
+                    
+                    // Badge Aula & Risorse
+                    HStack(spacing: 6) {
+                        if !course.room.isEmpty {
+                            HStack(spacing: 3) {
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.system(size: 8))
+                                Text(course.room)
+                                    .lineLimit(1)
+                            }
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        if !course.linkedFiles.isEmpty {
+                            HStack(spacing: 2) {
+                                Image(systemName: "folder.fill")
+                                Text("\(course.linkedFiles.count)")
+                            }
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                        }
+                        
+                        if !course.links.isEmpty {
+                            HStack(spacing: 2) {
+                                Image(systemName: "link")
+                                Text("\(course.links.count)")
+                            }
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                        }
                     }
                 }
-                .font(UniFont.caption())
-                .foregroundStyle(.secondary)
+                .padding(12)
             }
-            
-            Spacer()
+            .frame(width: 195, height: 145)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isSelected ? courseColor.opacity(0.10) : (isHovered ? Color.primary.opacity(0.04) : Color.primary.opacity(0.02)))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(isSelected ? courseColor : (isHovered ? Color.primary.opacity(0.25) : Color.primary.opacity(0.1)), lineWidth: isSelected ? 2 : 1)
+            )
+            .shadow(color: isSelected ? courseColor.opacity(0.18) : Color.black.opacity(0.03), radius: isSelected ? 8 : 2, x: 0, y: isSelected ? 4 : 1)
         }
-        .padding(8)
-        .background(
-            Rectangle()
-                .fill(isSelected ? themeManager.accentColor.opacity(0.12) : Color.clear)
-        )
+        .buttonStyle(.plain)
+        .onHover { h in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = h
+            }
+        }
     }
 }
 
-// MARK: - Course Detail View
+// MARK: - Add Course Vertical Card
+struct AddCourseVerticalCardView: View {
+    let action: () -> Void
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var localizationManager: LocalizationManager
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(themeManager.accentColor.opacity(isHovered ? 0.18 : 0.08))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(themeManager.accentColor)
+                }
+                
+                Text(localizationManager.text(it: "Nuova Materia", en: "New Course"))
+                    .font(UniFont.subheadline())
+                    .fontWeight(.medium)
+                    .foregroundStyle(isHovered ? themeManager.accentColor : .primary)
+                
+                Text(localizationManager.text(it: "Aggiungi al piano", en: "Add to plan"))
+                    .font(UniFont.caption())
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 140, height: 145)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isHovered ? themeManager.accentColor.opacity(0.04) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                    .foregroundStyle(isHovered ? themeManager.accentColor : Color.primary.opacity(0.18))
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { h in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = h
+            }
+        }
+    }
+}
+
+// MARK: - Course Detail View (Organized Modular Dashboard)
 struct CourseDetailView: View {
     @Binding var course: Course
     @EnvironmentObject var dataManager: DataManager
@@ -320,478 +527,659 @@ struct CourseDetailView: View {
     var onAddSchedule: () -> Void
     
     @State private var isDropTargeted = false
+    @State private var slotToDelete: CourseSchedule? = nil
+    @State private var linkToDelete: CourseLink? = nil
+    @State private var fileToDelete: CourseLinkedFile? = nil
+    
+    var courseColor: Color {
+        Color(hex: course.colorHex) ?? themeManager.accentColor
+    }
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                // Header Materia
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
-                                if !course.code.isEmpty {
-                                    Text(course.code)
-                                        .font(UniFont.caption())
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(Color.primary.opacity(0.05))
-                                        .clipShape(Rectangle())
-                                }
-                                
-                                Text("\(course.cfu) CFU")
+            VStack(alignment: .leading, spacing: 20) {
+                // 1. Banner Superiore con Identità Materia & Azioni Rapide
+                courseHeaderCard
+                
+                // 2. Card Notion Workspace (In Evidenza)
+                notionDesktopCard
+                
+                // 3. Layout a Due Colonne Modulari
+                HStack(alignment: .top, spacing: 18) {
+                    // Colonna Sinistra: Orario Settimanale + Risorse Esterne
+                    VStack(alignment: .leading, spacing: 18) {
+                        scheduleModule
+                        externalLinksModule
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    
+                    // Colonna Destra: File & Cartelle Collegate + Note
+                    VStack(alignment: .leading, spacing: 18) {
+                        linkedFilesModule
+                        notesModule
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+            .padding(24)
+        }
+    }
+    
+    // MARK: - Course Header Card
+    private var courseHeaderCard: some View {
+        UniCard(padding: 18) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            if !course.code.isEmpty {
+                                Text(course.code)
                                     .font(UniFont.caption())
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(themeManager.accentColor)
-                                
-                                Text(localizationManager.text(it: "Semestre \(course.semester)", en: "Semester \(course.semester)"))
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3)
+                                    .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 5))
                             }
                             
-                            Text(course.name)
-                                .font(UniFont.largeTitle())
+                            Text("\(course.cfu) CFU")
+                                .font(UniFont.caption())
                                 .fontWeight(.bold)
-                        }
-                        
-                        Spacer()
-                        
-                        HStack(spacing: 6) {
-                            Button {
-                                onEdit()
-                            } label: {
-                                Image(systemName: "pencil")
-                                    .font(.system(size: 11))
-                            }
-                            .buttonStyle(.bordered)
-                            .help(localizationManager.text(it: "Modifica materia", en: "Edit course"))
+                                .foregroundStyle(courseColor)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(courseColor.opacity(0.12), in: Capsule())
                             
-                            Button(role: .destructive) {
-                                onDelete()
-                            } label: {
-                                Image(systemName: "trash")
-                                    .font(.system(size: 11))
-                            }
-                            .buttonStyle(.bordered)
-                            .help(localizationManager.text(it: "Elimina materia", en: "Delete course"))
+                            Text(localizationManager.text(it: "\(course.semester)° Semestre", en: "Semester \(course.semester)"))
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
                         }
+                        
+                        Text(course.name)
+                            .font(UniFont.largeTitle())
+                            .fontWeight(.bold)
+                            .foregroundStyle(.primary)
                     }
                     
-                    // Docente, Email & Aula
-                    HStack(spacing: 14) {
-                        if !course.professor.isEmpty {
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        Button {
+                            onEdit()
+                        } label: {
                             HStack(spacing: 5) {
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 10))
-                                Text(course.professor)
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text(localizationManager.text(it: "Modifica", en: "Edit"))
+                                    .font(UniFont.caption())
+                                    .fontWeight(.medium)
                             }
                         }
-                        if !course.professorEmail.isEmpty {
-                            Button {
-                                if let mailURL = URL(string: "mailto:\(course.professorEmail)") {
-                                    #if canImport(AppKit)
-                                    NSWorkspace.shared.open(mailURL)
-                                    #endif
-                                }
-                            } label: {
-                                HStack(spacing: 5) {
-                                    Image(systemName: "envelope.fill")
-                                        .font(.system(size: 10))
-                                    Text(course.professorEmail)
-                                        .underline()
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(themeManager.accentColor)
-                        }
-                        if !course.room.isEmpty {
+                        .buttonStyle(.bordered)
+                        .help(localizationManager.text(it: "Modifica materia", en: "Edit course"))
+                        
+                        Button(role: .destructive) {
+                            onDelete()
+                        } label: {
                             HStack(spacing: 5) {
-                                Image(systemName: "mappin.circle.fill")
-                                    .font(.system(size: 10))
-                                Text(course.room)
+                                Image(systemName: "trash")
+                                    .font(.system(size: 11))
+                                Text(localizationManager.text(it: "Elimina", en: "Delete"))
+                                    .font(UniFont.caption())
                             }
                         }
+                        .buttonStyle(.bordered)
+                        .help(localizationManager.text(it: "Elimina materia", en: "Delete course"))
                     }
-                    .font(UniFont.subheadline())
-                    .foregroundStyle(.secondary)
                 }
                 
                 Divider()
                 
-                // NOTION DEEP-LINK
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("NOTION DESKTOP")
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                        .tracking(0.8)
-                    
-                    UniCard(padding: 14) {
-                        HStack(spacing: 12) {
-                            ZStack {
-                                Rectangle()
-                                    .fill(Color.primary.opacity(0.04))
-                                    .frame(width: 36, height: 36)
-                                Image(systemName: "book.pages.fill")
-                                    .font(.system(size: 17))
-                                    .foregroundStyle(themeManager.accentColor)
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(localizationManager.text(it: "Appunti del Corso su Notion", en: "Course Notes on Notion"))
-                                    .font(UniFont.headline())
-                                Text(course.notionURL.isEmpty ? localizationManager.text(it: "Nessun link configurato.", en: "No link configured.") : localizationManager.text(it: "Apri workspace o pagina Notion", en: "Open Notion workspace or page"))
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                            
-                            Spacer()
-                            
-                            if !course.notionURL.isEmpty {
-                                Button {
-                                    AppSystemHelper.openNotionPage(urlString: course.notionURL)
-                                } label: {
-                                    HStack(spacing: 5) {
-                                        Image(systemName: "arrow.up.forward.app.fill")
-                                            .font(.system(size: 11))
-                                        Text(localizationManager.text(it: "Apri in Notion", en: "Open in Notion"))
-                                            .font(UniFont.subheadline())
-                                            .fontWeight(.medium)
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(themeManager.accentColor)
-                                    .foregroundStyle(.white)
-                                    .clipShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                            } else {
-                                Button(localizationManager.text(it: "Collega Link", en: "Link Notion")) {
-                                    onEdit()
-                                }
-                                .font(UniFont.subheadline())
-                                .buttonStyle(.bordered)
-                            }
-                        }
-                    }
-                }
-                
-                // RISORSE & LINK ESTERNI
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(localizationManager.text(it: "RISORSE & LINK ESTERNI", en: "RESOURCES & EXTERNAL LINKS"))
-                            .font(UniFont.caption())
-                            .foregroundStyle(.secondary)
-                            .tracking(0.8)
-                        Spacer()
-                        Button(localizationManager.text(it: "+ Aggiungi Risorsa", en: "+ Add Resource")) {
-                            onAddLink()
-                        }
-                        .font(UniFont.caption())
-                        .foregroundStyle(themeManager.accentColor)
-                        .buttonStyle(.plain)
-                    }
-                    
-                    if course.links.isEmpty {
-                        UniEmptyStateView(
-                            icon: "link",
-                            title: localizationManager.text(it: "Nessuna risorsa esterna", en: "No external resources"),
-                            subtitle: localizationManager.text(it: "Collega portali del corso, canali Teams/Zoom, cartelle Drive o slide.", en: "Link course portals, Teams/Zoom channels, Drive folders, or slides."),
-                            buttonTitle: localizationManager.text(it: "Aggiungi Risorsa", en: "Add Resource")
-                        ) {
-                            onAddLink()
-                        }
-                    } else {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: .infinity), spacing: 8)], spacing: 8) {
-                            ForEach(course.links) { link in
-                                UniCard(padding: 10) {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: link.type.iconName)
-                                            .font(.system(size: 13))
-                                            .foregroundStyle(themeManager.accentColor)
-                                        
-                                        VStack(alignment: .leading, spacing: 1) {
-                                            Text(link.title)
-                                                .font(UniFont.headline())
-                                                .lineLimit(1)
-                                            Text(link.type.localizedName)
-                                                .font(UniFont.caption())
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Button {
-                                            AppSystemHelper.openWebURL(urlString: link.url)
-                                        } label: {
-                                            Image(systemName: "arrow.up.right.square")
-                                                .font(.system(size: 12))
-                                        }
-                                        .buttonStyle(.plain)
-                                        .help(localizationManager.text(it: "Apri nel browser", en: "Open in browser"))
-                                        
-                                        Button(role: .destructive) {
-                                            course.links.removeAll { $0.id == link.id }
-                                            dataManager.saveData()
-                                        } label: {
-                                            Image(systemName: "xmark")
-                                                .font(.system(size: 9))
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // ORARIO SETTIMANALE LEZIONI
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(localizationManager.text(it: "ORARIO SETTIMANALE", en: "WEEKLY SCHEDULE"))
-                            .font(UniFont.caption())
-                            .foregroundStyle(.secondary)
-                            .tracking(0.8)
-                        Spacer()
-                        Button(localizationManager.text(it: "+ Aggiungi Orario", en: "+ Add Schedule")) {
-                            onAddSchedule()
-                        }
-                        .font(UniFont.caption())
-                        .foregroundStyle(themeManager.accentColor)
-                        .buttonStyle(.plain)
-                    }
-                    
-                    if course.schedule.isEmpty {
-                        UniEmptyStateView(
-                            icon: "clock",
-                            title: localizationManager.text(it: "Nessun orario", en: "No schedule"),
-                            subtitle: localizationManager.text(it: "Inserisci i giorni e le ore delle lezioni.", en: "Enter days and times of classes."),
-                            buttonTitle: localizationManager.text(it: "Aggiungi Orario", en: "Add Schedule")
-                        ) {
-                            onAddSchedule()
-                        }
-                    } else {
-                        VStack(spacing: 6) {
-                            ForEach(course.schedule) { slot in
-                                UniCard(padding: 10) {
-                                    HStack {
-                                        Text(slot.dayName)
-                                            .font(UniFont.headline())
-                                            .frame(width: 90, alignment: .leading)
-                                        
-                                        Text("\(slot.startTime) - \(slot.endTime)")
-                                            .font(UniFont.mono())
-                                            .foregroundStyle(.secondary)
-                                        
-                                        if !slot.room.isEmpty {
-                                            Text("•")
-                                                .foregroundStyle(.secondary)
-                                            Text(slot.room)
-                                                .font(UniFont.subheadline())
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Button(role: .destructive) {
-                                            course.schedule.removeAll { $0.id == slot.id }
-                                            dataManager.saveData()
-                                        } label: {
-                                            Image(systemName: "xmark")
-                                                .font(.system(size: 9))
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // DOCUMENTI & CARTELLE COLLEGATE (DRAG & DROP - NON COPIATI, MA COLLEGATI)
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
+                // Docente, Email & Aula
+                HStack(spacing: 16) {
+                    if !course.professor.isEmpty {
                         HStack(spacing: 6) {
-                            Text(localizationManager.text(it: "DOCUMENTI & CARTELLE COLLEGATE", en: "DOCUMENTS & LINKED FOLDERS"))
-                                .font(UniFont.caption())
-                                .foregroundStyle(.secondary)
-                                .tracking(0.8)
-                            Text("(\(course.linkedFiles.count))")
-                                .font(UniFont.caption())
-                                .foregroundStyle(.secondary)
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(courseColor)
+                            Text(course.professor)
+                                .font(UniFont.subheadline())
+                                .fontWeight(.medium)
                         }
-                        
-                        Spacer()
-                        
-                        Button {
-                            selectAndLinkFiles()
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "plus")
-                                Text(localizationManager.text(it: "Collega File o Cartella...", en: "Link Files or Folder..."))
-                            }
-                            .font(UniFont.caption())
-                        }
-                        .buttonStyle(.bordered)
-                        .help(localizationManager.text(it: "Seleziona e collega file o intere cartelle dal Mac senza duplicarli", en: "Select and link files or entire folders from your Mac without duplicating them"))
                     }
                     
-                    VStack(spacing: 8) {
-                        if course.linkedFiles.isEmpty {
-                            VStack(spacing: 8) {
-                                Image(systemName: isDropTargeted ? "folder.badge.plus" : "folder.badge.plus")
-                                    .font(.system(size: 28))
-                                    .foregroundStyle(isDropTargeted ? themeManager.accentColor : .secondary)
-                                
-                                Text(isDropTargeted ? localizationManager.text(it: "Rilascia qui per collegare al corso", en: "Drop here to link to course") : localizationManager.text(it: "Trascina qui file o intere cartelle dal Finder", en: "Drag & drop files or entire folders here from Finder"))
+                    if !course.professorEmail.isEmpty {
+                        Button {
+                            if let mailURL = URL(string: "mailto:\(course.professorEmail)") {
+                                #if canImport(AppKit)
+                                NSWorkspace.shared.open(mailURL)
+                                #endif
+                            }
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: "envelope.fill")
+                                    .font(.system(size: 11))
+                                Text(course.professorEmail)
                                     .font(UniFont.subheadline())
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(isDropTargeted ? themeManager.accentColor : .primary)
-                                
-                                Text(localizationManager.text(it: "File e cartelle non vengono copiati: rimangono nella loro posizione originale sul Mac", en: "Files and folders are not copied: they stay in their original location on your Mac"))
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(.secondary)
-                                    .multilineTextAlignment(.center)
+                                    .underline()
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 22)
-                            .padding(.horizontal, 16)
-                            .background(
-                                Rectangle()
-                                    .strokeBorder(
-                                        style: StrokeStyle(lineWidth: isDropTargeted ? 2 : 1, dash: [5, 4])
-                                    )
-                                    .foregroundStyle(isDropTargeted ? themeManager.accentColor : Color.primary.opacity(0.12))
-                            )
-                            .background(isDropTargeted ? themeManager.accentColor.opacity(0.08) : Color.clear)
-                        } else {
-                            // Drop Banner compatto quando ci sono già file o cartelle
-                            HStack(spacing: 8) {
-                                Image(systemName: isDropTargeted ? "arrow.down.doc.fill" : "folder.badge.plus")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(isDropTargeted ? themeManager.accentColor : .secondary)
-                                Text(isDropTargeted ? localizationManager.text(it: "Rilascia per collegare", en: "Drop to link") : localizationManager.text(it: "Trascina qui altri file o cartelle per collegarli a questo corso", en: "Drag more files or folders here to link them to this course"))
-                                    .font(UniFont.caption())
-                                    .foregroundStyle(isDropTargeted ? themeManager.accentColor : .secondary)
-                                Spacer()
-                            }
-                            .padding(9)
-                            .background(
-                                Rectangle()
-                                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                                    .foregroundStyle(isDropTargeted ? themeManager.accentColor : Color.primary.opacity(0.1))
-                            )
-                            .background(isDropTargeted ? themeManager.accentColor.opacity(0.08) : Color.clear)
-                            
-                            // Lista dei file e cartelle collegati
-                            ForEach(course.linkedFiles) { file in
-                                UniCard(padding: 10) {
-                                    HStack(spacing: 10) {
-                                        ZStack {
-                                            Rectangle()
-                                                .fill(file.isDirectory ? Color.blue.opacity(0.12) : Color.primary.opacity(0.04))
-                                                .frame(width: 32, height: 32)
-                                            Image(systemName: file.isDirectory ? "folder.fill" : iconForFileExtension(file.fileTypeExtension))
-                                                .font(.system(size: file.isDirectory ? 16 : 14))
-                                                .foregroundStyle(file.isDirectory ? Color.blue : themeManager.accentColor)
-                                        }
-                                        
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            HStack(spacing: 6) {
-                                                Text(file.name)
-                                                    .font(UniFont.headline())
-                                                    .lineLimit(1)
-                                                
-                                                if file.isDirectory {
-                                                    Text(localizationManager.text(it: "Cartella", en: "Folder"))
-                                                        .font(.system(size: 9, weight: .bold))
-                                                        .padding(.horizontal, 5)
-                                                        .padding(.vertical, 1.5)
-                                                        .background(Color.blue.opacity(0.12))
-                                                        .foregroundStyle(Color.blue)
-                                                        .clipShape(Rectangle())
-                                                }
-                                            }
-                                            
-                                            HStack(spacing: 6) {
-                                                if !file.fileSize.isEmpty {
-                                                    Text(file.fileSize)
-                                                    Text("•")
-                                                }
-                                                Text(file.filePath)
-                                                    .lineLimit(1)
-                                                    .truncationMode(.middle)
-                                            }
-                                            .font(UniFont.caption())
-                                            .foregroundStyle(.secondary)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        // Pulsante Apri File o Cartella
-                                        Button {
-                                            AppSystemHelper.openLocalFile(path: file.filePath)
-                                        } label: {
-                                            HStack(spacing: 4) {
-                                                Image(systemName: file.isDirectory ? "folder" : "arrow.up.forward.app")
-                                                    .font(.system(size: 10))
-                                                Text(file.isDirectory ? localizationManager.text(it: "Apri Cartella", en: "Open Folder") : localizationManager.text(it: "Apri", en: "Open"))
-                                                    .font(UniFont.caption())
-                                            }
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .help(file.isDirectory ? localizationManager.text(it: "Apri cartella nel Finder", en: "Open folder in Finder") : localizationManager.text(it: "Apri il file con l'app di default", en: "Open file with default application"))
-                                        
-                                        // Pulsante Mostra nel Finder
-                                        Button {
-                                            AppSystemHelper.revealInFinder(path: file.filePath)
-                                        } label: {
-                                            Image(systemName: "magnifyingglass")
-                                                .font(.system(size: 11))
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .help(localizationManager.text(it: "Mostra nel Finder dove si trova", en: "Reveal in Finder"))
-                                        
-                                        // Pulsante Scollega
-                                        Button(role: .destructive) {
-                                            SoundManager.shared.play(.remove)
-                                            course.linkedFiles.removeAll { $0.id == file.id }
-                                            dataManager.saveData()
-                                        } label: {
-                                            Image(systemName: "xmark")
-                                                .font(.system(size: 10))
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .help(file.isDirectory ? localizationManager.text(it: "Scollega cartella dal corso", en: "Unlink folder from course") : localizationManager.text(it: "Scollega file dal corso", en: "Unlink file from course"))
-                                    }
-                                }
-                            }
+                            .foregroundStyle(themeManager.accentColor)
                         }
+                        .buttonStyle(.plain)
+                        .help(localizationManager.text(it: "Invia email al docente", en: "Send email to professor"))
                     }
-                    .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
-                        handleFileDrop(providers)
-                    }
-                }
-                
-                // NOTE
-                if !course.notes.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(localizationManager.text(it: "NOTE", en: "NOTES"))
-                            .font(UniFont.caption())
-                            .foregroundStyle(.secondary)
-                            .tracking(0.8)
-                        UniCard(padding: 12) {
-                            Text(course.notes)
-                                .font(UniFont.body())
+                    
+                    if !course.room.isEmpty {
+                        HStack(spacing: 5) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text(course.room)
+                                .font(UniFont.subheadline())
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
             }
-            .padding(24)
+        }
+    }
+    
+    // MARK: - Notion Desktop Card
+    private var notionDesktopCard: some View {
+        UniCard(padding: 14) {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(courseColor.opacity(0.12))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "book.pages.fill")
+                        .font(.system(size: 19))
+                        .foregroundStyle(courseColor)
+                }
+                
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(localizationManager.text(it: "Appunti del Corso su Notion", en: "Course Notes on Notion"))
+                        .font(UniFont.headline())
+                    Text(course.notionURL.isEmpty ? localizationManager.text(it: "Nessun link configurato.", en: "No link configured.") : localizationManager.text(it: "Apri workspace o pagina Notion associata a questo corso", en: "Open Notion workspace or page associated with this course"))
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
+                
+                if !course.notionURL.isEmpty {
+                    Button {
+                        AppSystemHelper.openNotionPage(urlString: course.notionURL)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.up.forward.app.fill")
+                                .font(.system(size: 11))
+                            Text(localizationManager.text(it: "Apri in Notion", en: "Open in Notion"))
+                                .font(UniFont.subheadline())
+                                .fontWeight(.semibold)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(courseColor)
+                        .foregroundStyle(courseColor.contrastTextColor)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button(localizationManager.text(it: "Collega Link Notion", en: "Link Notion")) {
+                        onEdit()
+                    }
+                    .font(UniFont.subheadline())
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Schedule Module
+    private var scheduleModule: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(courseColor)
+                    Text(localizationManager.text(it: "ORARIO SETTIMANALE", en: "WEEKLY SCHEDULE"))
+                        .font(UniFont.caption())
+                        .fontWeight(.bold)
+                        .foregroundStyle(.secondary)
+                        .tracking(0.8)
+                    Text("(\(course.schedule.count))")
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Button {
+                    onAddSchedule()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                        Text(localizationManager.text(it: "Aggiungi Orario", en: "Add Slot"))
+                    }
+                    .font(UniFont.caption())
+                    .fontWeight(.medium)
+                    .foregroundStyle(themeManager.accentColor)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            if course.schedule.isEmpty {
+                UniEmptyStateView(
+                    icon: "clock",
+                    title: localizationManager.text(it: "Nessun orario impostato", en: "No schedule"),
+                    subtitle: localizationManager.text(it: "Inserisci i giorni e le ore delle lezioni di questo corso.", en: "Enter days and times of classes."),
+                    buttonTitle: localizationManager.text(it: "Aggiungi Orario", en: "Add Schedule")
+                ) {
+                    onAddSchedule()
+                }
+            } else {
+                VStack(spacing: 7) {
+                    ForEach(course.schedule) { slot in
+                        UniCard(padding: 10) {
+                            HStack(spacing: 10) {
+                                Text(slot.dayName)
+                                    .font(UniFont.subheadline())
+                                    .fontWeight(.bold)
+                                    .frame(width: 85, alignment: .leading)
+                                
+                                HStack(spacing: 4) {
+                                    Image(systemName: "clock")
+                                        .font(.system(size: 10))
+                                    Text("\(localizationManager.formatTimeString(slot.startTime)) - \(localizationManager.formatTimeString(slot.endTime))")
+                                        .font(UniFont.mono())
+                                }
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
+                                
+                                if !slot.room.isEmpty {
+                                    Text("•")
+                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "mappin")
+                                            .font(.system(size: 9))
+                                        Text(slot.room)
+                                    }
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Button(role: .destructive) {
+                                    slotToDelete = slot
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(.secondary)
+                                        .padding(4)
+                                }
+                                .buttonStyle(.plain)
+                                .help(localizationManager.text(it: "Rimuovi orario", en: "Remove schedule"))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .alert(
+            localizationManager.text(it: "Rimuovi Orario", en: "Remove Schedule"),
+            isPresented: Binding(get: { slotToDelete != nil }, set: { if !$0 { slotToDelete = nil } }),
+            presenting: slotToDelete
+        ) { slot in
+            Button(localizationManager.t(.cancel), role: .cancel) { slotToDelete = nil }
+            Button(localizationManager.t(.delete), role: .destructive) {
+                course.schedule.removeAll { $0.id == slot.id }
+                dataManager.saveData()
+                slotToDelete = nil
+            }
+        } message: { slot in
+            Text(localizationManager.text(
+                it: "Sei sicuro di voler rimuovere l'orario di \(slot.dayName)?",
+                en: "Are you sure you want to remove the schedule for \(slot.dayName)?"
+            ))
+        }
+    }
+    
+    // MARK: - External Links Module
+    private var externalLinksModule: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "link")
+                        .font(.system(size: 11))
+                        .foregroundStyle(courseColor)
+                    Text(localizationManager.text(it: "RISORSE & LINK ESTERNI", en: "RESOURCES & EXTERNAL LINKS"))
+                        .font(UniFont.caption())
+                        .fontWeight(.bold)
+                        .foregroundStyle(.secondary)
+                        .tracking(0.8)
+                    Text("(\(course.links.count))")
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Button {
+                    onAddLink()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                        Text(localizationManager.text(it: "Aggiungi Risorsa", en: "Add Resource"))
+                    }
+                    .font(UniFont.caption())
+                    .fontWeight(.medium)
+                    .foregroundStyle(themeManager.accentColor)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            if course.links.isEmpty {
+                UniEmptyStateView(
+                    icon: "link",
+                    title: localizationManager.text(it: "Nessuna risorsa esterna", en: "No external resources"),
+                    subtitle: localizationManager.text(it: "Collega portali del corso (Moodle), canali Teams/Zoom, cartelle Drive o slide.", en: "Link course portals, Teams/Zoom channels, Drive folders, or slides."),
+                    buttonTitle: localizationManager.text(it: "Aggiungi Risorsa", en: "Add Resource")
+                ) {
+                    onAddLink()
+                }
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 170, maximum: .infinity), spacing: 8)], spacing: 8) {
+                    ForEach(course.links) { link in
+                        UniCard(padding: 10) {
+                            HStack(spacing: 8) {
+                                Image(systemName: link.type.iconName)
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(courseColor)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(link.title)
+                                        .font(UniFont.subheadline())
+                                        .fontWeight(.semibold)
+                                        .lineLimit(1)
+                                    Text(link.type.localizedName)
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Button {
+                                    AppSystemHelper.openWebURL(urlString: link.url)
+                                } label: {
+                                    Image(systemName: "arrow.up.right.square")
+                                        .font(.system(size: 12))
+                                }
+                                .buttonStyle(.plain)
+                                .help(localizationManager.text(it: "Apri nel browser", en: "Open in browser"))
+                                
+                                Button(role: .destructive) {
+                                    linkToDelete = link
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .alert(
+            localizationManager.text(it: "Rimuovi Link", en: "Remove Link"),
+            isPresented: Binding(get: { linkToDelete != nil }, set: { if !$0 { linkToDelete = nil } }),
+            presenting: linkToDelete
+        ) { link in
+            Button(localizationManager.t(.cancel), role: .cancel) { linkToDelete = nil }
+            Button(localizationManager.t(.delete), role: .destructive) {
+                course.links.removeAll { $0.id == link.id }
+                dataManager.saveData()
+                linkToDelete = nil
+            }
+        } message: { link in
+            Text(localizationManager.text(
+                it: "Sei sicuro di voler rimuovere il link \"\(link.title)\"?",
+                en: "Are you sure you want to remove the link \"\(link.title)\"?"
+            ))
+        }
+    }
+    
+    // MARK: - Linked Files & Folders Module (Preserves full Drag & Drop and File Opening)
+    private var linkedFilesModule: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(courseColor)
+                    Text(localizationManager.text(it: "DOCUMENTI & CARTELLE COLLEGATE", en: "DOCUMENTS & LINKED FOLDERS"))
+                        .font(UniFont.caption())
+                        .fontWeight(.bold)
+                        .foregroundStyle(.secondary)
+                        .tracking(0.8)
+                    Text("(\(course.linkedFiles.count))")
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Button {
+                    selectAndLinkFiles()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                        Text(localizationManager.text(it: "Collega File o Cartella...", en: "Link Files..."))
+                    }
+                    .font(UniFont.caption())
+                }
+                .buttonStyle(.bordered)
+                .help(localizationManager.text(it: "Seleziona e collega file o intere cartelle dal Mac senza duplicarli", en: "Select and link files or entire folders from your Mac without duplicating them"))
+            }
+            
+            VStack(spacing: 8) {
+                if course.linkedFiles.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: isDropTargeted ? "folder.badge.plus" : "folder.badge.plus")
+                            .font(.system(size: 28))
+                            .foregroundStyle(isDropTargeted ? courseColor : .secondary)
+                        
+                        Text(isDropTargeted ? localizationManager.text(it: "Rilascia qui per collegare al corso", en: "Drop here to link to course") : localizationManager.text(it: "Trascina qui file o intere cartelle dal Finder", en: "Drag & drop files or entire folders here from Finder"))
+                            .font(UniFont.subheadline())
+                            .fontWeight(.medium)
+                            .foregroundStyle(isDropTargeted ? courseColor : .primary)
+                        
+                        Text(localizationManager.text(it: "File e cartelle non vengono copiati: rimangono nella loro posizione originale sul Mac", en: "Files and folders are not copied: they stay in their original location on your Mac"))
+                            .font(UniFont.caption())
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .padding(.horizontal, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(
+                                style: StrokeStyle(lineWidth: isDropTargeted ? 2 : 1, dash: [5, 4])
+                            )
+                            .foregroundStyle(isDropTargeted ? courseColor : Color.primary.opacity(0.15))
+                    )
+                    .background(isDropTargeted ? courseColor.opacity(0.08) : Color.clear)
+                } else {
+                    // Drop Banner compatto quando ci sono già file o cartelle
+                    HStack(spacing: 8) {
+                        Image(systemName: isDropTargeted ? "arrow.down.doc.fill" : "folder.badge.plus")
+                            .font(.system(size: 13))
+                            .foregroundStyle(isDropTargeted ? courseColor : .secondary)
+                        Text(isDropTargeted ? localizationManager.text(it: "Rilascia per collegare", en: "Drop to link") : localizationManager.text(it: "Trascina qui altri file o cartelle dal Finder", en: "Drag more files or folders here from Finder"))
+                            .font(UniFont.caption())
+                            .foregroundStyle(isDropTargeted ? courseColor : .secondary)
+                        Spacer()
+                    }
+                    .padding(8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                            .foregroundStyle(isDropTargeted ? courseColor : Color.primary.opacity(0.12))
+                    )
+                    .background(isDropTargeted ? courseColor.opacity(0.08) : Color.clear)
+                    
+                    // Lista dei file e cartelle collegati
+                    ForEach(course.linkedFiles) { file in
+                        UniCard(padding: 10) {
+                            HStack(spacing: 10) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(file.isDirectory ? Color.blue.opacity(0.12) : Color.primary.opacity(0.04))
+                                        .frame(width: 32, height: 32)
+                                    Image(systemName: file.isDirectory ? "folder.fill" : iconForFileExtension(file.fileTypeExtension))
+                                        .font(.system(size: file.isDirectory ? 16 : 14))
+                                        .foregroundStyle(file.isDirectory ? Color.blue : courseColor)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text(file.name)
+                                            .font(UniFont.headline())
+                                            .lineLimit(1)
+                                        
+                                        if file.isDirectory {
+                                            Text(localizationManager.text(it: "Cartella", en: "Folder"))
+                                                .font(.system(size: 9, weight: .bold))
+                                                .padding(.horizontal, 5)
+                                                .padding(.vertical, 1.5)
+                                                .background(Color.blue.opacity(0.12))
+                                                .foregroundStyle(Color.blue)
+                                                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                        }
+                                    }
+                                    
+                                    HStack(spacing: 6) {
+                                        if !file.fileSize.isEmpty {
+                                            Text(file.fileSize)
+                                            Text("•")
+                                        }
+                                        Text(file.filePath)
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                    }
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                // Pulsante Apri File o Cartella
+                                Button {
+                                    AppSystemHelper.openLocalFile(path: file.filePath)
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: file.isDirectory ? "folder" : "arrow.up.forward.app")
+                                            .font(.system(size: 10))
+                                        Text(file.isDirectory ? localizationManager.text(it: "Apri Cartella", en: "Open Folder") : localizationManager.text(it: "Apri", en: "Open"))
+                                            .font(UniFont.caption())
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .help(file.isDirectory ? localizationManager.text(it: "Apri cartella nel Finder", en: "Open folder in Finder") : localizationManager.text(it: "Apri il file con l'app di default", en: "Open file with default application"))
+                                
+                                // Pulsante Mostra nel Finder
+                                Button {
+                                    AppSystemHelper.revealInFinder(path: file.filePath)
+                                } label: {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.system(size: 11))
+                                }
+                                .buttonStyle(.bordered)
+                                .help(localizationManager.text(it: "Mostra nel Finder dove si trova", en: "Reveal in Finder"))
+                                
+                                // Pulsante Scollega
+                                Button(role: .destructive) {
+                                    fileToDelete = file
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .help(file.isDirectory ? localizationManager.text(it: "Scollega cartella dal corso", en: "Unlink folder from course") : localizationManager.text(it: "Scollega file dal corso", en: "Unlink file from course"))
+                            }
+                        }
+                    }
+                }
+            }
+            .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+                handleFileDrop(providers)
+            }
+        }
+        .alert(
+            localizationManager.text(it: "Scollega File / Cartella", en: "Unlink File / Folder"),
+            isPresented: Binding(get: { fileToDelete != nil }, set: { if !$0 { fileToDelete = nil } }),
+            presenting: fileToDelete
+        ) { file in
+            Button(localizationManager.t(.cancel), role: .cancel) { fileToDelete = nil }
+            Button(localizationManager.t(.delete), role: .destructive) {
+                SoundManager.shared.play(.remove)
+                course.linkedFiles.removeAll { $0.id == file.id }
+                dataManager.saveData()
+                fileToDelete = nil
+            }
+        } message: { file in
+            Text(localizationManager.text(
+                it: "Sei sicuro di voler scollegare \"\(file.name)\" dal corso?",
+                en: "Are you sure you want to unlink \"\(file.name)\" from this course?"
+            ))
+        }
+    }
+    
+    // MARK: - Notes Module
+    private var notesModule: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "note.text")
+                        .font(.system(size: 11))
+                        .foregroundStyle(courseColor)
+                    Text(localizationManager.text(it: "NOTE & MATERIALI DI STUDIO", en: "NOTES & STUDY MATERIALS"))
+                        .font(UniFont.caption())
+                        .fontWeight(.bold)
+                        .foregroundStyle(.secondary)
+                        .tracking(0.8)
+                }
+                
+                Spacer()
+                
+                Button(localizationManager.text(it: "Modifica", en: "Edit")) {
+                    onEdit()
+                }
+                .font(UniFont.caption())
+                .foregroundStyle(themeManager.accentColor)
+                .buttonStyle(.plain)
+            }
+            
+            UniCard(padding: 12) {
+                if !course.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(course.notes)
+                        .font(UniFont.body())
+                        .foregroundStyle(.primary.opacity(0.85))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Text(localizationManager.text(it: "Nessuna nota o indicazione inserita. Fai clic su Modifica per aggiungere appunti, libri di testo o programma.", en: "No notes added yet. Click Edit to add notes, textbooks, or syllabus."))
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                        .italic()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
         }
     }
     

@@ -32,6 +32,7 @@ public struct CalendarManagerModalView: View {
     @State private var availablePCCalendars: [AppleCalendarManager.MacCalendarInfo] = []
     @State private var isReplicatingPC: Bool = false
     @State private var pcAuthStatus: String = ""
+    @State private var sourceToRemove: CalendarSource? = nil
     
     private let colorPalette: [String] = [
         "#4F46E5", // Indigo
@@ -153,6 +154,24 @@ public struct CalendarManagerModalView: View {
             .background(Color.primary.opacity(0.02))
         }
         .frame(minWidth: 640, maxWidth: 740, minHeight: 480, maxHeight: 600)
+        .alert(
+            localizationManager.text(it: "Rimuovi Calendario", en: "Remove Calendar"),
+            isPresented: Binding(get: { sourceToRemove != nil }, set: { if !$0 { sourceToRemove = nil } }),
+            presenting: sourceToRemove
+        ) { src in
+            Button(localizationManager.t(.cancel), role: .cancel) {
+                sourceToRemove = nil
+            }
+            Button(localizationManager.t(.delete), role: .destructive) {
+                dataManager.removeCalendarSource(id: src.id)
+                sourceToRemove = nil
+            }
+        } message: { src in
+            Text(localizationManager.text(
+                it: "Sei sicuro di voler rimuovere il calendario \"\(src.title)\"? Tutti gli eventi sincronizzati da questa sorgente verranno rimossi.",
+                en: "Are you sure you want to remove the calendar \"\(src.title)\"? All synced events from this source will be removed."
+            ))
+        }
         .onAppear {
             refreshPCCalendarsList()
         }
@@ -514,7 +533,7 @@ public struct CalendarManagerModalView: View {
                 
                 // Pulsante Elimina
                 Button {
-                    dataManager.removeCalendarSource(id: source.id)
+                    sourceToRemove = source
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 12))
@@ -615,7 +634,7 @@ public struct CalendarManagerModalView: View {
     private static let syncDateFormatterEN: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US")
-        f.dateFormat = "d MMM HH:mm"
+        f.dateFormat = "MMM d, h:mm a"
         return f
     }()
     

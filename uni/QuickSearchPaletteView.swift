@@ -20,7 +20,32 @@ public struct PaletteItem: Identifiable, Hashable {
     public let badgeText: String?
     public let color: Color
     public let searchTerms: String
+    public let snippet: String?
     public let action: () -> Void
+    
+    public init(
+        id: String,
+        title: String,
+        subtitle: String,
+        category: Category,
+        iconName: String,
+        badgeText: String? = nil,
+        color: Color,
+        searchTerms: String,
+        snippet: String? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+        self.category = category
+        self.iconName = iconName
+        self.badgeText = badgeText
+        self.color = color
+        self.searchTerms = searchTerms
+        self.snippet = snippet
+        self.action = action
+    }
     
     public enum Category: String, CaseIterable {
         case all = "all"
@@ -265,7 +290,7 @@ public struct QuickSearchPaletteView: View {
                 iconName: deadline.isCompleted ? "checkmark.circle.fill" : (isUrgent ? "exclamationmark.circle.fill" : "clock.fill"),
                 badgeText: deadline.isCompleted ? localizationManager.text(it: "Fatto", en: "Done") : deadline.priority.localizedName,
                 color: deadline.isCompleted ? .green : deadline.priority.color,
-                searchTerms: "scadenza scadenze deadline deadlines consegna consegne promemoria urgente task \(courseName) \(deadline.title) \(deadline.notes) \(deadline.priority.localizedName) \(deadline.isCompleted ? "fatto completata done" : "da fare aperta pending")",
+                searchTerms: "scadenza scadenze deadline deadlines consegna consegne promemoria urgente task \(courseName) \(deadline.title) \(deadline.notes) \(deadline.priority.localizedName) \(deadline.allLinks.joined(separator: " ")) \(deadline.localFileName ?? "") \(deadline.isCompleted ? "fatto completata done" : "da fare aperta pending")",
                 action: {
                     selectedTab = "deadlines"
                     dataManager.selectedDeadlineId = deadline.id
@@ -279,6 +304,7 @@ public struct QuickSearchPaletteView: View {
             let courseName = dataManager.courses.first(where: { $0.id == assignment.courseId })?.name ?? localizationManager.text(it: "Generale", en: "General")
             let fileInfo = assignment.localFileName.flatMap { " • File: \($0)" } ?? ""
             let linkInfo = (assignment.linkURL != nil && !assignment.linkURL!.isEmpty) ? " • Link" : ""
+            let detailSnippet = assignment.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : assignment.details
             items.append(PaletteItem(
                 id: "assignment-\(assignment.id)",
                 title: assignment.title,
@@ -287,7 +313,8 @@ public struct QuickSearchPaletteView: View {
                 iconName: assignment.localFilePath != nil ? "doc.text.fill" : "doc.text",
                 badgeText: assignment.isCompleted ? localizationManager.text(it: "Completato", en: "Completed") : (assignment.localFileName != nil ? "File" : nil),
                 color: assignment.isCompleted ? .green : .blue,
-                searchTerms: "assignment assignments compito compiti progetto progetti relazione file documento pdf tesi homework consegna \(courseName) \(assignment.title) \(assignment.details) \(assignment.localFileName ?? "") \(assignment.isCompleted ? "fatto completato completed done" : "in corso da fare pending")",
+                searchTerms: "assignment assignments compito compiti progetto progetti relazione file documento pdf tesi homework consegna \(courseName) \(assignment.title) \(assignment.details) \(assignment.localFileName ?? "") \(assignment.allLinks.joined(separator: " ")) \(assignment.isCompleted ? "fatto completato completed done" : "in corso da fare pending")",
+                snippet: detailSnippet,
                 action: {
                     selectedTab = "assignments"
                     dataManager.selectedAssignmentId = assignment.id
@@ -348,26 +375,11 @@ public struct QuickSearchPaletteView: View {
     }
     
     private var filteredItems: [PaletteItem] {
-        let clean = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let tokens = clean.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-        
-        return allItems.filter { item in
-            // Filter by category pill if not "Tutti"
-            if selectedCategory != .all && item.category != selectedCategory {
-                return false
-            }
-            
-            // If search is empty, return all matching the category
-            if tokens.isEmpty {
-                return true
-            }
-            
-            // Match all tokens in title, subtitle, badge, or searchTerms
-            let combined = "\(item.title) \(item.subtitle) \(item.badgeText ?? "") \(item.category.rawValue) \(item.searchTerms)".lowercased()
-            return tokens.allSatisfy { token in
-                combined.contains(token)
-            }
-        }
+        UniSearchEngine.filterAndRank(
+            items: allItems,
+            query: searchText,
+            category: selectedCategory
+        )
     }
     
     // Grouped categories present in filtered items
@@ -512,7 +524,7 @@ public struct QuickSearchPaletteView: View {
                                                         item: item,
                                                         isSelected: index == selectedIndex
                                                     )
-                                                    .id(index)
+                                                    .id(item.id)
                                                     .onTapGesture {
                                                         selectedIndex = index
                                                         item.action()
@@ -529,7 +541,7 @@ public struct QuickSearchPaletteView: View {
                                                 item: item,
                                                 isSelected: index == selectedIndex
                                             )
-                                            .id(index)
+                                            .id(item.id)
                                             .onTapGesture {
                                                 selectedIndex = index
                                                 item.action()
@@ -587,6 +599,7 @@ public struct QuickSearchPaletteView: View {
             )
         }
         .onAppear {
+            selectedCategory = .all
             selectedIndex = 0
             isFieldFocused = true
             setupKeyboardMonitor()
@@ -601,15 +614,11 @@ public struct QuickSearchPaletteView: View {
     
     private func countForCategory(_ cat: PaletteItem.Category) -> Int {
         if cat == .all { return allItems.count }
-        let clean = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let tokens = clean.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-        
-        return allItems.filter { item in
-            guard item.category == cat else { return false }
-            if tokens.isEmpty { return true }
-            let combined = "\(item.title) \(item.subtitle) \(item.badgeText ?? "") \(item.category.rawValue) \(item.searchTerms)".lowercased()
-            return tokens.allSatisfy { combined.contains($0) }
-        }.count
+        let clean = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.isEmpty {
+            return allItems.filter { $0.category == cat }.count
+        }
+        return UniSearchEngine.filterAndRank(items: allItems, query: clean, category: cat).count
     }
     
     private func executeCurrentSelection() {
@@ -652,13 +661,18 @@ public struct QuickSearchPaletteView: View {
 }
 
 // MARK: - Palette Row
-private struct PaletteRow: View {
-    let item: PaletteItem
-    let isSelected: Bool
+public struct PaletteRow: View {
+    public let item: PaletteItem
+    public let isSelected: Bool
+    
+    public init(item: PaletteItem, isSelected: Bool) {
+        self.item = item
+        self.isSelected = isSelected
+    }
     @EnvironmentObject var themeManager: ThemeManager
     @State private var isHovering = false
     
-    var body: some View {
+    public var body: some View {
         HStack(spacing: 12) {
             ZStack {
                 Rectangle()

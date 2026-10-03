@@ -53,6 +53,43 @@ public class LocalizationManager: ObservableObject {
     public func text(it: String, en: String) -> String {
         currentLanguage == .english ? en : it
     }
+    
+    /// Restituisce se l'app è in modalità orario 12 ore (AM/PM per inglese) o 24 ore militare (per italiano)
+    public var is12HourTime: Bool {
+        currentLanguage == .english
+    }
+    
+    /// Formatta un orario (Date) secondo la lingua corrente:
+    /// - Italiano: formato 24 ore militare (es. "18:30", "09:00", "23:59")
+    /// - Inglese: formato 12 ore con AM/PM (es. "6:30 PM", "9:00 AM", "11:59 PM")
+    public func formatTime(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: currentLanguage == .english ? "en_US" : "it_IT")
+        f.timeZone = TimeZone(identifier: "Europe/Rome") ?? TimeZone.current
+        f.dateFormat = currentLanguage == .english ? "h:mm a" : "HH:mm"
+        return f.string(from: date)
+    }
+    
+    /// Formatta ora e minuti espliciti (hour 0..23, minute 0..59)
+    public func formatTime(hour: Int, minute: Int) -> String {
+        if is12HourTime {
+            let period = hour >= 12 ? "PM" : "AM"
+            let h12 = hour % 12 == 0 ? 12 : hour % 12
+            return String(format: "%d:%02d %@", h12, minute, period)
+        } else {
+            return String(format: "%02d:%02d", hour, minute)
+        }
+    }
+    
+    /// Formatta una stringa orario (es. "14:30") secondo la lingua corrente:
+    /// - Italiano: "14:30"
+    /// - Inglese: "2:30 PM"
+    public func formatTimeString(_ timeStr: String) -> String {
+        guard is12HourTime else { return timeStr }
+        let parts = timeStr.split(separator: ":")
+        guard parts.count == 2, let h = Int(parts[0]), let m = Int(parts[1]) else { return timeStr }
+        return formatTime(hour: h, minute: m)
+    }
 }
 
 // MARK: - Localized Keys

@@ -286,10 +286,11 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
             if notify1hBefore {
                 let triggerDate1h = deadline.dueDate.addingTimeInterval(-3600)
                 if triggerDate1h > now {
+                    let timeStr = LocalizationManager.shared.formatTime(deadline.dueDate)
                     scheduleSingleReminder(
                         id: "deadline-1h-\(deadline.id.uuidString)",
                         title: isEn ? "Upcoming deadline (1 hour): \(deadline.title)" : "Scadenza imminente (1 ora): \(deadline.title)",
-                        body: isEn ? "Course: \(courseName) • Due at \(DateFormatter.timeOnly.string(from: deadline.dueDate))" : "Corso: \(courseName) • Scade alle \(DateFormatter.timeOnly.string(from: deadline.dueDate))",
+                        body: isEn ? "Course: \(courseName) • Due at \(timeStr)" : "Corso: \(courseName) • Scade alle \(timeStr)",
                         date: triggerDate1h
                     )
                 }
@@ -297,10 +298,11 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
             
             // All'ora esatta della scadenza
             if deadline.dueDate > now {
+                let timeStr = LocalizationManager.shared.formatTime(deadline.dueDate)
                 scheduleSingleReminder(
                     id: "deadline-exact-\(deadline.id.uuidString)",
                     title: isEn ? "Deadline NOW: \(deadline.title)" : "Scadenza ORA: \(deadline.title)",
-                    body: isEn ? "Course: \(courseName) • Deadline reached at \(DateFormatter.timeOnly.string(from: deadline.dueDate))" : "Corso: \(courseName) • Termine scaduto alle \(DateFormatter.timeOnly.string(from: deadline.dueDate))",
+                    body: isEn ? "Course: \(courseName) • Deadline reached at \(timeStr)" : "Corso: \(courseName) • Termine scaduto alle \(timeStr)",
                     date: deadline.dueDate
                 )
             }
@@ -328,10 +330,11 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
             if notify1hBefore {
                 let triggerDate1h = assignment.dueDate.addingTimeInterval(-3600)
                 if triggerDate1h > now {
+                    let timeStr = LocalizationManager.shared.formatTime(assignment.dueDate)
                     scheduleSingleReminder(
                         id: "assignment-1h-\(assignment.id.uuidString)",
                         title: isEn ? "Assignment due in 1 hour: \(assignment.title)" : "Consegna tra 1 ora: \(assignment.title)",
-                        body: isEn ? "Course: \(courseName) • Due at \(DateFormatter.timeOnly.string(from: assignment.dueDate))" : "Corso: \(courseName) • Scadenza alle \(DateFormatter.timeOnly.string(from: assignment.dueDate))",
+                        body: isEn ? "Course: \(courseName) • Due at \(timeStr)" : "Corso: \(courseName) • Scadenza alle \(timeStr)",
                         date: triggerDate1h
                     )
                 }
@@ -349,15 +352,16 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
         
         // 3. Programma notifiche per Esami
         for exam in exams where exam.status != .passed {
-            let courseName = courseDict[exam.courseId] ?? "Esame"
+            let isEn = LocalizationManager.shared.currentLanguage == .english
+            let courseName = courseDict[exam.courseId] ?? (isEn ? "Exam" : "Esame")
             
             // 2 Giorni Prima dell'esame
             let triggerDate2d = exam.examDate.addingTimeInterval(-172800)
             if triggerDate2d > now {
                 scheduleSingleReminder(
                     id: "exam-2d-\(exam.id.uuidString)",
-                    title: "Esame tra 2 giorni: \(exam.title)",
-                    body: "\(courseName) • Ultimo ripasso prima dell'appello!",
+                    title: isEn ? "Exam in 2 days: \(exam.title)" : "Esame tra 2 giorni: \(exam.title)",
+                    body: isEn ? "\(courseName) • Final review before the exam date!" : "\(courseName) • Ultimo ripasso prima dell'appello!",
                     date: triggerDate2d
                 )
             }
@@ -368,10 +372,11 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
             components.hour = 7
             components.minute = 30
             if let morningDate = calendar.date(from: components), morningDate > now && morningDate <= exam.examDate {
+                let timeStr = LocalizationManager.shared.formatTime(exam.examDate)
                 scheduleSingleReminder(
                     id: "exam-morning-\(exam.id.uuidString)",
-                    title: "Oggi c'è l'esame di \(courseName)! 🎓",
-                    body: "\(exam.title) alle ore \(DateFormatter.timeOnly.string(from: exam.examDate)) in aula \(exam.room.isEmpty ? "assegnata" : exam.room). In bocca al lupo!",
+                    title: isEn ? "Exam today: \(courseName)! 🎓" : "Oggi c'è l'esame di \(courseName)! 🎓",
+                    body: isEn ? "\(exam.title) at \(timeStr) in room \(exam.room.isEmpty ? "assigned" : exam.room). Good luck!" : "\(exam.title) alle ore \(timeStr) in aula \(exam.room.isEmpty ? "assegnata" : exam.room). In bocca al lupo!",
                     date: morningDate
                 )
             }

@@ -82,6 +82,27 @@ public class DataManager: ObservableObject {
     @Published public var selectedExamId: UUID? = nil
     @Published public var selectedAssignmentId: UUID? = nil
     
+    // Auto-expansion target IDs when navigating to a detail view
+    @Published public var expandedDeadlineId: UUID? = nil
+    @Published public var expandedAssignmentId: UUID? = nil
+    @Published public var navigationTab: String? = nil
+    
+    public func navigateTo(tab: String, deadlineId: UUID? = nil, assignmentId: UUID? = nil, expand: Bool = true) {
+        if let dId = deadlineId {
+            selectedDeadlineId = dId
+            if expand {
+                expandedDeadlineId = dId
+            }
+        }
+        if let aId = assignmentId {
+            selectedAssignmentId = aId
+            if expand {
+                expandedAssignmentId = aId
+            }
+        }
+        navigationTab = tab
+    }
+    
     // Tracciamento automatico e reattivo del giorno odierno
     @Published public var currentDate: Date = Date()
     private var dateCancellables = Set<AnyCancellable>()

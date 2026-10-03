@@ -391,7 +391,7 @@ struct SettingsView: View {
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 5)
                                         .background(themeManager.accentColor)
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(themeManager.accentTextColor)
                                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                                     }
                                     .buttonStyle(.plain)
@@ -1104,7 +1104,7 @@ struct SettingsView: View {
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 6)
                                         .background(Color.orange)
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(Color.orange.contrastTextColor)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -1722,7 +1722,7 @@ struct QuickShortcutEditorSheet: View {
                         .padding(.horizontal, 14)
                         .padding(.vertical, 7)
                         .background(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.secondary.opacity(0.3) : themeManager.accentColor)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white : themeManager.accentTextColor)
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
                 .buttonStyle(.plain)

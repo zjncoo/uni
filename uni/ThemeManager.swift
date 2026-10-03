@@ -141,13 +141,12 @@ public class ThemeManager: ObservableObject {
     
     /// Testo ad alto contrasto (bianco o nero) a seconda della luminosità del colore d'accento
     public var accentTextColor: Color {
-        #if canImport(AppKit)
-        let ns = NSColor(accentColor).usingColorSpace(.sRGB) ?? NSColor.blue
-        let luminance = 0.299 * Double(ns.redComponent) + 0.587 * Double(ns.greenComponent) + 0.114 * Double(ns.blueComponent)
-        return luminance > 0.62 ? Color.black : Color.white
-        #else
-        return Color.white
-        #endif
+        accentColor.contrastTextColor
+    }
+    
+    /// Calcola il colore di testo (bianco o nero) con contrasto accessibile per qualsiasi colore di sfondo
+    public func contrastTextColor(for color: Color) -> Color {
+        color.contrastTextColor
     }
     
     // Supporto per Slider HSB aperti integrati nella view
@@ -197,7 +196,7 @@ public class ThemeManager: ObservableObject {
     #endif
 }
 
-// MARK: - Color Hex Extensions
+// MARK: - Color Hex & Accessible Contrast Extensions
 extension Color {
     public init?(hex: String) {
         var cleanHex = hex.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -237,6 +236,72 @@ extension Color {
         #else
         return "#0D5BFF"
         #endif
+    }
+    
+    /// Luminosità percepita (da 0.0 per il nero a 1.0 per il bianco)
+    public var perceivedLuminance: Double {
+        #if canImport(AppKit)
+        let ns = NSColor(self).usingColorSpace(.sRGB) ?? NSColor.blue
+        let r = Double(ns.redComponent)
+        let g = Double(ns.greenComponent)
+        let b = Double(ns.blueComponent)
+        return 0.299 * r + 0.587 * g + 0.114 * b
+        #else
+        return 0.5
+        #endif
+    }
+    
+    /// Luminanza relativa WCAG 2.1
+    public var relativeLuminance: Double {
+        #if canImport(AppKit)
+        let ns = NSColor(self).usingColorSpace(.sRGB) ?? NSColor.blue
+        func channelLuminance(_ val: CGFloat) -> Double {
+            let v = Double(val)
+            return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+        }
+        let r = channelLuminance(ns.redComponent)
+        let g = channelLuminance(ns.greenComponent)
+        let b = channelLuminance(ns.blueComponent)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+        #else
+        return 0.5
+        #endif
+    }
+    
+    /// Rapporto di contrasto WCAG (da 1.0 a 21.0) con un altro colore
+    public func contrastRatio(with other: Color) -> Double {
+        let l1 = self.relativeLuminance
+        let l2 = other.relativeLuminance
+        let lighter = max(l1, l2)
+        let darker = min(l1, l2)
+        return (lighter + 0.05) / (darker + 0.05)
+    }
+    
+    /// Restituisce testo nero o bianco per garantire la massima leggibilità e accessibilità (WCAG).
+    /// Se il colore di sfondo rende il testo bianco poco visibile (luminanza elevata o contrasto scarso),
+    /// restituisce automaticamente il colore nero.
+    public var contrastTextColor: Color {
+        #if canImport(AppKit)
+        let whiteContrast = self.contrastRatio(with: .white)
+        let blackContrast = self.contrastRatio(with: .black)
+        let lum = self.perceivedLuminance
+        
+        // Se il contrasto con il bianco è sotto 3.5, o la luminosità percepita è > 0.48,
+        // o il nero offre un contrasto nettamente superiore a quello del bianco:
+        if lum > 0.48 || whiteContrast < 3.5 || blackContrast > (whiteContrast * 1.1) {
+            return Color.black
+        }
+        return Color.white
+        #else
+        return Color.white
+        #endif
+    }
+}
+
+extension View {
+    /// Applica colore di testo (bianco o nero) garantendo sempre un contrasto ottimale sullo sfondo specificato
+    public func contrastForeground(on backgroundColor: Color) -> some View {
+        self.foregroundStyle(backgroundColor.contrastTextColor)
     }
 }
 
@@ -425,6 +490,7 @@ public struct SidebarButtonLiquidUni: View {
     var count: Int = 0
     var badgeText: String? = nil
     var shortcutHint: String? = nil
+    var isCollapsed: Bool = false
     let isSelected: Bool
     let isDark: Bool
     let action: () -> Void
@@ -438,6 +504,7 @@ public struct SidebarButtonLiquidUni: View {
         count: Int = 0,
         badgeText: String? = nil,
         shortcutHint: String? = nil,
+        isCollapsed: Bool = false,
         isSelected: Bool,
         isDark: Bool,
         action: @escaping () -> Void
@@ -447,6 +514,7 @@ public struct SidebarButtonLiquidUni: View {
         self.count = count
         self.badgeText = badgeText
         self.shortcutHint = shortcutHint
+        self.isCollapsed = isCollapsed
         self.isSelected = isSelected
         self.isDark = isDark
         self.action = action
@@ -454,44 +522,19 @@ public struct SidebarButtonLiquidUni: View {
     
     private var iconColor: Color {
         if isSelected { return themeManager.accentColor }
-        if isHovered { return themeManager.accentColor.opacity(0.9) }
-        return .secondary
+        return isDark ? Color.white.opacity(0.9) : Color.black.opacity(0.85)
     }
     
     private var textColor: Color {
         if isSelected {
-            return isDark ? .white : .primary
+            return themeManager.accentColor
         }
-        if isHovered {
-            return isDark ? Color.white.opacity(0.95) : Color.black.opacity(0.88)
-        }
-        return .secondary
+        return isDark ? Color.white.opacity(0.9) : Color.black.opacity(0.85)
     }
     
     private var badgeBgColor: Color {
         if isSelected { return themeManager.accentColor.opacity(0.22) }
-        if isHovered { return themeManager.accentColor.opacity(0.14) }
-        return Color.primary.opacity(0.06)
-    }
-    
-    private var buttonBgColor: Color {
-        if isSelected {
-            return isDark ? Color.white.opacity(0.12) : Color.white.opacity(0.85)
-        }
-        if isHovered {
-            return isDark ? Color.white.opacity(0.06) : Color.white.opacity(0.45)
-        }
-        return Color.clear
-    }
-    
-    private var buttonStrokeColor: Color {
-        if isSelected {
-            return isDark ? Color.white.opacity(0.25) : Color.white
-        }
-        if isHovered {
-            return isDark ? Color.white.opacity(0.12) : Color.white.opacity(0.6)
-        }
-        return Color.clear
+        return Color.primary.opacity(0.08)
     }
     
     public var body: some View {
@@ -500,52 +543,78 @@ public struct SidebarButtonLiquidUni: View {
                 action()
             }
         }) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(iconColor)
-                    .frame(width: 18)
-                
-                Text(title)
-                    .font(UniFont.body())
-                    .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundColor(textColor)
-                
-                Spacer()
-                
-                if let hint = shortcutHint, !isSelected && !isHovered && count == 0 {
-                    Text(hint)
-                        .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.secondary.opacity(0.6))
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    // Fixed 64pt leading container: center X is ALWAYS 32, NEVER shifts!
+                    ZStack {
+                        Image(systemName: icon)
+                            .font(.system(size: 13.5, weight: isSelected ? .bold : .medium))
+                            .foregroundColor(iconColor)
+                        
+                        if isCollapsed && (count > 0 || (badgeText != nil && !badgeText!.isEmpty)) {
+                            Circle()
+                                .fill(themeManager.accentColor)
+                                .frame(width: 6, height: 6)
+                                .offset(x: 9, y: -9)
+                        }
+                    }
+                    .frame(width: 64, height: 40, alignment: .center)
+                    
+                    // Labels smoothly appear to the right from X = 64
+                    HStack(spacing: 6) {
+                        Text(title)
+                            .font(UniFont.body())
+                            .fontWeight(isSelected ? .bold : .regular)
+                            .foregroundColor(textColor)
+                            .lineLimit(1)
+                        
+                        Spacer(minLength: 0)
+                        
+                        if let hint = shortcutHint, !isSelected && !isHovered && count == 0 {
+                            Text(hint)
+                                .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(.secondary.opacity(0.6))
+                        }
+                        
+                        if let b = badgeText, !b.isEmpty {
+                            Text(b)
+                                .font(.system(size: 10, weight: .bold))
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(badgeBgColor)
+                                .foregroundColor(isSelected ? themeManager.accentColor : .secondary)
+                                .clipShape(Capsule())
+                        } else if count > 0 {
+                            Text("\(count)")
+                                .font(.system(size: 10.5, weight: .bold))
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(badgeBgColor)
+                                .foregroundColor(isSelected ? themeManager.accentColor : .secondary)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.trailing, 14)
+                    .frame(width: 181, alignment: .leading)
+                    .opacity(isCollapsed ? 0 : 1)
+                    .clipped()
                 }
+                .frame(width: 245, height: 40, alignment: .leading)
+                .contentShape(Rectangle())
+                .opacity(isHovered ? 0.50 : 1.0)
                 
-                if let b = badgeText, !b.isEmpty {
-                    Text(b)
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background(badgeBgColor)
-                        .foregroundColor(isSelected ? themeManager.accentColor : .secondary)
-                        .clipShape(Capsule())
-                } else if count > 0 {
-                    Text("\(count)")
-                        .font(.system(size: 10.5, weight: .bold))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background(badgeBgColor)
-                        .foregroundColor(isSelected ? themeManager.accentColor : .secondary)
-                        .clipShape(Capsule())
-                }
+                // Architectural 1.5pt Divider line (visible ONLY when expanded, never when compressed)
+                Rectangle()
+                    .fill(isDark ? Color.white.opacity(0.12) : Color.black.opacity(0.10))
+                    .frame(height: 1.5)
+                    .opacity(isCollapsed ? 0 : 1.0)
+                    .padding(.horizontal, 10)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(buttonBgColor))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(buttonStrokeColor, lineWidth: 1))
-            .scaleEffect(isHovered ? 1.015 : 1.0)
         }
         .buttonStyle(.plain)
+        .help(title)
         .onHover { hover in
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.78)) {
+            withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hover
             }
         }
@@ -837,7 +906,7 @@ public struct UniEmptyStateView: View {
                     .padding(.horizontal, 13)
                     .padding(.vertical, 6)
                     .background(themeManager.accentColor)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(themeManager.accentTextColor)
                     .clipShape(Rectangle())
                 }
                 .buttonStyle(.plain)
