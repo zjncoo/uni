@@ -1,9 +1,9 @@
 {
-  "tag_name": "v1.4.2",
-  "version": "1.4.2",
-  "name": "uni 1.4.2 — Refined Settings Hierarchy, Custom 404 & Polished Update Experience",
-  "body": "Novità e miglioramenti in uni v1.4.2:\n• Riprogettazione Completa delle Impostazioni: Nuova gerarchia a 4 categorie (Generale, Aspetto, Calendari, Sistema) con selettore a pillole native macOS e badge per sezione\n• Flusso di Aggiornamento & Novità Perfezionato: Pop-up a 3 passaggi con chiusura controllata di uni all'apertura del DMG e setup guidato con dati salvati\n• Pagina 404 Personalizzata: Nuova pagina d'errore responsive sul sito web con supporto multilingua (IT/EN) e navigazione rapida\n• Controllo Aggiornamenti Ottimizzato: Verifica a frequenza giornaliera guidata dagli eventi di sistema (risveglio Mac ed apertura app) a consumo zero risorse\n• Risoluzione warning e piena compatibilità macOS 14/15/26 (Sequoia)",
-  "html_url": "https://github.com/zjncoo/uni/releases/tag/v1.4.2",
-  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/v1.4.2/uni.dmg",
-  "pub_date": "2026-10-02T00:30:00Z"
+  "tag_name": "1.5.0",
+  "version": "1.5.0",
+  "name": "uni 1.5.0 — Advanced Universal Search, Progressive Quick Add & Refined Native Design",
+  "body": "Novità e miglioramenti in uni v1.5.0:\n• Ricerca Universale Avanzata (⌘K): Motore di ricerca integrato ad alte prestazioni con indicizzazione istantanea, matching fuzzy, filtri per categoria e navigazione diretta agli elementi\n• Creazione Progressiva: Nuovo flusso a passaggi per aggiungere corsi, esami, scadenze e compiti con suggerimenti intelligenti e validazione contestuale\n• Design System macOS Sequoia: Oltre 1.900 righe di nuovi componenti nativi, card glassmorfiche con bordi sfumati, stati vuoti azionabili e contrasto elevato\n• Calendario & Timeline Riprogettati: Visualizzazione oraria delle lezioni perfezionata, gestione eventi multi-calendario fluida e reattività istantanea\n• Performance e stabilità: Ottimizzazioni della reattività dell'interfaccia grafica e consumo di risorse ulteriormente ridotto",
+  "html_url": "https://github.com/zjncoo/uni/releases/tag/1.5.0",
+  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/1.5.0/uni.dmg",
+  "pub_date": "2026-10-03T23:22:00Z"
 }

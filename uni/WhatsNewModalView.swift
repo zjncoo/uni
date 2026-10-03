@@ -15,7 +15,7 @@ public struct WhatsNewModalView: View {
     public init() {}
     
     private var currentVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.2"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.0"
     }
     
     public var body: some View {
@@ -88,62 +88,62 @@ public struct WhatsNewModalView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     featureCard(
-                        category: localizationManager.text(it: "CALENDARI MAC", en: "MAC CALENDARS"),
-                        badgeColor: .blue,
-                        icon: "calendar.badge.clock",
-                        iconColor: .blue,
+                        category: localizationManager.text(it: "RICERCA GLOBALE", en: "GLOBAL SEARCH"),
+                        badgeColor: .purple,
+                        icon: "magnifyingglass.circle.fill",
+                        iconColor: .purple,
                         title: localizationManager.text(
-                            it: "Sincronizzazione Calendari Mac a 1 Click",
-                            en: "1-Click Mac Calendar Sync"
+                            it: "Motore di Ricerca Avanzato & Palette ⌘K",
+                            en: "Advanced Search Engine & ⌘K Palette"
                         ),
                         description: localizationManager.text(
-                            it: "Ora puoi replicare e sincronizzare istantaneamente tutti i calendari del tuo Mac (iCloud, Google, Exchange), sia dalla vista Calendario che direttamente durante la configurazione guidata.",
-                            en: "Instantly replicate and sync all Mac calendars (iCloud, Google, Exchange), accessible both in the Calendar page and right inside the setup wizard."
+                            it: "Indicizzazione istantanea di corsi, esami, scadenze, compiti ed eventi con ricerca fuzzy, filtri per categoria e navigazione diretta all'elemento.",
+                            en: "Instant indexing of courses, exams, deadlines, assignments, and events with fuzzy matching, category filters, and direct item navigation."
                         )
                     )
                     
                     featureCard(
-                        category: localizationManager.text(it: "AGGIORNAMENTI", en: "AUTO-UPDATES"),
-                        badgeColor: .orange,
-                        icon: "arrow.triangle.2.circlepath.circle.fill",
-                        iconColor: .orange,
-                        title: localizationManager.text(
-                            it: "Controllo Automatico Giornaliero",
-                            en: "Daily Automatic Update Checks"
-                        ),
-                        description: localizationManager.text(
-                            it: "L'app controlla automaticamente la disponibilità di nuove versioni una volta al giorno in background, anche se la lasci sempre aperta senza riavviare il Mac.",
-                            en: "uni now automatically checks for updates once a day in the background, even when running continuously without being restarted."
-                        )
-                    )
-                    
-                    featureCard(
-                        category: localizationManager.text(it: "INSTALLAZIONE", en: "INSTALLATION"),
-                        badgeColor: .green,
-                        icon: "arrow.down.doc.fill",
-                        iconColor: .green,
-                        title: localizationManager.text(
-                            it: "Installazione Pulita Senza Conflitti",
-                            en: "Clean Installation Without Conflicts"
-                        ),
-                        description: localizationManager.text(
-                            it: "Quando scarichi un aggiornamento, uni apre il file DMG nel Finder e chiude automaticamente il processo in esecuzione per permetterti di sostituire l'app senza conflitti di sistema.",
-                            en: "When installing updates, uni mounts the DMG in Finder and gracefully quits so macOS Finder can replace the app in /Applications with zero file locks."
-                        )
-                    )
-                    
-                    featureCard(
-                        category: localizationManager.text(it: "SISTEMA", en: "SYSTEM"),
+                        category: localizationManager.text(it: "INSERIMENTO RAPIDO", en: "PROGRESSIVE ADD"),
                         badgeColor: themeManager.accentColor,
-                        icon: "clock.arrow.circlepath",
+                        icon: "plus.circle.fill",
                         iconColor: themeManager.accentColor,
                         title: localizationManager.text(
-                            it: "Avanzamento Automatico Data Odierna",
-                            en: "Automatic Real-Time Date Advancement"
+                            it: "Nuova Creazione Progressiva a Passaggi",
+                            en: "Progressive Step-by-Step Item Creation"
                         ),
                         description: localizationManager.text(
-                            it: "La dashboard e il calendario avanzano in tempo reale alla nuova giornata a mezzanotte o al risveglio dal blocco schermo senza richiedere un riavvio.",
-                            en: "The dashboard and schedule views now seamlessly advance to the new date at midnight or upon waking from screen lock without restarting."
+                            it: "Flusso interattivo guidato per aggiungere corsi, esami, compiti e impegni accademici con suggerimenti intelligenti e validazione in tempo reale.",
+                            en: "Streamlined interactive wizard to add courses, exams, assignments, and academic milestones with smart suggestions and live validation."
+                        )
+                    )
+                    
+                    featureCard(
+                        category: localizationManager.text(it: "DESIGN SYSTEM", en: "DESIGN SYSTEM"),
+                        badgeColor: .blue,
+                        icon: "sparkles.rectangle.stack.fill",
+                        iconColor: .blue,
+                        title: localizationManager.text(
+                            it: "Estetica macOS Raffinata & Componenti Dedicati",
+                            en: "Refined macOS Aesthetics & Native Components"
+                        ),
+                        description: localizationManager.text(
+                            it: "Design completamente rinnovato con card glassmorfiche, indicatori di stato nitidi, micro-animazioni fluide e contrasto ottimizzato in Dark/Light mode.",
+                            en: "Completely refreshed visual style with glassmorphic cards, crisp status indicators, fluid micro-interactions, and optimized contrast in Dark & Light modes."
+                        )
+                    )
+                    
+                    featureCard(
+                        category: localizationManager.text(it: "CALENDARIO & VISTE", en: "CALENDAR & VIEWS"),
+                        badgeColor: .green,
+                        icon: "calendar.badge.clock",
+                        iconColor: .green,
+                        title: localizationManager.text(
+                            it: "Timeline Calendario Riprogettata & Viste Accademiche",
+                            en: "Redesigned Calendar Timeline & Academic Views"
+                        ),
+                        description: localizationManager.text(
+                            it: "Vista oraria più pulita e leggibile per le lezioni, dashboard arricchita e viste Corsi, Compiti ed Esami con layout a griglia modernizzato.",
+                            en: "Cleaner and more legible timetable for lectures, enriched dashboard metrics, and modernized grid views across Courses, Assignments, and Exams."
                         )
                     )
                     
