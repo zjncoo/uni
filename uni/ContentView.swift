@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct ContentView: View {
     @EnvironmentObject var dataManager: DataManager
@@ -13,6 +14,7 @@ struct ContentView: View {
     @EnvironmentObject var localizationManager: LocalizationManager
     @EnvironmentObject var updateManager: UpdateManager
     @EnvironmentObject var outlookManager: OutlookManager
+    @ObservedObject private var screenshotAutomation = ScreenshotAutomation.shared
     
     @State private var selectedTab: String = "dashboard"
     @State private var isLoading: Bool = true
@@ -447,6 +449,42 @@ struct ContentView: View {
             }
             // 2. Animazione d'ingresso a cascata dell'interfaccia
             triggerCascadingAnimation()
+        }
+        .onReceive(screenshotAutomation.$overrideTab) { newTab in
+            if let newTab = newTab {
+                selectedTab = newTab
+                isSidebarHovered = true
+                showSidebarUI = true
+                showContentUI = true
+                isLoading = false
+                isShowingWhatsNew = false
+                isShowingOnboarding = false
+            }
+        }
+        .onReceive(screenshotAutomation.$overrideInlineSearch) { searchActive in
+            if let searchActive = searchActive {
+                isShowingInlineSearch = searchActive
+                if searchActive {
+                    isSidebarHovered = true
+                    showSidebarUI = true
+                    showContentUI = true
+                    isLoading = false
+                    isShowingWhatsNew = false
+                    isShowingOnboarding = false
+                }
+            }
+        }
+        .onReceive(screenshotAutomation.$overrideLoading) { loading in
+            if let loading = loading {
+                isLoading = loading
+                if !loading {
+                    showSidebarUI = true
+                    showContentUI = true
+                    isSidebarHovered = true
+                    isShowingWhatsNew = false
+                    isShowingOnboarding = false
+                }
+            }
         }
     }
     
@@ -1040,6 +1078,97 @@ struct ContentView_Previews: PreviewProvider {
             .environmentObject(ThemeManager.shared)
             .environmentObject(LocalizationManager.shared)
             .environmentObject(QuoteManager.shared)
+    }
+}
+#endif
+
+// MARK: - Automated Screenshot Capture (triggered via --capture-screenshots)
+#if os(macOS)
+@MainActor
+public class ScreenshotAutomation: ObservableObject {
+    public static let shared = ScreenshotAutomation()
+    
+    @Published public var overrideTab: String? = nil
+    @Published public var overrideLoading: Bool? = nil
+    @Published public var overrideInlineSearch: Bool? = nil
+    
+    public func runCaptureSequence() async {
+        guard CommandLine.arguments.contains("--capture-screenshots") else { return }
+        print("📸 Starting automated screenshot capture sequence...")
+        
+        DataManager.shared.refreshCurrentDate()
+        ThemeManager.shared.themeMode = .dark
+        ThemeManager.shared.applyAppearance()
+        
+        try? await Task.sleep(nanoseconds: 1_200_000_000)
+        
+        guard let window = NSApp.windows.first(where: { !($0 is NSPanel) }) else {
+            print("❌ No main window found!")
+            return
+        }
+        
+        window.setContentSize(NSSize(width: 1440, height: 900))
+        window.center()
+        
+        overrideLoading = false
+        
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        let rawDir = appSupport.appendingPathComponent("uni_screenshots", isDirectory: true)
+        try? FileManager.default.createDirectory(at: rawDir, withIntermediateDirectories: true)
+        
+        let targets: [(name: String, tab: String, search: Bool)] = [
+            ("dashboard", "dashboard", false),
+            ("calendar", "calendar", false),
+            ("deadlines", "deadlines", false),
+            ("exams", "exams", false),
+            ("search", "dashboard", true)
+        ]
+        
+        for (index, target) in targets.enumerated() {
+            print("📸 [\(index + 1)/5] Switching to '\(target.name)'...")
+            overrideTab = target.tab
+            overrideInlineSearch = target.search
+            
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            
+            if let targetView = window.contentView?.superview ?? window.contentView {
+                let bounds = targetView.bounds
+                let scale: CGFloat = 2.0
+                let pixelWidth = Int(bounds.width * scale)
+                let pixelHeight = Int(bounds.height * scale)
+                
+                if let rep = NSBitmapImageRep(
+                    bitmapDataPlanes: nil,
+                    pixelsWide: pixelWidth,
+                    pixelsHigh: pixelHeight,
+                    bitsPerSample: 8,
+                    samplesPerPixel: 4,
+                    hasAlpha: true,
+                    isPlanar: false,
+                    colorSpaceName: .deviceRGB,
+                    bytesPerRow: 0,
+                    bitsPerPixel: 0
+                ) {
+                    rep.size = bounds.size
+                    targetView.cacheDisplay(in: bounds, to: rep)
+                    if let pngData = rep.representation(using: .png, properties: [:]) {
+                        let fileURL = rawDir.appendingPathComponent("\(target.name).png")
+                        do {
+                            try pngData.write(to: fileURL)
+                            let shotURL = rawDir.appendingPathComponent("shot_\(index + 1).png")
+                            try? pngData.write(to: shotURL)
+                            print("  ✅ Captured \(target.name).png (\(pixelWidth)x\(pixelHeight)) at \(fileURL.path)")
+                        } catch {
+                            print("  ❌ Write error for \(target.name): \(error)")
+                        }
+                    }
+                }
+            }
+        }
+        
+        print("🎉 All 5 screenshots successfully saved to: \(rawDir.path)")
+        try? await Task.sleep(nanoseconds: 600_000_000)
+        NSApp.terminate(nil)
     }
 }
 #endif

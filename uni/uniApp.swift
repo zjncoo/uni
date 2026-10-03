@@ -55,6 +55,13 @@ struct uniApp: App {
                     )
                     // Check for updates in the background (once per day)
                     Task { await updateManager.checkIfDailyUpdateDue() }
+                    #if os(macOS)
+                    if CommandLine.arguments.contains("--capture-screenshots") {
+                        Task { @MainActor in
+                            await ScreenshotAutomation.shared.runCaptureSequence()
+                        }
+                    }
+                    #endif
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
