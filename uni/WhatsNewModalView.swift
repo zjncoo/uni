@@ -15,7 +15,7 @@ public struct WhatsNewModalView: View {
     public init() {}
     
     private var currentVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.1"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.2"
     }
     
     public var body: some View {
@@ -87,6 +87,21 @@ public struct WhatsNewModalView: View {
             // Lista Novità Illustrata
             ScrollView {
                 VStack(spacing: 14) {
+                    featureCard(
+                        category: localizationManager.text(it: "PRIVACY & TRASPARENZA", en: "PRIVACY & TRANSPARENCY"),
+                        badgeColor: .indigo,
+                        icon: "lock.shield.fill",
+                        iconColor: .indigo,
+                        title: localizationManager.text(
+                            it: "Consenso Informato & Tutela Privacy",
+                            en: "Informed Consent & Privacy Shield"
+                        ),
+                        description: localizationManager.text(
+                            it: "Nuovo modulo di feedback protetto con consenso informato esplicito, minimizzazione dei dati personali e garanzia che corsi, orari ed esami rimangono al 100% locali sul tuo Mac.",
+                            en: "New protected feedback submission with explicit consent, data minimization, and verified guarantees that courses, schedules, and exams remain 100% local on your Mac."
+                        )
+                    )
+                    
                     featureCard(
                         category: localizationManager.text(it: "CALENDARIO APPLE", en: "APPLE CALENDAR"),
                         badgeColor: .blue,

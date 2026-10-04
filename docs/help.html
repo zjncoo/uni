@@ -59,11 +59,7 @@
   }
   </script>
 
-  <!-- Fonts: Inter & JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-
+  <!-- Self-Hosted Fonts: Inter & JetBrains Mono (imported via style.css) -->
   <link rel="stylesheet" href="style.css">
   <style>
     /* Custom uni Feedback Form Styles */
@@ -299,10 +295,76 @@
     }
 
     .btn-submit-form:disabled {
-      opacity: 0.6;
+      opacity: 0.45;
       cursor: not-allowed;
       transform: none !important;
       box-shadow: none !important;
+    }
+
+    /* Privacy Notice & Consent Box */
+    .form-privacy-box {
+      margin-top: 10px;
+      margin-bottom: 24px;
+      padding: 16px 20px;
+      background: rgba(0, 113, 227, 0.04);
+      border: 1px solid rgba(0, 113, 227, 0.16);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .privacy-notice-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .privacy-notice-icon {
+      font-size: 1rem;
+    }
+
+    .privacy-notice-text {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .privacy-notice-text a {
+      color: var(--accent-blue, #0071E3);
+      text-decoration: underline;
+    }
+
+    .consent-checkbox-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 0.84rem;
+      line-height: 1.45;
+      color: var(--text-primary);
+      user-select: none;
+      padding-top: 4px;
+      border-top: 1px dashed rgba(0, 113, 227, 0.18);
+    }
+
+    .consent-checkbox-label input[type="checkbox"] {
+      margin-top: 2px;
+      width: 17px;
+      height: 17px;
+      accent-color: var(--accent-blue, #0071E3);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .consent-checkbox-label a {
+      color: var(--accent-blue, #0071E3);
+      text-decoration: underline;
+      font-weight: 550;
     }
 
     .submit-spinner {
@@ -601,6 +663,23 @@
             </div>
           </div>
 
+          <!-- 5. Informativa Privacy, Minimizzazione e Consenso -->
+          <div class="form-privacy-box">
+            <div class="privacy-notice-header">
+              <span class="privacy-notice-icon">🔒</span>
+              <span data-i18n="help_privacy_box_title">Privacy &amp; Minimizzazione dei Dati</span>
+            </div>
+            <p class="privacy-notice-text" data-i18n="help_privacy_box_desc">
+              Le segnalazioni inviate tramite questo modulo sono facoltative e vengono trattate su server Google Forms esclusivamente per finalità di supporto tecnico e miglioramento del software, con conservazione massima di 12 mesi. Per la tua sicurezza e privacy, <strong>non inserire dati personali riservati</strong>, numeri di matricola, password, email o dati sensibili. Per maggiori dettagli o per richiedere la cancellazione, consulta la nostra <a href="privacy.html" target="_blank" rel="noopener">Privacy &amp; Cookie Policy</a>.
+            </p>
+            <label class="consent-checkbox-label" for="consentCheckbox">
+              <input type="checkbox" id="consentCheckbox" required>
+              <span data-i18n="help_consent_checkbox_text">
+                Ho letto l'<a href="privacy.html" target="_blank" rel="noopener">Informativa sulla Privacy</a> e acconsento all'invio e al trattamento di questo feedback.
+              </span>
+            </label>
+          </div>
+
           <!-- Submit Button Row -->
           <div class="form-submit-row">
             <button type="submit" id="btnSubmitFeedback" class="btn-submit-form">
@@ -670,6 +749,7 @@
           <span class="footer-col-title" data-i18n="footer_col_resources">Info &amp; Risorse</span>
           <a href="help.html" style="font-weight: 500; color: var(--text-primary);" data-i18n="footer_help">Supporto &amp; Feedback</a>
           <a href="privacy.html" data-i18n="footer_privacy">Privacy &amp; Cookie Policy</a>
+          <a href="terms.html" data-i18n="footer_terms">Termini di Servizio</a>
           <a href="https://zinco.cc" target="_blank" rel="noopener" class="footer-portfolio-link">zinco.cc ↗</a>
           <a href="llms.txt" target="_blank" rel="noopener">LLMs &amp; AI Context (llms.txt)</a>
         </div>
@@ -696,13 +776,32 @@
       const successState = document.getElementById('formSuccessState');
       const resetBtn = document.getElementById('btnResetForm');
       const iframe = document.getElementById('hidden_gform_iframe');
+      const consentCheckbox = document.getElementById('consentCheckbox');
       let isSubmitting = false;
 
       if (!form) return;
 
+      function updateSubmitState() {
+        if (!submitBtn) return;
+        if (consentCheckbox) {
+          submitBtn.disabled = !consentCheckbox.checked || isSubmitting;
+        }
+      }
+
+      if (consentCheckbox) {
+        consentCheckbox.addEventListener('change', updateSubmitState);
+        updateSubmitState();
+      }
+
       form.addEventListener('submit', function(e) {
         if (isSubmitting) {
           e.preventDefault();
+          return;
+        }
+
+        if (consentCheckbox && !consentCheckbox.checked) {
+          e.preventDefault();
+          alert((window.i18n && window.currentLanguage && window.i18n[window.currentLanguage] && window.i18n[window.currentLanguage].help_consent_required) || 'È necessario accettare l\'Informativa sulla Privacy per poter inviare il feedback.');
           return;
         }
 
@@ -732,8 +831,8 @@
         isSubmitting = false;
         form.style.display = 'none';
         successState.style.display = 'block';
-        submitBtn.disabled = false;
         submitBtn.classList.remove('loading');
+        updateSubmitState();
         if (submitText) {
           submitText.textContent = (window.i18n && window.currentLanguage && window.i18n[window.currentLanguage])
             ? (window.i18n[window.currentLanguage].help_submit_btn || 'Invia Feedback')
@@ -744,6 +843,10 @@
       if (resetBtn) {
         resetBtn.addEventListener('click', function() {
           form.reset();
+          if (consentCheckbox) {
+            consentCheckbox.checked = false;
+          }
+          updateSubmitState();
           successState.style.display = 'none';
           form.style.display = 'block';
         });

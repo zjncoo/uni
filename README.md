@@ -87,7 +87,12 @@ La cartella [`docs/`](docs/) contiene la landing page ufficiale del progetto, co
 
 ---
 
-## 📄 Licenza & Crediti
+## 📄 Licenza, Privacy & Note Legali
  
-Rilasciato sotto licenza [MIT](LICENSE). Copyright © 2026 [zinco.cc](https://zinco.cc).  
+- **Licenza:** Rilasciato sotto licenza [MIT](LICENSE). Copyright © 2026 [zinco.cc](https://zinco.cc).
+- **Privacy Policy:** Consulta la nostra [Informativa sulla Privacy](https://uni.zinco.cc/privacy.html) per comprendere come sono gestiti i dati locali, le connessioni facoltative di rete e l'assenza di profilazione o tracker.
+- **Termini di Utilizzo:** Consulta i [Termini di Servizio](https://uni.zinco.cc/terms.html).
+- **Disclaimer Marchi & Terze Parti:** Apple, macOS, Spotlight, Microsoft, Outlook, GitHub, Esse3 e Cineca sono marchi registrati dei rispettivi proprietari. L'uso di tali denominazioni è a mero scopo descrittivo e di compatibilità tecnica (*Nominative Fair Use*) e non implica alcuna sponsorizzazione, affiliazione o approvazione formale.
+- **Avvertenza Accademica:** `uni` è uno strumento personale e indipendente di supporto allo studio; non sostituisce i portali d'ateneo o i sistemi ufficiali di verbalizzazione esami e iscrizioni.
+
 Designed & developed by [zinco.cc](https://zinco.cc).

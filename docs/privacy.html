@@ -59,11 +59,7 @@
   }
   </script>
 
-  <!-- Fonts: Inter & JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-
+  <!-- Self-Hosted Fonts: Inter & JetBrains Mono (imported via style.css) -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="legal-page">
@@ -162,56 +158,111 @@
       <article class="legal-content">
         <!-- 1. INTRODUZIONE & TITOLARE -->
         <section class="legal-section">
-          <h2 data-i18n="pol_sec1_title">1. Titolare del Trattamento</h2>
+          <h2 data-i18n="pol_sec1_title">1. Titolare del Trattamento (Data Controller)</h2>
           <p data-i18n="pol_sec1_desc">
-            Il presente documento descrive le modalità di gestione del sito web <strong>https://uni.zinco.cc/</strong> e dell'applicazione software per macOS denominata <strong>uni</strong> con riferimento al trattamento dei dati personali degli utenti ai sensi del Regolamento Generale sulla Protezione dei Dati dell'Unione Europea (GDPR - Regolamento UE 2016/679) e della normativa italiana in vigore.
+            Il presente documento descrive le modalità di gestione del sito web <strong>https://uni.zinco.cc/</strong> e dell'applicazione software per macOS denominata <strong>uni</strong> con riferimento al trattamento dei dati personali degli utenti, in conformità al Regolamento Generale sulla Protezione dei Dati dell'Unione Europea (GDPR - Regolamento UE 2016/679), al D.Lgs. 196/2003 (Codice Privacy italiano, come modificato dal D.Lgs. 101/2018) e agli standard internazionali di riservatezza.
           </p>
-          <p data-i18n="pol_sec1_owner">
-            Il Titolare del trattamento è <strong>zinco.cc</strong> (<a href="https://zinco.cc" target="_blank" rel="noopener">zinco.cc</a>), contattabile tramite la repository ufficiale su <a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener">GitHub (zjncoo/uni)</a> o via email all'indirizzo associato al dominio zinco.cc.
-          </p>
+          <div class="legal-callout">
+            <strong data-i18n="pol_sec1_contact_title">Canale di Contatto Ufficiale del Titolare</strong>
+            <p data-i18n="pol_sec1_contact_desc">
+              Il Titolare del Trattamento è <strong>Francesco Zanchetta</strong> (<a href="https://zinco.cc" target="_blank" rel="noopener">zinco.cc</a>). Per qualsiasi richiesta relativa alla privacy, all'esercizio dei diritti GDPR (accesso, cancellazione, opposizione) o a chiarimenti legali, è possibile contattare direttamente il Titolare all'indirizzo email dedicato: <a href="mailto:work@zinco.cc"><strong>work@zinco.cc</strong></a> oppure tramite issue pubblica/privata sulla repository ufficiale di GitHub (<a href="https://github.com/zjncoo/uni" target="_blank" rel="noopener">github.com/zjncoo/uni</a>).
+            </p>
+          </div>
         </section>
 
-        <!-- 2. APPLICAZIONE DESKTOP MACOS -->
+        <!-- 2. APPLICAZIONE DESKTOP MACOS & DATI LOCALI -->
         <section class="legal-section">
-          <h2 data-i18n="pol_sec2_title">2. Privacy nell'Applicazione macOS "uni"</h2>
-          <div class="legal-callout">
-            <strong data-i18n="pol_sec2_highlight_title">Privacy al 100% Locale & Offline-First</strong>
-            <p data-i18n="pol_sec2_highlight_desc">L'applicazione uni non raccoglie, non memorizza e non trasmette alcun dato personale su server remoti né a terze parti.</p>
+          <h2 data-i18n="pol_sec2_title">2. Architettura dell'Applicazione macOS: Dati Locali e Comunicazioni di Rete</h2>
+          <div class="legal-callout success">
+            <strong data-i18n="pol_sec2_highlight_title">Privacy al 100% Locale per i Tuoi Dati Accademici</strong>
+            <p data-i18n="pol_sec2_highlight_desc">
+              Tutti i tuoi dati personali e accademici (corsi, orari, appelli, voti, scadenze, note e allegati) rimangono archiviati esclusivamente in locale sul tuo Mac. L'applicazione uni non possiede un backend proprietario e non carica, non analizza né vende mai i tuoi contenuti di studio.
+            </p>
           </div>
           <ul>
-            <li><strong data-i18n="pol_sec2_p1_title">Nessun Account né Registrazione:</strong> <span data-i18n="pol_sec2_p1_desc">Non è richiesto creare un profilo, effettuare login o fornire credenziali personali per utilizzare l'app.</span></li>
-            <li><strong data-i18n="pol_sec2_p2_title">Dati Accademici Locali:</strong> <span data-i18n="pol_sec2_p2_desc">Corsi, orari di lezione, appelli d'esame, voti registrati, scadenze e note rimangono archiviati esclusivamente sul disco rigido locale del tuo Mac.</span></li>
-            <li><strong data-i18n="pol_sec2_p3_title">Gestione File Zero-Copy:</strong> <span data-i18n="pol_sec2_p3_desc">Le slide, dispense e file PDF collegati alle materie rimangono nelle cartelle del Finder scelte dall'utente. uni conserva solo un puntatore locale (security-scoped bookmark) senza duplicare i file né caricarli sul cloud.</span></li>
-            <li><strong data-i18n="pol_sec2_p4_title">Sincronizzazione Calendario (iCal):</strong> <span data-i18n="pol_sec2_p4_desc">La lettura di feed iCal/webcal universitari avviene tramite connessione diretta e crittografata tra il Mac e l'indirizzo dell'ateneo specificato dall'utente, senza passare attraverso intermediari.</span></li>
-            <li><strong data-i18n="pol_sec2_p5_title">Integrazione Microsoft Outlook:</strong> <span data-i18n="pol_sec2_p5_desc">L'interazione con la casella postale di Outlook per Mac avviene esclusivamente in locale tramite il framework AppleScript nativo di macOS. L'app non accede a password né invia comunicazioni a server esterni.</span></li>
-            <li><strong data-i18n="pol_sec2_p6_title">Nessuna Telemetria né Tracciamento:</strong> <span data-i18n="pol_sec2_p6_desc">uni non include SDK pubblicitari, librerie di analytics o telemetria di utilizzo.</span></li>
+            <li><strong data-i18n="pol_sec2_p1_title">Nessun Account né Profilazione:</strong> <span data-i18n="pol_sec2_p1_desc">L'uso dell'applicazione non richiede registrazione, creazione di account, email né password.</span></li>
+            <li><strong data-i18n="pol_sec2_p2_title">Archiviazione Locale &amp; Sandboxing:</strong> <span data-i18n="pol_sec2_p2_desc">Il database dei corsi e degli esami risiede unicamente nel file system locale protetto dal sandboxing di macOS (App Sandbox).</span></li>
+            <li><strong data-i18n="pol_sec2_p3_title">Gestione File Zero-Copy:</strong> <span data-i18n="pol_sec2_p3_desc">Slide, dispense e PDF rimangono nelle cartelle del Finder dell'utente; uni memorizza solo un segnalibro di sicurezza locale (security-scoped bookmark) senza duplicarli né trasmetterli al cloud.</span></li>
+            <li><strong data-i18n="pol_sec2_p4_title">Sincronizzazione Calendario (iCal/webcal):</strong> <span data-i18n="pol_sec2_p4_desc">Il recupero dei feed del calendario universitario avviene tramite richiesta diretta, cifrata e locale tra il Mac e l'indirizzo del server ateneo specificato dall'utente, senza intermediari o server proxy di terze parti.</span></li>
+            <li><strong data-i18n="pol_sec2_p5_title">Integrazione Microsoft Outlook per Mac:</strong> <span data-i18n="pol_sec2_p5_desc">La lettura dell'inbox avviene unicamente in locale sul Mac sfruttando lo scripting AppleScript di sistema con specifica autorizzazione AppleEvents. Nessuna credenziale né contenuto email viene mai trasmesso all'esterno.</span></li>
+            <li><strong data-i18n="pol_sec2_p6_title">Assenza di Telemetria Nascosta:</strong> <span data-i18n="pol_sec2_p6_desc">uni non include SDK pubblicitari, librerie di profilazione, Google Analytics, Firebase o telemetria diagnostica invisibile in background.</span></li>
           </ul>
-        </section>
-
-        <!-- 3. SITO WEB -->
-        <section class="legal-section">
-          <h2 data-i18n="pol_sec3_title">3. Trattamento Dati sul Sito Web</h2>
-          <p data-i18n="pol_sec3_desc">
-            Il sito web <strong>https://uni.zinco.cc/</strong> è un sito statico informativo ospitato sull'infrastruttura di <strong>GitHub Pages</strong> fornita da GitHub Inc. (Microsoft Corporation).
-          </p>
-          <p data-i18n="pol_sec3_logs">
-            Durante la navigazione, i server di GitHub possono registrare automaticamente alcuni dati tecnici di accesso (indirizzo IP di provenienza, data e ora della richiesta, User-Agent del browser, pagine richieste) strettamente necessari per garantire la sicurezza del servizio, prevenire attacchi informatici e manutenere l'infrastruttura. Tali log sono gestiti in conformità alla <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub General Privacy Statement</a>.
+          <p data-i18n="pol_sec2_network_scope">
+            <strong>Perimetro delle comunicazioni di rete effettuate dall'app:</strong> Le sole connessioni di rete consentite ed effettuate dall'applicazione desktop sono:
+            (1) il download diretto del file calendario .ics dai server universitari configurati dall'utente;
+            (2) il controllo facoltativo di nuove versioni software tramite le API pubbliche di GitHub Releases;
+            (3) l'invio facoltativo e volontario di segnalazioni di bug o suggerimenti tramite modulo integrato (disciplinato alla Sezione 3).
           </p>
         </section>
 
-        <!-- 4. COOKIE POLICY -->
+        <!-- 3. MODULO DI FEEDBACK (GOOGLE FORMS) -->
         <section class="legal-section">
-          <h2 data-i18n="pol_sec4_title">4. Cookie Policy</h2>
+          <h2 data-i18n="pol_sec3_title">3. Raccolta Feedback e Segnalazioni di Bug (Google Forms)</h2>
+          <p data-i18n="pol_sec3_intro">
+            Sia all'interno dell'applicazione per macOS (tramite il pannello <em>Supporto &amp; Feedback</em>) sia attraverso il sito web (alla pagina <a href="help.html">help.html</a>), l'utente ha la facoltà opzionale di inviare segnalazioni tecniche o suggerimenti allo sviluppatore.
+          </p>
+          
+          <h3 data-i18n="pol_sec3_fields_title">Tipologia di Dati Raccolti e Minimizzazione</h3>
+          <p data-i18n="pol_sec3_fields_desc">
+            In ossequio al principio di <strong>minimizzazione dei dati</strong> (Art. 5, par. 1, lett. c, GDPR), il modulo raccoglie esclusivamente le informazioni strettamente necessarie a comprendere e riprodurre l'anomalia o valutare la richiesta:
+          </p>
+          <ul>
+            <li><strong data-i18n="pol_sec3_f1_title">Tipologia di invio:</strong> <span data-i18n="pol_sec3_f1_desc">Segnalazione di un malfunzionamento (Bug Report) o proposta di nuova funzionalità (Feature Request).</span></li>
+            <li><strong data-i18n="pol_sec3_f2_title">Oggetto e Descrizione:</strong> <span data-i18n="pol_sec3_f2_desc">Testo sintetico e dettagliato relativo alla problematica o all'idea proposta dall'utente.</span></li>
+            <li><strong data-i18n="pol_sec3_f3_title">Valutazione Complessiva:</strong> <span data-i18n="pol_sec3_f3_desc">Punteggio da 1 a 5 stelline per misurare la soddisfazione complessiva d'uso.</span></li>
+            <li><strong data-i18n="pol_sec3_f4_title">Informazioni Diagnostiche Facoltative:</strong> <span data-i18n="pol_sec3_f4_desc">Se spuntato dall'utente nell'app Mac, viene allegata unicamente la stringa diagnostica tecnica non identificabile (es. <code>uni v1.5.1 • macOS 15.0 • Apple Silicon</code>). Nessun identificativo hardware univoco, UUID utente o indirizzo MAC viene allegato.</span></li>
+          </ul>
+
+          <div class="legal-callout">
+            <strong data-i18n="pol_sec3_warn_title">Avvertenza di Non Inserimento Dati Personali o Particolari</strong>
+            <p data-i18n="pol_sec3_warn_desc">
+              Si raccomanda espressamente all'utente di <strong>non inserire nei campi di testo libero dati personali identificativi</strong> (nome, cognome, numero di telefono), credenziali d'accesso (password), numeri di matricola universitaria né categorie particolari di dati personali (dati sanitari, convinzioni religiose o filosofiche ai sensi dell'Art. 9 GDPR).
+            </p>
+          </div>
+
+          <h3 data-i18n="pol_sec3_legal_basis_title">Base Giuridica e Consenso Esplicito</h3>
+          <p data-i18n="pol_sec3_legal_basis_desc">
+            La base giuridica del trattamento è il <strong>consenso esplicito e informato dell'interessato</strong> ai sensi dell'Art. 6, par. 1, lett. a, del GDPR. Il consenso viene prestato dall'utente mediante azione positiva inequivocabile, contrassegnando l'apposita casella di spunta obbligatoria (checkbox) presente nel modulo prima dell'invio.
+          </p>
+
+          <h3 data-i18n="pol_sec3_retention_title">Tempi di Conservazione (Data Retention) &amp; Cancellazione</h3>
+          <p data-i18n="pol_sec3_retention_desc">
+            Le segnalazioni inviate vengono conservate su fogli di calcolo Google associati all'infrastruttura di zinco.cc per un periodo massimo di <strong>12 (dodici) mesi</strong> dalla data di ricezione, decorso il quale vengono eliminate definitivamente durante le revisioni semestrali di manutenzione del database.
+          </p>
+          <p data-i18n="pol_sec3_deletion_workflow">
+            <strong>Procedura di cancellazione immediata su richiesta:</strong> Ciascun utente ha il diritto di richiedere la cancellazione anticipata della propria segnalazione in qualsiasi momento. È sufficiente inviare un'email a <a href="mailto:work@zinco.cc">work@zinco.cc</a> specificando la data approssimativa dell'invio e l'oggetto della segnalazione: il Titolare provvederà alla rimozione entro 72 ore lavorative confermandola via email.
+          </p>
+        </section>
+
+        <!-- 4. INFRASTRUTTURA GITHUB PAGES & API -->
+        <section class="legal-section">
+          <h2 data-i18n="pol_sec4_title">4. Trattamento Dati sul Sito Web e Log di Infrastruttura</h2>
           <p data-i18n="pol_sec4_desc">
-            Questa sezione descrive l'utilizzo di cookie e tecnologie affini sul nostro sito web in conformità al Provvedimento del Garante per la protezione dei dati personali e alla Direttiva ePrivacy 2002/58/CE.
+            Il sito web <strong>https://uni.zinco.cc/</strong> è ospitato sull'infrastruttura di <strong>GitHub Pages</strong>, gestita da GitHub Inc. (Microsoft Corporation, 88 Colin P Kelly Jr St, San Francisco, CA 94107, USA).
+          </p>
+          <p data-i18n="pol_sec4_logs">
+            Durante la navigazione sul sito o l'interrogazione delle API di release dall'app (<code>api.github.com</code>), i server di GitHub possono registrare automaticamente dati tecnici di connessione (indirizzo IP, User-Agent, referer, timestamp, file richiesto). Tali registrazioni avvengono sulla base giuridica del <strong>legittimo interesse</strong> del fornitore di hosting (Art. 6, par. 1, lett. f, GDPR) a garantire la sicurezza delle reti, mitigare attacchi Denial-of-Service (DDoS) e risolvere guasti tecnici.
+          </p>
+          <p data-i18n="pol_sec4_gh_privacy">
+            Per ulteriori dettagli sulle modalità di trattamento di GitHub, consulta la <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub General Privacy Statement</a>.
+          </p>
+        </section>
+
+        <!-- 5. COOKIE & TECNOLOGIE DI STORAGE LOCALE -->
+        <section class="legal-section">
+          <h2 data-i18n="pol_sec5_title">5. Cookie Policy &amp; Tecnologie di Memorizzazione Locale</h2>
+          <p data-i18n="pol_sec5_desc">
+            Questa sezione illustra le tecnologie di memorizzazione locale e le richieste esterne del sito in ossequio alla Direttiva ePrivacy 2002/58/CE e al Provvedimento del Garante per la Protezione dei Dati Personali dell'Italia n. 231 del 10 giugno 2021.
           </p>
           
           <div class="legal-callout success">
-            <strong data-i18n="pol_sec4_highlight_title">Zero Cookie di Profilazione o Tracciamento Pubblicitario</strong>
-            <p data-i18n="pol_sec4_highlight_desc">Questo sito NON utilizza cookie di profilazione, NON utilizza pixel pubblicitari (come Meta Pixel o Google Ads) e NON vende dati a soggetti terzi.</p>
+            <strong data-i18n="pol_sec5_highlight_title">Zero Cookie di Profilazione o Tracciamento Pubblicitario</strong>
+            <p data-i18n="pol_sec5_highlight_desc">
+              Questo sito NON fa uso di cookie di profilazione, NON utilizza pixel di tracciamento commerciale (come Meta Pixel, Google Ads, TikTok Pixel) e NON cede alcun dato ad aggregatori terzi.
+            </p>
           </div>
 
-          <h3 data-i18n="pol_sec4_types_title">Tipologie di Strumenti Utilizzati:</h3>
+          <h3 data-i18n="pol_sec5_table_title">Dettaglio Strumenti Tecnici &amp; Servizi di Terze Parti:</h3>
           
           <div class="cookie-table-wrapper">
             <table class="cookie-table">
@@ -227,63 +278,92 @@
                 <tr>
                   <td><code>localStorage: uni_site_lang</code></td>
                   <td><span class="badge-tech" data-i18n="badge_tech">Tecnico Locale</span></td>
-                  <td data-i18n="cookie_row1_desc">Memorizza la preferenza della lingua (Italiano o Inglese) selezionata manualmente dall'utente per offrire la corretta versione linguistica nelle visite successive.</td>
-                  <td data-i18n="cookie_row1_dur">Persistente (fino a pulizia dati browser)</td>
+                  <td data-i18n="cookie_row1_desc">Memorizza la lingua scelta (Italiano o Inglese) per offrire la versione corretta nelle visite future. Non contiene identificativi personali.</td>
+                  <td data-i18n="cookie_row1_dur">Persistente (fino a cancellazione manuale)</td>
                 </tr>
                 <tr>
-                  <td><code>Google Fonts</code></td>
-                  <td><span class="badge-tech" data-i18n="badge_service">Servizio Esterno</span></td>
-                  <td data-i18n="cookie_row2_desc">Fornitura tipografica (Inter & JetBrains Mono) da CDN Google. Non installa cookie di profilazione sul dispositivo.</td>
-                  <td data-i18n="cookie_row2_dur">Sessione di navigazione</td>
+                  <td><code>Tipografia Self-Hosted (Inter, JetBrains Mono, IBM Plex Serif)</code></td>
+                  <td><span class="badge-tech" data-i18n="badge_tech">Tecnico Locale</span></td>
+                  <td data-i18n="cookie_row2_desc">Erogazione dei caratteri tipografici ospitati localmente sul server del sito. Zero chiamate a server Google e zero trasmissione dell'indirizzo IP a terze parti.</td>
+                  <td data-i18n="cookie_row2_dur">Sessione / Cache del browser</td>
                 </tr>
                 <tr>
                   <td><code>GitHub Releases API</code></td>
                   <td><span class="badge-tech" data-i18n="badge_service">Servizio Esterno</span></td>
-                  <td data-i18n="cookie_row3_desc">Chiamata HTTP client-side anonima verso api.github.com per verificare l'ultima versione disponibile dell'applicazione (.dmg e .zip).</td>
-                  <td data-i18n="cookie_row3_dur">Temporanea / Nessun cookie</td>
+                  <td data-i18n="cookie_row3_desc">Chiamata HTTP client-side anonima verso api.github.com per verificare la versione più recente del pacchetto .dmg per macOS.</td>
+                  <td data-i18n="cookie_row3_dur">Temporanea (Nessun cookie)</td>
+                </tr>
+                <tr>
+                  <td><code>Google Forms (Endpoint)</code></td>
+                  <td><span class="badge-tech" data-i18n="badge_service">Servizio Esterno</span></td>
+                  <td data-i18n="cookie_row4_desc">Invocato unicamente all'atto dell'invio volontario di un feedback da parte dell'utente per trasmettere il testo della segnalazione.</td>
+                  <td data-i18n="cookie_row4_dur">Transazione singola (Nessun cookie)</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <p data-i18n="pol_sec4_nobanner">
-            Poiché il sito fa esclusivo impiego di strumenti tecnici necessari per il funzionamento e non utilizza cookie di profilazione o analitici di terze parti a fini di tracciamento incrociato, ai sensi della normativa vigente non è richiesta l'esposizione del banner di consenso preventivo per i cookie.
-          </p>
-
-          <h3 data-i18n="pol_sec4_manage_title">Come Gestire o Disabilitare lo Storage del Browser</h3>
-          <p data-i18n="pol_sec4_manage_desc">
-            Puoi cancellare in qualsiasi momento la cronologia e i dati locali del sito (compreso il localStorage) direttamente dalle impostazioni del tuo browser:
-          </p>
-          <ul>
-            <li><strong>Safari:</strong> Impostazioni → Privacy → Gestisci dati siti web → Rimuovi.</li>
-            <li><strong>Chrome:</strong> Impostazioni → Privacy e sicurezza → Dati dei siti web.</li>
-            <li><strong>Firefox:</strong> Opzioni → Privacy e sicurezza → Cookie e dati dei siti web.</li>
-          </ul>
-        </section>
-
-        <!-- 5. DIRITTI DELL'INTERESSATO -->
-        <section class="legal-section">
-          <h2 data-i18n="pol_sec5_title">5. Diritti dell'Utente (GDPR)</h2>
-          <p data-i18n="pol_sec5_desc">
-            In conformità agli articoli 15-22 del Regolamento UE 2016/679, ciascun utente ha il diritto di:
-          </p>
-          <ul>
-            <li data-i18n="pol_sec5_r1">Accedere ai propri dati personali eventualmente trattati e richiederne copia;</li>
-            <li data-i18n="pol_sec5_r2">Chiedere la rettifica di dati inesatti o l'integrazione di quelli incompleti;</li>
-            <li data-i18n="pol_sec5_r3">Chiedere la cancellazione dei dati («diritto all'oblio»);</li>
-            <li data-i18n="pol_sec5_r4">Ottenere la limitazione del trattamento o opporsi allo stesso per motivi legittimi;</li>
-            <li data-i18n="pol_sec5_r5">Proporre reclamo all'Autorità di controllo competente (per l'Italia, il <a href="https://www.garanteprivacy.it" target="_blank" rel="noopener">Garante per la Protezione dei Dati Personali</a>).</li>
-          </ul>
-          <p data-i18n="pol_sec5_note">
-            Si ricorda che, non conservando uni alcun dato personale su propri server, l'esercizio della maggior parte dei diritti (es. cancellazione dei dati accademici) si effettua in totale autonomia eliminando l'applicazione dal proprio Mac o cancellando la memoria locale del browser.
+          <p data-i18n="pol_sec5_nobanner">
+            Poiché il sito impiega unicamente strumenti tecnici indispensabili e non fa uso di cookie di profilazione o tracciamento incrociato, ai sensi della normativa vigente non è necessaria la richiesta di consenso preventivo tramite banner cookie.
           </p>
         </section>
 
-        <!-- 6. MODIFICHE ALL'INFORMATIVA -->
+        <!-- 6. TUTELA DEI MINORI & REQUISITI DI ETÀ -->
         <section class="legal-section">
-          <h2 data-i18n="pol_sec6_title">6. Modifiche e Aggiornamenti</h2>
+          <h2 data-i18n="pol_sec6_title">6. Tutela dei Minori e Requisiti di Età</h2>
           <p data-i18n="pol_sec6_desc">
-            Il Titolare si riserva il diritto di aggiornare o modificare la presente informativa per adeguarla a future evoluzioni normative o implementazioni tecniche. La versione più aggiornata sarà sempre consultabile a questo indirizzo con l'indicazione della data dell'ultima revisione.
+            I servizi di <strong>uni</strong> e i relativi canali web sono concepiti per una platea universitaria, di formazione superiore e professionale. L'accesso è riservato a utenti che abbiano compiuto almeno <strong>16 anni</strong> (o la diversa età minima prevista dallo Stato membro di appartenenza per la prestazione autonoma del consenso digitale, ai sensi dell'Art. 8 GDPR e dell'Art. 2-quinquies del Codice Privacy italiano).
+          </p>
+          <p data-i18n="pol_sec6_coppa">
+            uni non raccoglie consapevolmente né richiede dati personali relativi a soggetti minori di anni 16 (o di anni 13 per gli utenti soggetti al Children's Online Privacy Protection Act - COPPA degli Stati Uniti).
+          </p>
+          <div class="legal-callout">
+            <strong data-i18n="pol_sec6_parents_title">Procedura per Genitori ed Esercenti la Responsabilità Genitoriale</strong>
+            <p data-i18n="pol_sec6_parents_desc">
+              Nel caso in cui un genitore o tutore legale riscontri che un minore ha inviato dati personali tramite il modulo di feedback o canali correlati senza autorizzazione, è pregato di darne tempestiva comunicazione a <a href="mailto:work@zinco.cc">work@zinco.cc</a>. Il Titolare procederà all'immediata verifica e cancellazione di tali informazioni da tutti gli archivi.
+            </p>
+          </div>
+        </section>
+
+        <!-- 7. TRASFERIMENTI INTERNAZIONALI DI DATI -->
+        <section class="legal-section">
+          <h2 data-i18n="pol_sec7_title">7. Trasferimenti di Dati verso Paesi Terzi (Extra-UE)</h2>
+          <p data-i18n="pol_sec7_desc">
+            A tutela della privacy, tutti i font e le risorse visive del sito sono <strong>ospitati localmente (Self-Hosted)</strong>: l'apertura del sito non contatta alcun server di terze parti per i font. Gli unici fornitori terzi con sede negli Stati Uniti d'America a cui possono essere inviati dati tecnici o moduli sono: (1) GitHub Inc. per l'hosting statico sicuro (GitHub Pages); (2) Google LLC per la ricezione delle segnalazioni volontarie (Google Forms).
+          </p>
+          <p data-i18n="pol_sec7_dpf">
+            Il trasferimento verso tali soggetti avviene nel pieno rispetto del Capo V del GDPR sulla base della Decisione di Adeguatezza della Commissione Europea del 10 luglio 2023 relativa al <strong>Data Privacy Framework (DPF) UE-USA</strong>, a cui sia Google LLC sia Microsoft/GitHub Inc. sono formalmente certificate, nonché tramite l'adozione di Clausole Contrattuali Standard (Standard Contractual Clauses - SCC) della Commissione Europea per garantire un livello di protezione sostanzialmente equivalente a quello unionale.
+          </p>
+          <ul>
+            <li><a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Informativa sulla Privacy di Google LLC ↗</a></li>
+            <li><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">Informativa sulla Privacy di GitHub Inc. ↗</a></li>
+          </ul>
+        </section>
+
+        <!-- 8. DIRITTI DELL'INTERESSATO (GDPR) -->
+        <section class="legal-section">
+          <h2 data-i18n="pol_sec8_title">8. Diritti dell'Interessato (GDPR Artt. 15-22)</h2>
+          <p data-i18n="pol_sec8_desc">
+            Ciascun utente ha il diritto di esercitare in qualsiasi momento i diritti sanciti dal Regolamento UE 2016/679:
+          </p>
+          <ul>
+            <li data-i18n="pol_sec8_r1"><strong>Diritto di accesso (Art. 15):</strong> Ottenere conferma dell'esistenza di dati personali che lo riguardano e riceverne copia;</li>
+            <li data-i18n="pol_sec8_r2"><strong>Diritto di rettifica (Art. 16):</strong> Ottenere la correzione di dati inesatti o l'integrazione di quelli incompleti;</li>
+            <li data-i18n="pol_sec8_r3"><strong>Diritto alla cancellazione («Diritto all'oblio», Art. 17):</strong> Chiedere la cancellazione definitiva dei dati di feedback forniti;</li>
+            <li data-i18n="pol_sec8_r4"><strong>Diritto di limitazione del trattamento (Art. 18):</strong> Richiedere la sospensione del trattamento in presenza delle condizioni di legge;</li>
+            <li data-i18n="pol_sec8_r5"><strong>Diritto di opposizione e revoca del consenso (Artt. 21 e 7):</strong> Revocare il consenso prestato per l'invio del feedback in ogni momento;</li>
+            <li data-i18n="pol_sec8_r6"><strong>Diritto di reclamo (Art. 77):</strong> Presentare formale reclamo all'Autorità Garante per la Protezione dei Dati Personali (<a href="https://www.garanteprivacy.it" target="_blank" rel="noopener">www.garanteprivacy.it</a>, Piazza Venezia 11, 00187 Roma).</li>
+          </ul>
+          <p data-i18n="pol_sec8_note">
+            Per esercitare i propri diritti in relazione ai feedback inviati, è sufficiente scrivere all'indirizzo <a href="mailto:work@zinco.cc"><strong>work@zinco.cc</strong></a>. L'esercizio dei diritti è a titolo del tutto gratuito e verrà riscontrato entro il termine ordinario di 30 giorni. Per tutti i dati accademici memorizzati nell'app Mac, l'utente esercita il controllo totale e istantaneo gestendo o cancellando i dati direttamente dal disco rigido del proprio computer.
+          </p>
+        </section>
+
+        <!-- 9. MODIFICHE E REVISIONI -->
+        <section class="legal-section">
+          <h2 data-i18n="pol_sec9_title">9. Modifiche e Revisioni</h2>
+          <p data-i18n="pol_sec9_desc">
+            Il Titolare si riserva il diritto di apportare modifiche alla presente informativa a seguito di evoluzioni legislative, implementazioni software o aggiornamenti dei servizi terzi. Le modifiche saranno pubblicate su questa pagina con indicazione della data di revisione.
           </p>
         </section>
       </article>
@@ -328,6 +408,8 @@
         <div class="footer-links-col">
           <span class="footer-col-title" data-i18n="footer_col_resources">Info &amp; Risorse</span>
           <a href="help.html" data-i18n="footer_help">Supporto &amp; Feedback</a>
+          <a href="privacy.html" style="font-weight: 500; color: var(--text-primary);" data-i18n="footer_privacy">Privacy &amp; Cookie Policy</a>
+          <a href="terms.html" data-i18n="footer_terms">Termini di Servizio</a>
           <a href="index.html" data-i18n="nav_home">← Torna al sito</a>
           <a href="https://zinco.cc" target="_blank" rel="noopener" class="footer-portfolio-link">zinco.cc ↗</a>
           <a href="llms.txt" target="_blank" rel="noopener">LLMs &amp; AI Context (llms.txt)</a>

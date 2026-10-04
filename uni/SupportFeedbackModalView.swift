@@ -14,6 +14,7 @@ struct SupportFeedbackModalView: View {
     
     // Official Help Webpage & Google Form Endpoints
     private static let helpWebpageURLString = "https://uni.zinco.cc/help.html"
+    private static let privacyPolicyURLString = "https://uni.zinco.cc/privacy.html"
     private static let formPostURLString = "https://docs.google.com/forms/d/e/1FAIpQLSfuhE8PKXY8OwtvQuMNbLpGtzy630xY4xOOF1TsB7Wryhwu-A/formResponse"
     
     // Google Form Entry IDs
@@ -48,6 +49,7 @@ struct SupportFeedbackModalView: View {
     @State private var detailedDescription: String = ""
     @State private var rating: Int = 5
     @State private var includeSystemInfo: Bool = true
+    @State private var hasAcceptedPrivacyPolicy: Bool = false
     
     @State private var isSubmitting: Bool = false
     @State private var isSuccess: Bool = false
@@ -60,7 +62,7 @@ struct SupportFeedbackModalView: View {
         #else
         let arch = "Intel"
         #endif
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.1"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.2"
         return "uni v\(version) • macOS \(osVersion) • \(arch)"
     }
     
@@ -161,7 +163,7 @@ struct SupportFeedbackModalView: View {
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
                     .tint(themeManager.accentColor)
-                    .disabled(isSubmitting || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || detailedDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(isSubmitting || !hasAcceptedPrivacyPolicy || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || detailedDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .padding(16)
@@ -328,15 +330,60 @@ struct SupportFeedbackModalView: View {
                 // 5. Includi info diagnostiche
                 Toggle(isOn: $includeSystemInfo) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(localizationManager.text(it: "Includi informazioni di sistema", en: "Include system information"))
+                        Text(localizationManager.text(it: "Includi informazioni di sistema (facoltativo)", en: "Include system information (optional)"))
                             .font(UniFont.subheadline())
                             .fontWeight(.medium)
-                        Text(localizationManager.text(it: "Allega \(diagnosticsString) per facilitare l'analisi del feedback", en: "Attaches \(diagnosticsString) to assist debugging"))
+                        Text(localizationManager.text(it: "Allega esclusivamente: \(diagnosticsString) per facilitare l'analisi del bug", en: "Attaches only: \(diagnosticsString) to assist debugging"))
                             .font(UniFont.caption())
                             .foregroundStyle(.secondary)
                     }
                 }
                 .toggleStyle(.checkbox)
+                
+                // 6. Informativa Privacy & Minimizzazione Dati
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "lock.shield")
+                            .font(.system(size: 13))
+                            .foregroundStyle(themeManager.accentColor)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(localizationManager.text(it: "Privacy & Minimizzazione dei Dati", en: "Privacy & Data Minimization"))
+                                .font(UniFont.caption())
+                                .fontWeight(.semibold)
+                            Text(localizationManager.text(
+                                it: "Il feedback è facoltativo e anonimo, memorizzato tramite Google Forms per max 12 mesi. Per proteggere la tua riservatezza, non inserire password, email personali, numeri di matricola o note sensibili.",
+                                en: "Feedback is voluntary and anonymous, processed via Google Forms for up to 12 months. To protect your privacy, do not include passwords, personal emails, student IDs, or sensitive notes."
+                            ))
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(10)
+                    .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    
+                    // Checkbox Consenso Obbligatorio
+                    Toggle(isOn: $hasAcceptedPrivacyPolicy) {
+                        HStack(spacing: 4) {
+                            Text(localizationManager.text(it: "Ho letto e accetto l'", en: "I have read and accept the"))
+                                .font(UniFont.caption())
+                            Button {
+                                if let url = URL(string: Self.privacyPolicyURLString) {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            } label: {
+                                Text(localizationManager.text(it: "Informativa sulla Privacy", en: "Privacy Policy"))
+                                    .font(UniFont.caption())
+                                    .fontWeight(.medium)
+                                    .underline()
+                                    .foregroundStyle(themeManager.accentColor)
+                            }
+                            .buttonStyle(.plain)
+                            Text(localizationManager.text(it: "e acconsento all'invio", en: "and consent to submission"))
+                                .font(UniFont.caption())
+                        }
+                    }
+                    .toggleStyle(.checkbox)
+                }
             }
             .padding(20)
         }

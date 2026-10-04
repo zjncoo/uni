@@ -3,6 +3,8 @@
    Crafted with refined Apple macOS Light Mode aesthetics
    =================================================================== */
 
+@import url('fonts/fonts.css');
+
 :root {
   --font-serif: 'IBM Plex Serif', Georgia, serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
