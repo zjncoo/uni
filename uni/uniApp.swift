@@ -55,6 +55,18 @@ struct uniApp: App {
                     )
                     // Check for updates in the background (once per day)
                     Task { await updateManager.checkIfDailyUpdateDue() }
+                    
+                    if AppleCalendarManager.shared.hasFullAccess && AppleCalendarManager.shared.syncEnabled {
+                        Task {
+                            await AppleCalendarManager.shared.syncAll(
+                                deadlines: dataManager.deadlines,
+                                exams: dataManager.exams,
+                                assignments: dataManager.assignments,
+                                courses: dataManager.courses
+                            )
+                        }
+                    }
+                    
                     #if os(macOS)
                     if CommandLine.arguments.contains("--capture-screenshots") {
                         Task { @MainActor in
@@ -67,6 +79,16 @@ struct uniApp: App {
                     if newPhase == .active {
                         dataManager.refreshCurrentDate()
                         AppleCalendarManager.shared.refreshStatus()
+                        if AppleCalendarManager.shared.hasFullAccess && AppleCalendarManager.shared.syncEnabled {
+                            Task {
+                                await AppleCalendarManager.shared.syncAll(
+                                    deadlines: dataManager.deadlines,
+                                    exams: dataManager.exams,
+                                    assignments: dataManager.assignments,
+                                    courses: dataManager.courses
+                                )
+                            }
+                        }
                         Task { await updateManager.checkIfDailyUpdateDue() }
                     }
                 }

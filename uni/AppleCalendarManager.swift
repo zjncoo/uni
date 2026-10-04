@@ -36,7 +36,11 @@ public class AppleCalendarManager: ObservableObject {
     private let calendarTitle = "uni 📚"
     
     private init() {
-        self.syncEnabled = UserDefaults.standard.bool(forKey: "appleCalendarSyncEnabled")
+        if UserDefaults.standard.object(forKey: "appleCalendarSyncEnabled") == nil {
+            self.syncEnabled = true
+        } else {
+            self.syncEnabled = UserDefaults.standard.bool(forKey: "appleCalendarSyncEnabled")
+        }
         self.authorizationStatus = EKEventStore.authorizationStatus(for: .event)
         if let saved = UserDefaults.standard.dictionary(forKey: "appleCalendarEventMap") as? [String: String] {
             self.eventMap = saved
@@ -55,7 +59,12 @@ public class AppleCalendarManager: ObservableObject {
     // MARK: - Permission
     public func requestAccess() async -> Bool {
         do {
-            let granted = try await store.requestFullAccessToEvents()
+            let granted: Bool
+            if #available(macOS 14.0, *) {
+                granted = try await store.requestFullAccessToEvents()
+            } else {
+                granted = try await store.requestAccess(to: .event)
+            }
             self.refreshStatus()
             if granted {
                 self.store.reset()
@@ -81,8 +90,10 @@ public class AppleCalendarManager: ObservableObject {
         let cal = EKCalendar(for: .event, eventStore: store)
         cal.title = calendarTitle
         if let src = store.sources.first(where: { $0.sourceType == .calDAV && $0.title.lowercased().contains("icloud") })
+            ?? store.defaultCalendarForNewEvents?.source
             ?? store.sources.first(where: { $0.sourceType == .calDAV })
-            ?? store.sources.first(where: { $0.sourceType == .local }) {
+            ?? store.sources.first(where: { $0.sourceType == .local })
+            ?? store.sources.first {
             cal.source = src
         } else { return nil }
         do { try store.saveCalendar(cal, commit: true); return cal }
@@ -95,14 +106,20 @@ public class AppleCalendarManager: ObservableObject {
     
     // MARK: - Sync Deadline
     public func sync(deadline: Deadline, courseName: String?) async {
-        guard syncEnabled, hasFullAccess else { return }
+        guard syncEnabled else { return }
+        if !hasFullAccess {
+            let granted = await requestAccess()
+            guard granted else { return }
+        }
         let key = "deadline-\(deadline.id.uuidString)"
         let ev = existingEvent(forKey: key) ?? EKEvent(eventStore: store)
-        ev.title = "📌 \(deadline.title)"
+        let prefix = deadline.isCompleted ? "✅ " : "📌 "
+        ev.title = "\(prefix)\(deadline.title)"
         var notes: [String] = []
         if let cn = courseName { notes.append("📚 \(cn)") }
         if !deadline.notes.isEmpty { notes.append(deadline.notes) }
         notes.append("Priorità: \(deadline.priority.rawValue)")
+        if deadline.isCompleted { notes.append("Stato: Completata") }
         ev.notes = notes.joined(separator: "\n")
         ev.startDate = deadline.dueDate
         ev.endDate = deadline.dueDate.addingTimeInterval(3600)
@@ -113,15 +130,21 @@ public class AppleCalendarManager: ObservableObject {
     
     // MARK: - Sync Exam
     public func sync(exam: Exam, courseName: String?) async {
-        guard syncEnabled, hasFullAccess else { return }
+        guard syncEnabled else { return }
+        if !hasFullAccess {
+            let granted = await requestAccess()
+            guard granted else { return }
+        }
         let key = "exam-\(exam.id.uuidString)"
         let ev = existingEvent(forKey: key) ?? EKEvent(eventStore: store)
-        ev.title = "🎓 \(exam.title)"
+        let prefix = exam.status == .passed ? "✅ 🎓 " : "🎓 "
+        ev.title = "\(prefix)\(exam.title)"
         var notes: [String] = []
         if let cn = courseName { notes.append("📚 \(cn)") }
         if !exam.room.isEmpty { notes.append("📍 \(exam.room)") }
         notes.append("Tipo: \(exam.type.rawValue)")
-        if let tg = exam.targetGrade { notes.append("Obiettivo: \(tg)/30") }
+        if let g = exam.grade { notes.append("Voto: \(g)/30\(exam.honors ? " e Lode" : "")") }
+        else if let tg = exam.targetGrade { notes.append("Obiettivo: \(tg)/30") }
         if !exam.notes.isEmpty { notes.append(exam.notes) }
         ev.notes = notes.joined(separator: "\n")
         ev.location = exam.room
@@ -134,13 +157,19 @@ public class AppleCalendarManager: ObservableObject {
     
     // MARK: - Sync Assignment
     public func sync(assignment: Assignment, courseName: String?) async {
-        guard syncEnabled, hasFullAccess else { return }
+        guard syncEnabled else { return }
+        if !hasFullAccess {
+            let granted = await requestAccess()
+            guard granted else { return }
+        }
         let key = "assignment-\(assignment.id.uuidString)"
         let ev = existingEvent(forKey: key) ?? EKEvent(eventStore: store)
-        ev.title = "📝 \(assignment.title)"
+        let prefix = assignment.isCompleted ? "✅ 📝 " : "📝 "
+        ev.title = "\(prefix)\(assignment.title)"
         var notes: [String] = []
         if let cn = courseName { notes.append("📚 \(cn)") }
         if assignment.weightPercent > 0 { notes.append("Peso: \(assignment.weightPercent)% del voto finale") }
+        notes.append("Stato: \(assignment.status.localized(with: LocalizationManager.shared))")
         if !assignment.details.isEmpty { notes.append(assignment.details) }
         ev.notes = notes.joined(separator: "\n")
         ev.startDate = assignment.dueDate
@@ -157,7 +186,11 @@ public class AppleCalendarManager: ObservableObject {
     
     // MARK: - Bulk Sync
     public func syncAll(deadlines: [Deadline], exams: [Exam], assignments: [Assignment], courses: [Course]) async {
-        guard syncEnabled, hasFullAccess else { return }
+        guard syncEnabled else { return }
+        if !hasFullAccess {
+            let granted = await requestAccess()
+            guard granted else { return }
+        }
         for d in deadlines { await sync(deadline: d, courseName: courses.first(where: { $0.id == d.courseId })?.name) }
         for e in exams     { await sync(exam: e, courseName: courses.first(where: { $0.id == e.courseId })?.name) }
         for a in assignments { await sync(assignment: a, courseName: courses.first(where: { $0.id == a.courseId })?.name) }

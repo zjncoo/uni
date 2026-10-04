@@ -287,10 +287,12 @@ struct ExamsView: View {
                 dataManager.exams.append(newExam)
                 dataManager.saveData()
                 
-                let courseName = dataManager.courses.first(where: { $0.id == newExam.courseId })?.name ?? "Esame"
+                let courseName = dataManager.courses.first(where: { $0.id == newExam.courseId })?.name
+                Task { await AppleCalendarManager.shared.sync(exam: newExam, courseName: courseName) }
+                
                 NotificationManager.shared.notify(
                     title: "Appello d'esame programmato",
-                    message: "\(courseName): \(newExam.title)",
+                    message: "\(courseName ?? "Esame"): \(newExam.title)",
                     type: .info,
                     icon: "calendar.badge.plus"
                 )
@@ -302,6 +304,10 @@ struct ExamsView: View {
                 if let idx = dataManager.exams.firstIndex(where: { $0.id == updated.id }) {
                     dataManager.exams[idx] = updated
                     dataManager.saveData()
+                    
+                    let courseName = dataManager.courses.first(where: { $0.id == updated.courseId })?.name
+                    Task { await AppleCalendarManager.shared.sync(exam: updated, courseName: courseName) }
+                    
                     NotificationManager.shared.notify(
                         title: "Dettagli esame aggiornati",
                         message: updated.title,
@@ -317,6 +323,9 @@ struct ExamsView: View {
                 if let idx = dataManager.exams.firstIndex(where: { $0.id == updated.id }) {
                     dataManager.exams[idx] = updated
                     dataManager.saveData()
+                    
+                    let courseName = dataManager.courses.first(where: { $0.id == updated.courseId })?.name
+                    Task { await AppleCalendarManager.shared.sync(exam: updated, courseName: courseName) }
                     
                     let gradeStr = updated.grade.flatMap { "\($0)/30\(updated.honors ? " e Lode" : "")" } ?? "Registrato"
                     NotificationManager.shared.notify(
@@ -366,6 +375,9 @@ struct ExamsView: View {
     private func deleteExam(_ exam: Exam) {
         dataManager.exams.removeAll { $0.id == exam.id }
         dataManager.saveData()
+        
+        Task { await AppleCalendarManager.shared.remove(examId: exam.id) }
+        
         let isEn = localizationManager.currentLanguage == .english
         NotificationManager.shared.notify(
             title: isEn ? "Exam removed" : "Esame rimosso",

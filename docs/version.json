@@ -1,9 +1,9 @@
 {
-  "tag_name": "1.5.0",
-  "version": "1.5.0",
-  "name": "uni 1.5.0 — Advanced Universal Search, Progressive Quick Add & Refined Native Design",
-  "body": "Novità e miglioramenti in uni v1.5.0:\n• Ricerca Universale Avanzata (⌘K): Motore di ricerca integrato ad alte prestazioni con indicizzazione istantanea, matching fuzzy, filtri per categoria e navigazione diretta agli elementi\n• Creazione Progressiva: Nuovo flusso a passaggi per aggiungere corsi, esami, scadenze e compiti con suggerimenti intelligenti e validazione contestuale\n• Design System macOS Sequoia: Oltre 1.900 righe di nuovi componenti nativi, card glassmorfiche con bordi sfumati, stati vuoti azionabili e contrasto elevato\n• Calendario & Timeline Riprogettati: Visualizzazione oraria delle lezioni perfezionata, gestione eventi multi-calendario fluida e reattività istantanea\n• Performance e stabilità: Ottimizzazioni della reattività dell'interfaccia grafica e consumo di risorse ulteriormente ridotto",
-  "html_url": "https://github.com/zjncoo/uni/releases/tag/1.5.0",
-  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/1.5.0/uni.dmg",
-  "pub_date": "2026-10-03T23:22:00Z"
+  "tag_name": "1.5.1",
+  "version": "1.5.1",
+  "name": "uni 1.5.1 — Sincronizzazione Automatica Apple Calendar & Perfezionamenti",
+  "body": "Novità e miglioramenti in uni v1.5.1:\n• Sincronizzazione Apple Calendar automatica: Scadenze (📌), compiti (📝) ed esami (🎓) aggiunti o aggiornati in qualsiasi vista vengono sincronizzati istantaneamente nel calendario \"uni 📚\"\n• Aggiornamento bidirezionale dello stato: Completare scadenze o compiti e registrare voti d'esame riflette tempestivamente le modifiche nel calendario nativo Apple\n• Controlli dedicati in Impostazioni & Gestione Calendari: Nuovo stato di autorizzazione, toggle per la sincronizzazione e pulsante \"Sincronizza Tutto Adesso\"\n• Auto-sincronizzazione all'avvio e riattivazione: Riconciliazione immediata dei promemoria accademici all'apertura dell'applicazione\n• Rimozione sincronizzata: L'eliminazione di un elemento da uni rimuove tempestivamente l'evento corrispondente dal calendario macOS",
+  "html_url": "https://github.com/zjncoo/uni/releases/tag/1.5.1",
+  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/1.5.1/uni.dmg",
+  "pub_date": "2026-10-04T12:00:00Z"
 }

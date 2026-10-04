@@ -423,7 +423,7 @@ struct ContentView: View {
                 .environmentObject(localizationManager)
         }
         .onAppear {
-            let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.0"
+            let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.1"
             let lastSeen = UserDefaults.standard.string(forKey: "uni_last_seen_release_notes")
             
             if !dataManager.hasCompletedOnboarding {
@@ -963,7 +963,7 @@ struct UniSplashScreenView: View {
     @EnvironmentObject var themeManager: ThemeManager
     
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.0"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.1"
     }
     
     #if canImport(AppKit)

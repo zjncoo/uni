@@ -15,7 +15,7 @@ public struct WhatsNewModalView: View {
     public init() {}
     
     private var currentVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.0"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.1"
     }
     
     public var body: some View {
@@ -88,6 +88,36 @@ public struct WhatsNewModalView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     featureCard(
+                        category: localizationManager.text(it: "CALENDARIO APPLE", en: "APPLE CALENDAR"),
+                        badgeColor: .blue,
+                        icon: "calendar.badge.plus",
+                        iconColor: .blue,
+                        title: localizationManager.text(
+                            it: "Sincronizzazione Automatica su Apple Calendar",
+                            en: "Automatic Apple Calendar Synchronization"
+                        ),
+                        description: localizationManager.text(
+                            it: "Scadenze (📌), compiti (📝) ed esami (🎓) creati o aggiornati in qualsiasi vista vengono ora sincronizzati automaticamente nel calendario di sistema \"uni 📚\" su Mac ed iPhone.",
+                            en: "Deadlines (📌), assignments (📝), and exams (🎓) created or edited in any view are now automatically synced to the native \"uni 📚\" system calendar across Mac and iPhone."
+                        )
+                    )
+                    
+                    featureCard(
+                        category: localizationManager.text(it: "STATO & BIDIREZIONALE", en: "STATE & COMPLETION"),
+                        badgeColor: .green,
+                        icon: "checkmark.circle.badge.questionmark.fill",
+                        iconColor: .green,
+                        title: localizationManager.text(
+                            it: "Aggiornamento Real-Time & Completamento",
+                            en: "Real-Time Updates & Task Completion"
+                        ),
+                        description: localizationManager.text(
+                            it: "Completare una scadenza o registrare il voto di un esame aggiorna istantaneamente l'evento nel calendario macOS con prefisso ✅ e note dettagliate.",
+                            en: "Completing a deadline or recording an exam grade instantly updates the macOS calendar event with ✅ status and course details."
+                        )
+                    )
+                    
+                    featureCard(
                         category: localizationManager.text(it: "RICERCA GLOBALE", en: "GLOBAL SEARCH"),
                         badgeColor: .purple,
                         icon: "magnifyingglass.circle.fill",
@@ -103,47 +133,17 @@ public struct WhatsNewModalView: View {
                     )
                     
                     featureCard(
-                        category: localizationManager.text(it: "INSERIMENTO RAPIDO", en: "PROGRESSIVE ADD"),
+                        category: localizationManager.text(it: "GESTIONE CALENDARI", en: "CALENDAR CONTROLS"),
                         badgeColor: themeManager.accentColor,
-                        icon: "plus.circle.fill",
+                        icon: "arrow.triangle.2.circlepath",
                         iconColor: themeManager.accentColor,
                         title: localizationManager.text(
-                            it: "Nuova Creazione Progressiva a Passaggi",
-                            en: "Progressive Step-by-Step Item Creation"
+                            it: "Controlli Sincronizzazione in Impostazioni & Hub",
+                            en: "Sync Controls in Settings & Calendar Hub"
                         ),
                         description: localizationManager.text(
-                            it: "Flusso interattivo guidato per aggiungere corsi, esami, compiti e impegni accademici con suggerimenti intelligenti e validazione in tempo reale.",
-                            en: "Streamlined interactive wizard to add courses, exams, assignments, and academic milestones with smart suggestions and live validation."
-                        )
-                    )
-                    
-                    featureCard(
-                        category: localizationManager.text(it: "DESIGN SYSTEM", en: "DESIGN SYSTEM"),
-                        badgeColor: .blue,
-                        icon: "sparkles.rectangle.stack.fill",
-                        iconColor: .blue,
-                        title: localizationManager.text(
-                            it: "Estetica macOS Raffinata & Componenti Dedicati",
-                            en: "Refined macOS Aesthetics & Native Components"
-                        ),
-                        description: localizationManager.text(
-                            it: "Design completamente rinnovato con card glassmorfiche, indicatori di stato nitidi, micro-animazioni fluide e contrasto ottimizzato in Dark/Light mode.",
-                            en: "Completely refreshed visual style with glassmorphic cards, crisp status indicators, fluid micro-interactions, and optimized contrast in Dark & Light modes."
-                        )
-                    )
-                    
-                    featureCard(
-                        category: localizationManager.text(it: "CALENDARIO & VISTE", en: "CALENDAR & VIEWS"),
-                        badgeColor: .green,
-                        icon: "calendar.badge.clock",
-                        iconColor: .green,
-                        title: localizationManager.text(
-                            it: "Timeline Calendario Riprogettata & Viste Accademiche",
-                            en: "Redesigned Calendar Timeline & Academic Views"
-                        ),
-                        description: localizationManager.text(
-                            it: "Vista oraria più pulita e leggibile per le lezioni, dashboard arricchita e viste Corsi, Compiti ed Esami con layout a griglia modernizzato.",
-                            en: "Cleaner and more legible timetable for lectures, enriched dashboard metrics, and modernized grid views across Courses, Assignments, and Exams."
+                            it: "Nuove schede dedicate con stato autorizzazioni, interruttore di attivazione e pulsante \"Sincronizza Tutto Adesso\" per riconciliare tutti gli elementi esistenti.",
+                            en: "Dedicated control cards with authorization status, enable toggle, and a \"Sync All Now\" action to reconcile all existing academic milestones."
                         )
                     )
                     

@@ -281,6 +281,10 @@ struct AssignmentsView: View {
             AssignmentEditorSheet(assignmentToEdit: nil) { newOne in
                 dataManager.assignments.append(newOne)
                 dataManager.saveData()
+                
+                let courseName = dataManager.courses.first(where: { $0.id == newOne.courseId })?.name
+                Task { await AppleCalendarManager.shared.sync(assignment: newOne, courseName: courseName) }
+                
                 NotificationManager.shared.notify(
                     title: localizationManager.text(it: "Assignment creato", en: "Assignment created"),
                     message: newOne.title,
@@ -294,6 +298,10 @@ struct AssignmentsView: View {
                 if let idx = dataManager.assignments.firstIndex(where: { $0.id == updated.id }) {
                     dataManager.assignments[idx] = updated
                     dataManager.saveData()
+                    
+                    let courseName = dataManager.courses.first(where: { $0.id == updated.courseId })?.name
+                    Task { await AppleCalendarManager.shared.sync(assignment: updated, courseName: courseName) }
+                    
                     NotificationManager.shared.notify(
                         title: localizationManager.text(it: "Assignment aggiornato", en: "Assignment updated"),
                         message: updated.title,
@@ -366,7 +374,11 @@ struct AssignmentsView: View {
             dataManager.assignments[idx].isCompleted.toggle()
             let completed = dataManager.assignments[idx].isCompleted
             dataManager.assignments[idx].status = completed ? .completed : .inProgress
+            let updated = dataManager.assignments[idx]
             dataManager.saveData()
+            
+            let courseName = dataManager.courses.first(where: { $0.id == updated.courseId })?.name
+            Task { await AppleCalendarManager.shared.sync(assignment: updated, courseName: courseName) }
             
             if completed {
                 SoundManager.shared.play(.success)
@@ -388,7 +400,12 @@ struct AssignmentsView: View {
         if let idx = dataManager.assignments.firstIndex(where: { $0.id == assignment.id }) {
             dataManager.assignments[idx].status = status
             dataManager.assignments[idx].isCompleted = (status == .completed)
+            let updated = dataManager.assignments[idx]
             dataManager.saveData()
+            
+            let courseName = dataManager.courses.first(where: { $0.id == updated.courseId })?.name
+            Task { await AppleCalendarManager.shared.sync(assignment: updated, courseName: courseName) }
+            
             SoundManager.shared.play(status == .completed ? .success : .pop)
             
             NotificationManager.shared.notify(
@@ -404,6 +421,9 @@ struct AssignmentsView: View {
         SoundManager.shared.play(.remove)
         dataManager.assignments.removeAll { $0.id == assignment.id }
         dataManager.saveData()
+        
+        Task { await AppleCalendarManager.shared.remove(assignmentId: assignment.id) }
+        
         NotificationManager.shared.notify(
             title: localizationManager.text(it: "Assignment rimosso", en: "Assignment removed"),
             message: assignment.title,

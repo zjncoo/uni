@@ -29,8 +29,10 @@ public struct CalendarManagerModalView: View {
     @State private var isAddingFeed: Bool = false
     
     // Calendari PC rilevati
+    @ObservedObject private var appleCalendarManager = AppleCalendarManager.shared
     @State private var availablePCCalendars: [AppleCalendarManager.MacCalendarInfo] = []
     @State private var isReplicatingPC: Bool = false
+    @State private var isSyncingToAppleCal: Bool = false
     @State private var pcAuthStatus: String = ""
     @State private var sourceToRemove: CalendarSource? = nil
     
@@ -219,6 +221,80 @@ public struct CalendarManagerModalView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(isReplicatingPC)
+                    }
+                }
+            }
+            
+            // Card Sincronizzazione Automatica su Apple Calendar (uni 📚)
+            UniCard(padding: 16) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "calendar.badge.plus")
+                            .font(.system(size: 26))
+                            .foregroundStyle(themeManager.accentColor)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 8) {
+                                Text(localizationManager.text(it: "Esporta su Apple Calendar (uni 📚)", en: "Export to Apple Calendar (uni 📚)"))
+                                    .font(UniFont.headline())
+                                
+                                if appleCalendarManager.hasFullAccess {
+                                    UniBadge(localizationManager.text(it: "Autorizzato", en: "Authorized"), color: .green)
+                                } else {
+                                    UniBadge(localizationManager.text(it: "Non autorizzato", en: "Not authorized"), color: .orange)
+                                }
+                            }
+                            
+                            Text(localizationManager.text(
+                                it: "Aggiunge e sincronizza automaticamente tutte le scadenze (📌), compiti (📝) ed esami (🎓) nel calendario di sistema \"uni 📚\".",
+                                en: "Automatically adds and synchronizes all deadlines (📌), assignments (📝), and exams (🎓) into the system calendar \"uni 📚\"."
+                            ))
+                            .font(UniFont.caption())
+                            .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Toggle("", isOn: $appleCalendarManager.syncEnabled)
+                            .toggleStyle(.switch)
+                    }
+                    
+                    HStack {
+                        Spacer()
+                        
+                        Button {
+                            isSyncingToAppleCal = true
+                            Task {
+                                if !appleCalendarManager.hasFullAccess {
+                                    _ = await appleCalendarManager.requestAccess()
+                                }
+                                await appleCalendarManager.syncAll(
+                                    deadlines: dataManager.deadlines,
+                                    exams: dataManager.exams,
+                                    assignments: dataManager.assignments,
+                                    courses: dataManager.courses
+                                )
+                                isSyncingToAppleCal = false
+                                NotificationManager.shared.notify(
+                                    title: localizationManager.text(it: "Sincronizzazione completata", en: "Sync completed"),
+                                    message: localizationManager.text(it: "Scadenze ed esami aggiornati nel calendario Apple uni 📚", en: "Deadlines and exams updated in Apple Calendar uni 📚"),
+                                    type: .success,
+                                    icon: "calendar.badge.checkmark"
+                                )
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                if isSyncingToAppleCal {
+                                    ProgressView().scaleEffect(0.7)
+                                } else {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                }
+                                Text(localizationManager.text(it: "Sincronizza Tutto Adesso", en: "Sync All Now"))
+                            }
+                            .padding(.horizontal, 6)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isSyncingToAppleCal)
                     }
                 }
             }

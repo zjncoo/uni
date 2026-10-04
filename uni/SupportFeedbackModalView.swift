@@ -60,7 +60,7 @@ struct SupportFeedbackModalView: View {
         #else
         let arch = "Intel"
         #endif
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.0"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.1"
         return "uni v\(version) • macOS \(osVersion) • \(arch)"
     }
     

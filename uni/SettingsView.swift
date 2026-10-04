@@ -20,12 +20,14 @@ struct SettingsView: View {
     @ObservedObject private var notificationManager = NotificationManager.shared
     @ObservedObject private var soundManager = SoundManager.shared
     @ObservedObject private var updateManager = UpdateManager.shared
+    @ObservedObject private var appleCalendarManager = AppleCalendarManager.shared
     @State private var isShowingOnboarding = false
     @State private var showingClearAlert = false
     @State private var newQuoteText: String = ""
     @State private var editStudentName: String = ""
     @State private var editUniversityName: String = ""
     @State private var editUniversityPortalURL: String = ""
+    @State private var isSyncingToAppleCal = false
     
     // Gestione Scorciatoie Home & Bottone Rapido Navbar
     @State private var isShowingAddShortcutSheet = false
@@ -852,7 +854,86 @@ struct SettingsView: View {
                             .tint(themeManager.accentColor)
                         }
                     }
-
+                    
+                    UniCard(padding: 20) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack(spacing: 16) {
+                                Circle()
+                                    .fill(themeManager.accentColor.opacity(0.12))
+                                    .frame(width: 48, height: 48)
+                                    .overlay(
+                                        Image(systemName: "calendar.badge.plus")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundStyle(themeManager.accentColor)
+                                    )
+                                
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(spacing: 8) {
+                                        Text(localizationManager.text(it: "Esporta su Apple Calendar (uni 📚)", en: "Export to Apple Calendar (uni 📚)"))
+                                            .font(UniFont.headline())
+                                        
+                                        if appleCalendarManager.hasFullAccess {
+                                            UniBadge(localizationManager.text(it: "Attivo", en: "Active"), color: .green)
+                                        } else {
+                                            UniBadge(localizationManager.text(it: "Autorizzazione richiesta", en: "Permission required"), color: .orange)
+                                        }
+                                    }
+                                    
+                                    Text(localizationManager.text(
+                                        it: "Aggiunge e mantiene sincronizzate automaticamente su Mac ed iPhone tutte le tue scadenze (📌), compiti (📝) ed esami (🎓) nel calendario di sistema \"uni 📚\".",
+                                        en: "Automatically adds and keeps all deadlines (📌), assignments (📝), and exams (🎓) synced on Mac & iPhone in system calendar \"uni 📚\"."
+                                    ))
+                                    .font(UniFont.subheadline())
+                                    .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Toggle("", isOn: $appleCalendarManager.syncEnabled)
+                                    .toggleStyle(.switch)
+                            }
+                            
+                            HStack {
+                                Spacer()
+                                
+                                Button {
+                                    isSyncingToAppleCal = true
+                                    Task {
+                                        if !appleCalendarManager.hasFullAccess {
+                                            _ = await appleCalendarManager.requestAccess()
+                                        }
+                                        await appleCalendarManager.syncAll(
+                                            deadlines: dataManager.deadlines,
+                                            exams: dataManager.exams,
+                                            assignments: dataManager.assignments,
+                                            courses: dataManager.courses
+                                        )
+                                        isSyncingToAppleCal = false
+                                        NotificationManager.shared.notify(
+                                            title: localizationManager.text(it: "Sincronizzazione completata! 📅", en: "Sync completed! 📅"),
+                                            message: localizationManager.text(it: "Tutte le scadenze, compiti ed esami sono ora nel calendario uni 📚", en: "All deadlines, assignments, and exams are now in uni 📚 calendar"),
+                                            type: .success,
+                                            icon: "calendar.badge.checkmark"
+                                        )
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        if isSyncingToAppleCal {
+                                            ProgressView().scaleEffect(0.7)
+                                        } else {
+                                            Image(systemName: "arrow.triangle.2.circlepath")
+                                        }
+                                        Text(localizationManager.text(it: "Sincronizza Tutto Adesso", en: "Sync All Now"))
+                                    }
+                                    .font(UniFont.subheadline())
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(isSyncingToAppleCal)
+                            }
+                        }
+                    }
         }
     }
 

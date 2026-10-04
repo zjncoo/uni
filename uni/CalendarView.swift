@@ -244,6 +244,10 @@ struct CalendarView: View {
                 DeadlineEditorSheet(deadlineToEdit: nil, initialDate: selectedDate) { newDeadline in
                     dataManager.deadlines.append(newDeadline)
                     dataManager.saveData()
+                    
+                    let courseName = dataManager.courses.first(where: { $0.id == newDeadline.courseId })?.name
+                    Task { await AppleCalendarManager.shared.sync(deadline: newDeadline, courseName: courseName) }
+                    
                     NotificationManager.shared.notify(
                         title: localizationManager.text(it: "Scadenza creata", en: "Deadline created"),
                         message: newDeadline.title,
@@ -260,6 +264,10 @@ struct CalendarView: View {
                 ExamEditorSheet(examToEdit: nil) { newExam in
                     dataManager.exams.append(newExam)
                     dataManager.saveData()
+                    
+                    let courseName = dataManager.courses.first(where: { $0.id == newExam.courseId })?.name
+                    Task { await AppleCalendarManager.shared.sync(exam: newExam, courseName: courseName) }
+                    
                     NotificationManager.shared.notify(
                         title: localizationManager.text(it: "Esame programmato", en: "Exam scheduled"),
                         message: newExam.title,
@@ -276,6 +284,10 @@ struct CalendarView: View {
                 AssignmentEditorSheet(assignmentToEdit: nil) { newAssignment in
                     dataManager.assignments.append(newAssignment)
                     dataManager.saveData()
+                    
+                    let courseName = dataManager.courses.first(where: { $0.id == newAssignment.courseId })?.name
+                    Task { await AppleCalendarManager.shared.sync(assignment: newAssignment, courseName: courseName) }
+                    
                     NotificationManager.shared.notify(
                         title: localizationManager.text(it: "Compito registrato", en: "Assignment recorded"),
                         message: newAssignment.title,

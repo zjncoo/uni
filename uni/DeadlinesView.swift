@@ -303,6 +303,9 @@ struct DeadlinesView: View {
                 dataManager.deadlines.append(newOne)
                 dataManager.saveData()
                 
+                let courseName = dataManager.courses.first(where: { $0.id == newOne.courseId })?.name
+                Task { await AppleCalendarManager.shared.sync(deadline: newOne, courseName: courseName) }
+                
                 NotificationManager.shared.notify(
                     title: localizationManager.text(it: "Scadenza creata", en: "Deadline created"),
                     message: "\(newOne.title) • \(localizationManager.text(it: "Scade il", en: "Due")) \(formatDueDate(newOne.dueDate))",
@@ -317,6 +320,9 @@ struct DeadlinesView: View {
                 if let idx = dataManager.deadlines.firstIndex(where: { $0.id == updated.id }) {
                     dataManager.deadlines[idx] = updated
                     dataManager.saveData()
+                    
+                    let courseName = dataManager.courses.first(where: { $0.id == updated.courseId })?.name
+                    Task { await AppleCalendarManager.shared.sync(deadline: updated, courseName: courseName) }
                     
                     NotificationManager.shared.notify(
                         title: localizationManager.text(it: "Scadenza aggiornata", en: "Deadline updated"),
@@ -374,7 +380,11 @@ struct DeadlinesView: View {
         if let idx = dataManager.deadlines.firstIndex(where: { $0.id == deadline.id }) {
             dataManager.deadlines[idx].isCompleted.toggle()
             let isNowCompleted = dataManager.deadlines[idx].isCompleted
+            let updatedDeadline = dataManager.deadlines[idx]
             dataManager.saveData()
+            
+            let courseName = dataManager.courses.first(where: { $0.id == updatedDeadline.courseId })?.name
+            Task { await AppleCalendarManager.shared.sync(deadline: updatedDeadline, courseName: courseName) }
             
             if isNowCompleted {
                 SoundManager.shared.play(.success)
@@ -397,6 +407,8 @@ struct DeadlinesView: View {
         SoundManager.shared.play(.remove)
         dataManager.deadlines.removeAll { $0.id == deadline.id }
         dataManager.saveData()
+        
+        Task { await AppleCalendarManager.shared.remove(deadlineId: deadline.id) }
         
         NotificationManager.shared.notify(
             title: localizationManager.text(it: "Scadenza eliminata", en: "Deadline deleted"),
