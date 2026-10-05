@@ -1,9 +1,9 @@
 {
-  "tag_name": "1.5.1",
-  "version": "1.5.1",
-  "name": "uni 1.5.1 — Sincronizzazione Automatica Apple Calendar & Perfezionamenti",
-  "body": "Novità e miglioramenti in uni v1.5.1:\n• Sincronizzazione Apple Calendar automatica: Scadenze (📌), compiti (📝) ed esami (🎓) aggiunti o aggiornati in qualsiasi vista vengono sincronizzati istantaneamente nel calendario \"uni 📚\"\n• Aggiornamento bidirezionale dello stato: Completare scadenze o compiti e registrare voti d'esame riflette tempestivamente le modifiche nel calendario nativo Apple\n• Controlli dedicati in Impostazioni & Gestione Calendari: Nuovo stato di autorizzazione, toggle per la sincronizzazione e pulsante \"Sincronizza Tutto Adesso\"\n• Auto-sincronizzazione all'avvio e riattivazione: Riconciliazione immediata dei promemoria accademici all'apertura dell'applicazione\n• Rimozione sincronizzata: L'eliminazione di un elemento da uni rimuove tempestivamente l'evento corrispondente dal calendario macOS",
-  "html_url": "https://github.com/zjncoo/uni/releases/tag/1.5.1",
-  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/1.5.1/uni.dmg",
-  "pub_date": "2026-10-04T12:00:00Z"
+  "tag_name": "1.5.2",
+  "version": "1.5.2",
+  "name": "uni 1.5.2 — Tutela Privacy, Termini di Servizio & Conformità Legale",
+  "body": "Novità e miglioramenti in uni v1.5.2:\n• Tutela Privacy & Consenso Informato: Nuovo modulo di supporto e segnalazione feedback con consenso esplicito, minimizzazione dei dati e trasparenza totale sul trattamento dei dati locali.\n• Conformità Legale e Termini di Servizio: Integrazione completa dei Termini di Servizio (Terms of Service) e Informativa Privacy consultabili direttamente dall'app e dal portale web.\n• Font Self-Hosted & Zero Tracking Esterno: Portale web e documentazione aggiornati con font ospitati localmente per eliminare qualsiasi dipendenza da CDN terze.\n• Perfezionamenti e stabilità: Ottimizzazioni generali dell'affidabilità dell'interfaccia e coerenza dei controlli.",
+  "html_url": "https://github.com/zjncoo/uni/releases/tag/1.5.2",
+  "dmg_download_url": "https://github.com/zjncoo/uni/releases/download/1.5.2/uni.dmg",
+  "pub_date": "2026-10-04T13:54:05Z"
 }

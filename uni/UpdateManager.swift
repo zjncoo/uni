@@ -31,6 +31,20 @@ public struct GitHubRelease: Codable, Identifiable {
         case dmgDownloadUrl = "dmg_download_url"
     }
 
+    public init(
+        tagName: String,
+        name: String? = nil,
+        body: String? = nil,
+        htmlUrl: String? = nil,
+        dmgDownloadUrl: String? = nil
+    ) {
+        self.tagName = tagName
+        self.name = name
+        self.body = body
+        self.htmlUrl = htmlUrl
+        self.dmgDownloadUrl = dmgDownloadUrl
+    }
+
     /// Direct DMG download URL from the release assets or fallback
     public var dmgDownloadURL: String {
         if let custom = dmgDownloadUrl, !custom.isEmpty {
@@ -221,13 +235,43 @@ public class UpdateManager: NSObject, ObservableObject, URLSessionDownloadDelega
     // MARK: - Network Fetch (Dual Endpoint)
 
     private func fetchLatestRelease() async throws -> GitHubRelease {
-        // 1. Try public Pages version.json first
-        if let release = try? await fetchFromURL(pagesURL) {
-            return release
+        // Query both endpoints concurrently to guarantee detection even if manifest or API is out of sync
+        async let pagesFetch = try? await fetchFromURL(pagesURL)
+        async let apiFetch = try? await fetchFromURL(apiURL)
+
+        let (pagesRelease, apiRelease) = await (pagesFetch, apiFetch)
+
+        if let api = apiRelease, let pages = pagesRelease {
+            // If both sources responded, pick the one with the newer semantic version
+            if isNewer(api.version, than: pages.version) {
+                return mergedRelease(primary: api, fallback: pages)
+            } else {
+                return pages
+            }
+        } else if let api = apiRelease {
+            return api
+        } else if let pages = pagesRelease {
+            return pages
         }
 
-        // 2. Fallback to GitHub Releases API
+        // Fallback: execute single direct request to apiURL so that meaningful URLError/HTTP errors are thrown
         return try await fetchFromURL(apiURL)
+    }
+
+    private func mergedRelease(primary: GitHubRelease, fallback: GitHubRelease?) -> GitHubRelease {
+        let name = (primary.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? primary.name
+            : (fallback?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? fallback?.name : "uni \(primary.version)")
+        let body = (primary.body?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? primary.body
+            : (fallback?.body ?? "")
+        return GitHubRelease(
+            tagName: primary.tagName,
+            name: name,
+            body: body,
+            htmlUrl: primary.htmlUrl ?? fallback?.htmlUrl,
+            dmgDownloadUrl: primary.dmgDownloadUrl ?? fallback?.dmgDownloadUrl
+        )
     }
 
     private func fetchFromURL(_ urlString: String) async throws -> GitHubRelease {
