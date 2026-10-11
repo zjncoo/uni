@@ -129,13 +129,22 @@ struct uniApp: App {
             }
         }
         
-        // MenuBar Extra per macOS (Stato rapido nella barra dei menu)
-        MenuBarExtra("uni", systemImage: "graduationcap") {
-            MenuBarQuickView()
+        // MenuBar Extra per macOS (Finestra popover ricca e interattiva)
+        MenuBarExtra {
+            UniMenuBarExtraView()
                 .environmentObject(dataManager)
                 .environmentObject(themeManager)
+                .environmentObject(localizationManager)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "graduationcap")
+                if let next = dataManager.nextLectureToday() {
+                    Text(next.schedule.startTime)
+                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                }
+            }
         }
-        .menuBarExtraStyle(.menu)
+        .menuBarExtraStyle(.window)
     }
 }
 

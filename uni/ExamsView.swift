@@ -43,12 +43,14 @@ struct ExamsView: View {
     enum ExamFilter: String, CaseIterable {
         case all = "all"
         case planned = "planned"
+        case awaiting = "awaiting"
         case passed = "passed"
         
         func title(with lm: LocalizationManager) -> String {
             switch self {
             case .all: return lm.t(.filterAll)
             case .planned: return lm.currentLanguage == .italian ? "Da sostenere" : "Upcoming"
+            case .awaiting: return lm.currentLanguage == .italian ? "In attesa esito" : "Awaiting Result"
             case .passed: return lm.t(.completed)
             }
         }
@@ -65,7 +67,9 @@ struct ExamsView: View {
         var base: [Exam]
         switch filterStatus {
         case .planned:
-            base = dataManager.exams.filter { $0.status != .passed }.sorted { $0.examDate < $1.examDate }
+            base = dataManager.exams.filter { $0.status == .planned || $0.status == .studying }.sorted { $0.examDate < $1.examDate }
+        case .awaiting:
+            base = dataManager.exams.filter { $0.status == .awaitingResult }.sorted { $0.examDate < $1.examDate }
         case .passed:
             base = dataManager.exams.filter { $0.status == .passed }.sorted { $0.examDate > $1.examDate }
         case .all:
@@ -93,11 +97,29 @@ struct ExamsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                // Header
-                UniHeader(
-                    localizationManager.t(.examsTitle),
-                    subtitle: localizationManager.t(.examsSubtitle)
-                )
+                // Header con Pulsante Esportazione Libretto PDF
+                HStack(alignment: .top) {
+                    UniHeader(
+                        localizationManager.t(.examsTitle),
+                        subtitle: localizationManager.t(.examsSubtitle)
+                    )
+                    
+                    Spacer()
+                    
+                    Button {
+                        CareerTranscriptExportManager.shared.exportPDF(dataManager: dataManager, localizationManager: localizationManager)
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundStyle(.primary)
+                            .frame(width: 30, height: 30)
+                            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .focusable(false)
+                    .focusEffectDisabled()
+                    .help(localizationManager.text(it: "Condividi ed esporta libretto in PDF", en: "Share and export transcript as PDF"))
+                }
                 
                 // Statistiche di Laurea & Media Architettoniche
                 HStack(spacing: 14) {
@@ -117,19 +139,39 @@ struct ExamsView: View {
                                     .foregroundStyle(.secondary)
                             }
                             
-                            Text(dataManager.estimatedGraduationGrade > 0 ? localizationManager.t(.startGrade(Int(round(dataManager.estimatedGraduationGrade)))) : localizationManager.t(.awaitingExams))
-                                .font(UniFont.caption())
-                                .foregroundStyle(.secondary)
+                            HStack(spacing: 8) {
+                                if dataManager.baseGraduationGrade > 0 {
+                                    Text("Base: \(String(format: "%.1f", dataManager.baseGraduationGrade))/110")
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                    
+                                    if (dataManager.thesisPoints + dataManager.careerBonusPoints) > 0 {
+                                        Text("• Con Tesi: \(Int(round(dataManager.estimatedGraduationGrade)))/110")
+                                            .font(UniFont.caption())
+                                            .foregroundStyle(themeManager.accentColor)
+                                    }
+                                } else {
+                                    Text(localizationManager.t(.awaitingExams))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     
                     UniCard(padding: 18, cornerRadius: 0, style: .surface) {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(localizationManager.t(.cfuProgress).uppercased())
-                                .font(UniFont.sectionLabel())
-                                .foregroundStyle(.secondary)
-                                .tracking(1.4)
+                            HStack {
+                                Text(localizationManager.t(.cfuProgress).uppercased())
+                                    .font(UniFont.sectionLabel())
+                                    .foregroundStyle(.secondary)
+                                    .tracking(1.4)
+                                Spacer()
+                                Text(dataManager.degreeType.localizedTitle(using: localizationManager))
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                            }
                             
                             HStack(alignment: .firstTextBaseline, spacing: 5) {
                                 Text("\(dataManager.totalCfuAcquired)")
@@ -403,26 +445,48 @@ struct ExamRowView: View {
     var body: some View {
         UniCard(padding: 14) {
             HStack(spacing: 14) {
-                // Indicatore Voto o Data
-                if exam.status == .passed, let grade = exam.grade {
-                    VStack(spacing: 1) {
-                        HStack(alignment: .top, spacing: 2) {
-                            Text("\(grade)")
-                                .font(UniFont.title())
-                                .fontWeight(.bold)
-                                .foregroundStyle(themeManager.accentColor)
-                            if exam.honors {
-                                Text("L")
-                                    .font(UniFont.subheadline())
+                // Indicatore Voto, Idoneità o Data
+                if exam.status == .passed {
+                    if exam.isPassFail {
+                        VStack(spacing: 2) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(Color.green)
+                            Text(localizationManager.text(it: "IDONEO", en: "PASS"))
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(Color.green)
+                        }
+                        .frame(width: 54)
+                    } else if let grade = exam.grade {
+                        VStack(spacing: 1) {
+                            HStack(alignment: .top, spacing: 2) {
+                                Text("\(grade)")
+                                    .font(UniFont.title())
                                     .fontWeight(.bold)
                                     .foregroundStyle(themeManager.accentColor)
+                                if exam.honors {
+                                    Text("L")
+                                        .font(UniFont.subheadline())
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(themeManager.accentColor)
+                                }
                             }
+                            Text("/ 30")
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
                         }
-                        Text("/ 30")
-                            .font(UniFont.caption())
-                            .foregroundStyle(.secondary)
+                        .frame(width: 54)
+                    } else {
+                        VStack(spacing: 1) {
+                            Text(formatExamDay(exam.examDate))
+                                .font(UniFont.headline())
+                                .fontWeight(.bold)
+                            Text(formatExamMonth(exam.examDate))
+                                .font(UniFont.caption())
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(width: 54)
                     }
-                    .frame(width: 52)
                 } else {
                     VStack(spacing: 1) {
                         Text(formatExamDay(exam.examDate))
@@ -432,13 +496,13 @@ struct ExamRowView: View {
                             .font(UniFont.caption())
                             .foregroundStyle(.secondary)
                     }
-                    .frame(width: 52)
+                    .frame(width: 54)
                 }
                 
                 Divider()
                     .frame(height: 32)
                 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(exam.title)
                             .font(UniFont.headline())
@@ -456,7 +520,10 @@ struct ExamRowView: View {
                         if !exam.room.isEmpty {
                             Label(exam.room, systemImage: "mappin")
                         }
-                        if exam.status != .passed, let target = exam.targetGrade {
+                        if exam.isPassFail {
+                            Text(localizationManager.text(it: "• Idoneità (senza voto)", en: "• Pass/Fail"))
+                                .foregroundStyle(.secondary)
+                        } else if exam.status != .passed, let target = exam.targetGrade {
                             Text("Target: \(target)/30")
                                 .foregroundStyle(themeManager.accentColor)
                         }
@@ -470,7 +537,7 @@ struct ExamRowView: View {
                 UniBadge(exam.status.localizedName, color: exam.status.badgeColor)
                 
                 if exam.status != .passed {
-                    Button(localizationManager.text(it: "Registra Voto", en: "Record Grade")) {
+                    Button(exam.status == .awaitingResult ? localizationManager.text(it: "Verbalizza", en: "Record Result") : localizationManager.text(it: "Registra Esito", en: "Record Grade")) {
                         onRegisterGrade()
                     }
                     .font(UniFont.subheadline())
@@ -511,9 +578,21 @@ struct RegisterGradeSheet: View {
     let exam: Exam
     var onSave: (Exam) -> Void
     
+    @State private var isPassFail: Bool
+    @State private var passOutcome: Bool = true
     @State private var grade: Int = 28
     @State private var honors: Bool = false
     @State private var notes: String = ""
+    
+    init(exam: Exam, onSave: @escaping (Exam) -> Void) {
+        self.exam = exam
+        self.onSave = onSave
+        _isPassFail = State(initialValue: exam.isPassFail)
+        _passOutcome = State(initialValue: exam.status != .rejected)
+        _grade = State(initialValue: exam.grade ?? 28)
+        _honors = State(initialValue: exam.honors)
+        _notes = State(initialValue: exam.notes)
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -528,10 +607,10 @@ struct RegisterGradeSheet: View {
                         .foregroundStyle(Color.green)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(localizationManager.text(it: "Registra Voto", en: "Record Grade"))
+                    Text(localizationManager.text(it: "Registra Esito", en: "Record Result"))
                         .font(UniFont.title())
                         .fontWeight(.semibold)
-                    Text(localizationManager.text(it: "Verbalizza il voto per \(exam.title)", en: "Record final grade for \(exam.title)"))
+                    Text(localizationManager.text(it: "Verbalizza l'esito finale per \(exam.title)", en: "Record final outcome for \(exam.title)"))
                         .font(UniFont.caption())
                         .foregroundStyle(.secondary)
                 }
@@ -542,10 +621,23 @@ struct RegisterGradeSheet: View {
             Divider()
             
             Form {
-                Section(localizationManager.text(it: "Esito Esame", en: "Exam Outcome")) {
-                    Stepper(localizationManager.text(it: "Voto: \(grade) / 30", en: "Grade: \(grade) / 30"), value: $grade, in: 18...30)
-                    if grade == 30 {
-                        Toggle(localizationManager.text(it: "Lode (30L)", en: "With Honors (30L)"), isOn: $honors)
+                Section(localizationManager.text(it: "Tipologia Esito", en: "Outcome Format")) {
+                    Toggle(localizationManager.text(it: "Idoneità / Tirocinio (Senza Voto Numerico)", en: "Pass/Fail (No Numerical Grade)"), isOn: $isPassFail)
+                }
+                
+                if isPassFail {
+                    Section(localizationManager.text(it: "Giudizio Finale", en: "Pass/Fail Result")) {
+                        Picker(localizationManager.text(it: "Esito", en: "Outcome"), selection: $passOutcome) {
+                            Text(localizationManager.text(it: "Idoneo (Superato)", en: "Pass (Passed)")).tag(true)
+                            Text(localizationManager.text(it: "Non Idoneo (Da ripetere)", en: "Fail (To Retake)")).tag(false)
+                        }
+                    }
+                } else {
+                    Section(localizationManager.text(it: "Esito Esame in Trentesimi", en: "Exam Grade in 30ths")) {
+                        Stepper(localizationManager.text(it: "Voto: \(grade) / 30", en: "Grade: \(grade) / 30"), value: $grade, in: 18...30)
+                        if grade == 30 {
+                            Toggle(localizationManager.text(it: "Lode (30L)", en: "With Honors (30L)"), isOn: $honors)
+                        }
                     }
                 }
                 
@@ -561,11 +653,19 @@ struct RegisterGradeSheet: View {
                 Button(localizationManager.t(.cancel)) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Spacer()
-                Button(localizationManager.text(it: "Verbalizza", en: "Save Grade")) {
+                Button(localizationManager.text(it: "Verbalizza", en: "Save Result")) {
                     var updated = exam
-                    updated.status = .passed
-                    updated.grade = grade
-                    updated.honors = (grade == 30) ? honors : false
+                    if isPassFail {
+                        updated.isPassFail = true
+                        updated.status = passOutcome ? .passed : .rejected
+                        updated.grade = nil
+                        updated.honors = false
+                    } else {
+                        updated.isPassFail = false
+                        updated.status = .passed
+                        updated.grade = grade
+                        updated.honors = (grade == 30) ? honors : false
+                    }
                     if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         updated.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
                     }
@@ -578,7 +678,7 @@ struct RegisterGradeSheet: View {
             }
             .padding(16)
         }
-        .frame(width: 440, height: 320)
+        .frame(width: 460, height: 380)
     }
 }
 
@@ -601,6 +701,7 @@ struct ExamEditorSheet: View {
     @State private var targetGrade: Int = 28
     @State private var hasTargetGrade: Bool = false
     @State private var notes: String = ""
+    @State private var isPassFail: Bool = false
     
     init(examToEdit: Exam?, onSave: @escaping (Exam) -> Void) {
         self.examToEdit = examToEdit
@@ -614,6 +715,7 @@ struct ExamEditorSheet: View {
         _hasTargetGrade = State(initialValue: examToEdit?.targetGrade != nil)
         _targetGrade = State(initialValue: examToEdit?.targetGrade ?? 28)
         _notes = State(initialValue: examToEdit?.notes ?? "")
+        _isPassFail = State(initialValue: examToEdit?.isPassFail ?? false)
     }
     
     var body: some View {
@@ -654,7 +756,7 @@ struct ExamEditorSheet: View {
                         }
                     }
                     
-                    DatePicker(localizationManager.text(it: "Data e Ora", en: "Date & Time"), selection: $examDate)
+                    DatePicker(localizationManager.text(it: "Data e Ora Appello", en: "Date & Time"), selection: $examDate)
                     
                     Picker(localizationManager.text(it: "Tipologia", en: "Format"), selection: $type) {
                         ForEach(Exam.ExamType.allCases, id: \.self) { t in
@@ -665,16 +767,20 @@ struct ExamEditorSheet: View {
                     TextField(localizationManager.text(it: "Aula (opzionale)", en: "Classroom (optional)"), text: $room)
                 }
                 
-                Section(localizationManager.text(it: "Obiettivi & Note", en: "Goals & Notes")) {
+                Section(localizationManager.text(it: "Obiettivi & Valutazione", en: "Goals & Evaluation")) {
                     Picker(localizationManager.text(it: "Stato", en: "Status"), selection: $status) {
                         ForEach(Exam.ExamStatus.allCases, id: \.self) { s in
                             Text(s.localizedName).tag(s)
                         }
                     }
                     
-                    Toggle(localizationManager.text(it: "Imposta Voto Obiettivo", en: "Set Target Grade"), isOn: $hasTargetGrade)
-                    if hasTargetGrade {
-                        Stepper(localizationManager.text(it: "Obiettivo: \(targetGrade) / 30", en: "Target: \(targetGrade) / 30"), value: $targetGrade, in: 18...30)
+                    Toggle(localizationManager.text(it: "Idoneità / Tirocinio (Senza Voto)", en: "Pass/Fail (No Numerical Grade)"), isOn: $isPassFail)
+                    
+                    if !isPassFail {
+                        Toggle(localizationManager.text(it: "Imposta Voto Obiettivo", en: "Set Target Grade"), isOn: $hasTargetGrade)
+                        if hasTargetGrade {
+                            Stepper(localizationManager.text(it: "Obiettivo: \(targetGrade) / 30", en: "Target: \(targetGrade) / 30"), value: $targetGrade, in: 18...30)
+                        }
                     }
                     
                     TextField(localizationManager.text(it: "Note o requisiti per l'iscrizione", en: "Notes or enrollment requirements"), text: $notes)
@@ -697,10 +803,11 @@ struct ExamEditorSheet: View {
                         type: type,
                         room: room.trimmingCharacters(in: .whitespacesAndNewlines),
                         status: status,
-                        grade: examToEdit?.grade,
-                        honors: examToEdit?.honors ?? false,
-                        targetGrade: hasTargetGrade ? targetGrade : nil,
-                        notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
+                        grade: isPassFail ? nil : examToEdit?.grade,
+                        honors: isPassFail ? false : (examToEdit?.honors ?? false),
+                        targetGrade: (hasTargetGrade && !isPassFail) ? targetGrade : nil,
+                        notes: notes.trimmingCharacters(in: .whitespacesAndNewlines),
+                        isPassFail: isPassFail
                     )
                     onSave(updated)
                     dismiss()
@@ -712,7 +819,7 @@ struct ExamEditorSheet: View {
             }
             .padding(16)
         }
-        .frame(width: 480, height: 550)
+        .frame(width: 480, height: 570)
         .onAppear {
             if examToEdit == nil, let first = dataManager.courses.first {
                 courseId = first.id
@@ -728,9 +835,11 @@ struct WhatIfSimulatorCard: View {
     @EnvironmentObject var localizationManager: LocalizationManager
     
     @State private var isExpanded = false
+    @State private var simulatorMode = 0 // 0 = What-If Prossimo Esame, 1 = Goal GPA (Obiettivo Laurea)
     @State private var selectedCourseId: UUID? = nil
     @State private var simulatedCFU = 6
     @State private var simulatedGrade = 28
+    @State private var targetGraduationGrade = 105
     
     private var selectedCourse: Course? {
         guard let id = selectedCourseId else { return nil }
@@ -739,7 +848,7 @@ struct WhatIfSimulatorCard: View {
     
     private var currentAcquiredPoints: Double {
         var points = 0.0
-        for exam in dataManager.exams where exam.status == .passed {
+        for exam in dataManager.exams where exam.status == .passed && !exam.isPassFail {
             if let grade = exam.grade, let course = dataManager.courses.first(where: { $0.id == exam.courseId }) {
                 points += Double(grade * course.cfu)
             }
@@ -780,6 +889,27 @@ struct WhatIfSimulatorCard: View {
         return (Double(simulatedCFU) / simulatedTotalCFU) * 100.0
     }
     
+    // Goal GPA Calculations
+    private var totalTargetCFU: Double {
+        Double(dataManager.totalCfuTarget)
+    }
+    
+    private var remainingCFU: Double {
+        max(0, totalTargetCFU - currentCFU)
+    }
+    
+    private var requiredBasePoints: Double {
+        let netTarget = Double(targetGraduationGrade) - dataManager.thesisPoints - dataManager.careerBonusPoints
+        return max(0, (netTarget / 110.0) * 30.0)
+    }
+    
+    private var requiredAverageOnRemaining: Double {
+        guard remainingCFU > 0 else { return 0.0 }
+        let totalPointsNeeded = requiredBasePoints * totalTargetCFU
+        let pointsNeeded = totalPointsNeeded - currentAcquiredPoints
+        return pointsNeeded / remainingCFU
+    }
+    
     var body: some View {
         UniCard(padding: 14) {
             VStack(alignment: .leading, spacing: 12) {
@@ -800,12 +930,12 @@ struct WhatIfSimulatorCard: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(localizationManager.text(it: "Simulatore Media & Proiezione Laurea (What-If)", en: "GPA Simulator & Degree Projection (What-If)"))
+                            Text(localizationManager.text(it: "Simulatore Media & Obiettivo Laurea (What-If & Goal GPA)", en: "GPA & Degree Goal Simulator (What-If & Goal GPA)"))
                                 .font(UniFont.headline())
                                 .foregroundStyle(.primary)
                             Text(isExpanded 
-                                ? localizationManager.text(it: "Scegli un corso dai tuoi per simulare il suo peso reale in CFU sulla media", en: "Pick one of your courses to simulate its real CFU weight on your GPA")
-                                : localizationManager.text(it: "Clicca per simulare il voto del prossimo esame", en: "Click to simulate your next exam grade"))
+                                ? localizationManager.text(it: "Simula l'impatto del prossimo esame o calcola la media necessaria per il tuo voto di laurea", en: "Simulate your next exam or calculate the GPA needed to reach your target graduation grade")
+                                : localizationManager.text(it: "Clicca per simulare esami o pianificare l'obiettivo finale", en: "Click to simulate exams or plan your degree goal"))
                                 .font(UniFont.caption())
                                 .foregroundStyle(.secondary)
                         }
@@ -822,178 +952,298 @@ struct WhatIfSimulatorCard: View {
                 if isExpanded {
                     Divider()
                     
-                    // Selettore Corso dai Propri Corsi
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(localizationManager.text(it: "CORSO DA SIMULARE:", en: "COURSE TO SIMULATE:"))
-                                .font(UniFont.caption())
-                                .foregroundStyle(.secondary)
-                                .tracking(0.6)
-                            
-                            Spacer()
-                            
-                            if let course = selectedCourse {
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(Color(hex: course.colorHex) ?? themeManager.accentColor)
-                                        .frame(width: 7, height: 7)
-                                    Text("\(course.cfu) CFU")
-                                        .font(UniFont.caption())
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(themeManager.accentColor)
-                                }
-                            }
-                        }
-                        
-                        Picker("", selection: $selectedCourseId) {
-                            if !dataManager.courses.isEmpty {
-                                ForEach(dataManager.courses) { course in
-                                    let passed = dataManager.exams.contains(where: { $0.courseId == course.id && $0.status == .passed })
-                                    let prefix = passed ? "✓ " : ""
-                                    Text("\(prefix)\(course.name) (\(course.cfu) CFU)").tag(UUID?.some(course.id))
-                                }
-                            }
-                            Text(localizationManager.text(it: "Personalizzato (CFU manuali)", en: "Custom (Manual CFU)")).tag(UUID?.none)
-                        }
-                        .labelsHidden()
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // Selettore Modalità
+                    Picker("", selection: $simulatorMode) {
+                        Text(localizationManager.text(it: "Simula Prossimo Esame", en: "Simulate Next Exam")).tag(0)
+                        Text(localizationManager.text(it: "Obiettivo Laurea (Goal GPA)", en: "Degree Goal (Goal GPA)")).tag(1)
                     }
-                    .padding(.vertical, 2)
+                    .pickerStyle(.segmented)
+                    .padding(.bottom, 2)
                     
-                    // Controlli Simulatore
-                    HStack(spacing: 20) {
-                        // CFU
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(localizationManager.text(it: "CFU ESAME:", en: "EXAM CREDITS:"))
-                                .font(UniFont.caption())
-                                .foregroundStyle(.secondary)
-                                .tracking(0.6)
-                            
-                            if selectedCourse == nil {
-                                Picker("", selection: $simulatedCFU) {
-                                    ForEach([1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 14, 15, 18, 20, 24, 30], id: \.self) { cfu in
-                                        Text("\(cfu) CFU").tag(cfu)
-                                    }
-                                }
-                                .labelsHidden()
-                                .frame(maxWidth: 130)
-                            } else {
-                                HStack(spacing: 6) {
-                                    Text("\(simulatedCFU) CFU")
-                                        .font(UniFont.headline())
-                                        .foregroundStyle(themeManager.accentColor)
-                                    Text(localizationManager.text(it: "(da piano)", en: "(course plan)"))
-                                        .font(UniFont.caption())
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(.vertical, 6)
-                                .padding(.horizontal, 10)
-                                .background(Color.primary.opacity(0.04))
-                                .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
-                                .clipShape(Rectangle())
-                            }
-                        }
-                        
-                        // Voto Ipotetico
-                        VStack(alignment: .leading, spacing: 4) {
+                    if simulatorMode == 0 {
+                        // Modalità 0: What-If Esame Singolo
+                        VStack(alignment: .leading, spacing: 6) {
                             HStack {
-                                Text(localizationManager.text(it: "VOTO IPOTETICO:", en: "HYPOTHETICAL GRADE:"))
+                                Text(localizationManager.text(it: "CORSO DA SIMULARE:", en: "COURSE TO SIMULATE:"))
                                     .font(UniFont.caption())
                                     .foregroundStyle(.secondary)
                                     .tracking(0.6)
+                                
                                 Spacer()
-                                Text("\(simulatedGrade) / 30")
-                                    .font(UniFont.headline())
-                                    .foregroundStyle(themeManager.accentColor)
+                                
+                                if let course = selectedCourse {
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(Color(hex: course.colorHex) ?? themeManager.accentColor)
+                                            .frame(width: 7, height: 7)
+                                        Text("\(course.cfu) CFU")
+                                            .font(UniFont.caption())
+                                            .fontWeight(.semibold)
+                                            .foregroundStyle(themeManager.accentColor)
+                                    }
+                                }
+                            }
+                            
+                            Picker("", selection: $selectedCourseId) {
+                                if !dataManager.courses.isEmpty {
+                                    ForEach(dataManager.courses) { course in
+                                        let passed = dataManager.exams.contains(where: { $0.courseId == course.id && $0.status == .passed })
+                                        let prefix = passed ? "✓ " : ""
+                                        Text("\(prefix)\(course.name) (\(course.cfu) CFU)").tag(UUID?.some(course.id))
+                                    }
+                                }
+                                Text(localizationManager.text(it: "Personalizzato (CFU manuali)", en: "Custom (Manual CFU)")).tag(UUID?.none)
+                            }
+                            .labelsHidden()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(.vertical, 2)
+                        
+                        // Controlli Simulatore
+                        HStack(spacing: 20) {
+                            // CFU
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(localizationManager.text(it: "CFU ESAME:", en: "EXAM CREDITS:"))
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                                    .tracking(0.6)
+                                
+                                if selectedCourse == nil {
+                                    Picker("", selection: $simulatedCFU) {
+                                        ForEach([1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 14, 15, 18, 20, 24, 30], id: \.self) { cfu in
+                                            Text("\(cfu) CFU").tag(cfu)
+                                        }
+                                    }
+                                    .labelsHidden()
+                                    .frame(maxWidth: 130)
+                                } else {
+                                    HStack(spacing: 6) {
+                                        Text("\(simulatedCFU) CFU")
+                                            .font(UniFont.headline())
+                                            .foregroundStyle(themeManager.accentColor)
+                                        Text(localizationManager.text(it: "(da piano)", en: "(course plan)"))
+                                            .font(UniFont.caption())
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, 10)
+                                    .background(Color.primary.opacity(0.04))
+                                    .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                                    .clipShape(Rectangle())
+                                }
+                            }
+                            
+                            // Voto Ipotetico
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(localizationManager.text(it: "VOTO IPOTETICO:", en: "HYPOTHETICAL GRADE:"))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                        .tracking(0.6)
+                                    Spacer()
+                                    Text("\(simulatedGrade) / 30")
+                                        .font(UniFont.headline())
+                                        .foregroundStyle(themeManager.accentColor)
+                                }
+                                
+                                Slider(value: Binding(
+                                    get: { Double(simulatedGrade) },
+                                    set: { simulatedGrade = Int($0) }
+                                ), in: 18...30, step: 1)
+                                .tint(themeManager.accentColor)
+                                .frame(minWidth: 150)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        
+                        // Nota informativa sul peso percentuale
+                        HStack(spacing: 6) {
+                            Image(systemName: "chart.bar.xaxis")
+                                .font(.system(size: 11))
+                                .foregroundStyle(themeManager.accentColor)
+                            
+                            let courseName = selectedCourse?.name ?? localizationManager.text(it: "Esame", en: "Exam")
+                            Text(localizationManager.text(
+                                it: "\(courseName) pesa \(simulatedCFU) CFU su \(Int(simulatedTotalCFU)) CFU totali (\(String(format: "%.1f", cfuWeightPercentage))% dell'impatto sulla media)",
+                                en: "\(courseName) weighs \(simulatedCFU) CFU out of \(Int(simulatedTotalCFU)) total CFU (\(String(format: "%.1f", cfuWeightPercentage))% impact on GPA)"
+                            ))
+                            .font(UniFont.caption())
+                            .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                        
+                        // Risultati Simulazione
+                        HStack(spacing: 12) {
+                            // Proiezione Nuova Media
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(localizationManager.text(it: "NUOVA MEDIA PREVISTA", en: "PROJECTED NEW AVERAGE"))
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                                
+                                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                    Text(String(format: "%.2f", projectedAverage))
+                                        .font(UniFont.largeTitle())
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(themeManager.accentColor)
+                                    
+                                    if dataManager.weightedAverage > 0 {
+                                        let avgDeltaStr = String(format: "%+.2f", averageDelta)
+                                        Text(avgDeltaStr)
+                                            .font(.system(size: 11, weight: .bold))
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(averageDelta >= 0 ? Color.green.opacity(0.18) : Color.red.opacity(0.18))
+                                            .foregroundStyle(averageDelta >= 0 ? Color.green : Color.red)
+                                            .clipShape(Rectangle())
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(Color.primary.opacity(0.03))
+                            .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                            .clipShape(Rectangle())
+                            
+                            // Proiezione Base di Laurea
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(localizationManager.text(it: "BASE LAUREA (/110)", en: "GRADUATION BASE (/110)"))
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                                
+                                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                    Text(String(format: "%.1f", projectedGraduationBase))
+                                        .font(UniFont.largeTitle())
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(.primary)
+                                    
+                                    if dataManager.estimatedGraduationGrade > 0 {
+                                        let gradDeltaStr = String(format: "%+.1f", graduationBaseDelta)
+                                        Text(gradDeltaStr)
+                                            .font(.system(size: 11, weight: .bold))
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(graduationBaseDelta >= 0 ? Color.green.opacity(0.18) : Color.red.opacity(0.18))
+                                            .foregroundStyle(graduationBaseDelta >= 0 ? Color.green : Color.red)
+                                            .clipShape(Rectangle())
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(Color.primary.opacity(0.03))
+                            .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                            .clipShape(Rectangle())
+                        }
+                    } else {
+                        // Modalità 1: Goal GPA (Calcolo inverso obiettivo di laurea)
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(localizationManager.text(it: "VOTO FINALE DI LAUREA DESIDERATO:", en: "TARGET GRADUATION GRADE:"))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                        .tracking(0.6)
+                                    HStack(spacing: 8) {
+                                        Text("\(targetGraduationGrade)")
+                                            .font(UniFont.largeTitle())
+                                            .fontWeight(.bold)
+                                            .foregroundStyle(themeManager.accentColor)
+                                        Text("/ 110")
+                                            .font(UniFont.title())
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                Stepper("", value: $targetGraduationGrade, in: 66...110)
+                                    .labelsHidden()
                             }
                             
                             Slider(value: Binding(
-                                get: { Double(simulatedGrade) },
-                                set: { simulatedGrade = Int($0) }
-                            ), in: 18...30, step: 1)
+                                get: { Double(targetGraduationGrade) },
+                                set: { targetGraduationGrade = Int($0) }
+                            ), in: 66...110, step: 1)
                             .tint(themeManager.accentColor)
-                            .frame(minWidth: 150)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                    
-                    // Nota informativa sul peso percentuale del corso sulla carriera
-                    HStack(spacing: 6) {
-                        Image(systemName: "chart.bar.xaxis")
-                            .font(.system(size: 11))
-                            .foregroundStyle(themeManager.accentColor)
-                        
-                        let courseName = selectedCourse?.name ?? localizationManager.text(it: "Esame", en: "Exam")
-                        Text(localizationManager.text(
-                            it: "\(courseName) pesa \(simulatedCFU) CFU su \(Int(simulatedTotalCFU)) CFU totali (\(String(format: "%.1f", cfuWeightPercentage))% dell'impatto sulla media)",
-                            en: "\(courseName) weighs \(simulatedCFU) CFU out of \(Int(simulatedTotalCFU)) total CFU (\(String(format: "%.1f", cfuWeightPercentage))% impact on GPA)"
-                        ))
-                        .font(UniFont.caption())
-                        .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 2)
-                    
-                    // Risultati Simulazione
-                    HStack(spacing: 12) {
-                        // Proiezione Nuova Media
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(localizationManager.text(it: "NUOVA MEDIA PREVISTA", en: "PROJECTED NEW AVERAGE"))
+                            
+                            // Schede Riassunto Requisiti
+                            HStack(spacing: 12) {
+                                // Crediti Rimanenti
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(localizationManager.text(it: "CFU DA SOSTENERE", en: "REMAINING CREDITS"))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                    Text("\(Int(remainingCFU)) CFU")
+                                        .font(UniFont.title())
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(.primary)
+                                    Text("su \(dataManager.totalCfuTarget) CFU target")
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(10)
+                                .background(Color.primary.opacity(0.03))
+                                .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                                .clipShape(Rectangle())
+                                
+                                // Media Ponderata Necessaria
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(localizationManager.text(it: "MEDIA NECESSARIA", en: "REQUIRED GPA"))
+                                        .font(UniFont.caption())
+                                        .foregroundStyle(.secondary)
+                                    
+                                    if remainingCFU <= 0 {
+                                        Text("Completato")
+                                            .font(UniFont.headline())
+                                            .foregroundStyle(Color.green)
+                                    } else if requiredAverageOnRemaining <= 18.0 {
+                                        Text("≤ 18.0")
+                                            .font(UniFont.title())
+                                            .fontWeight(.bold)
+                                            .foregroundStyle(Color.green)
+                                        Text("Obiettivo già garantito!")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundStyle(Color.green)
+                                    } else if requiredAverageOnRemaining <= 30.0 {
+                                        Text(String(format: "%.2f", requiredAverageOnRemaining))
+                                            .font(UniFont.title())
+                                            .fontWeight(.bold)
+                                            .foregroundStyle(themeManager.accentColor)
+                                        Text("Media da mantenere sui restanti")
+                                            .font(.system(size: 10))
+                                            .foregroundStyle(.secondary)
+                                    } else {
+                                        Text("> 30.0")
+                                            .font(UniFont.title())
+                                            .fontWeight(.bold)
+                                            .foregroundStyle(Color.red)
+                                        Text("Non raggiungibile solo con esami")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundStyle(Color.red)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(10)
+                                .background(Color.primary.opacity(0.03))
+                                .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                                .clipShape(Rectangle())
+                            }
+                            
+                            // Info aggiuntive su tesi e bonus configurati
+                            HStack(spacing: 6) {
+                                Image(systemName: "info.circle")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                Text(localizationManager.text(
+                                    it: "Calcolato con +\(Int(dataManager.thesisPoints)) pt tesi e +\(Int(dataManager.careerBonusPoints)) pt bonus carriera (personalizzabili nelle Impostazioni).",
+                                    en: "Calculated with +\(Int(dataManager.thesisPoints)) thesis pts and +\(Int(dataManager.careerBonusPoints)) career bonus pts (customizable in Settings)."
+                                ))
                                 .font(UniFont.caption())
                                 .foregroundStyle(.secondary)
-                            
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text(String(format: "%.2f", projectedAverage))
-                                    .font(UniFont.largeTitle())
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(themeManager.accentColor)
-                                
-                                if dataManager.weightedAverage > 0 {
-                                    let avgDeltaStr = String(format: "%+.2f", averageDelta)
-                                    Text(avgDeltaStr)
-                                        .font(.system(size: 11, weight: .bold))
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(averageDelta >= 0 ? Color.green.opacity(0.18) : Color.red.opacity(0.18))
-                                        .foregroundStyle(averageDelta >= 0 ? Color.green : Color.red)
-                                        .clipShape(Rectangle())
-                                }
                             }
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
-                        .background(Color.primary.opacity(0.03))
-                        .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
-                        .clipShape(Rectangle())
-                        
-                        // Proiezione Base di Laurea
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(localizationManager.text(it: "BASE LAUREA (/110)", en: "GRADUATION BASE (/110)"))
-                                .font(UniFont.caption())
-                                .foregroundStyle(.secondary)
-                            
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text(String(format: "%.1f", projectedGraduationBase))
-                                    .font(UniFont.largeTitle())
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(.primary)
-                                
-                                if dataManager.estimatedGraduationGrade > 0 {
-                                    let gradDeltaStr = String(format: "%+.1f", graduationBaseDelta)
-                                    Text(gradDeltaStr)
-                                        .font(.system(size: 11, weight: .bold))
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(graduationBaseDelta >= 0 ? Color.green.opacity(0.18) : Color.red.opacity(0.18))
-                                        .foregroundStyle(graduationBaseDelta >= 0 ? Color.green : Color.red)
-                                        .clipShape(Rectangle())
-                                }
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
-                        .background(Color.primary.opacity(0.03))
-                        .overlay(Rectangle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
-                        .clipShape(Rectangle())
+                        .padding(.vertical, 4)
                     }
                 }
             }

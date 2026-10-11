@@ -25,13 +25,22 @@ public struct OnboardingWizardView: View {
     @State private var universityPortalURL: String = ""
     @State private var calendarURL: String = ""
     @State private var selectedTheme: AppThemeMode = .system
+    @State private var birthDate: Date = Calendar.current.date(byAdding: .year, value: -20, to: Date()) ?? Date()
+    
+    private var calculatedAge: Int {
+        Calendar.current.dateComponents([.year], from: birthDate, to: Date()).year ?? 0
+    }
+    
+    private var isCalculatedMinor: Bool {
+        calculatedAge < 18
+    }
     
     public init() {}
     
     private func stepTitle(for step: Int) -> String {
         switch step {
         case 1: return localizationManager.text(it: "Lingua", en: "Language")
-        case 2: return localizationManager.text(it: "Profilo & Ateneo", en: "Profile & Campus")
+        case 2: return localizationManager.text(it: "Profilo, Età & Ateneo", en: "Profile, Age & Campus")
         case 3: return localizationManager.text(it: "Calendario & Orario", en: "Schedule & Calendar")
         case 4: return localizationManager.text(it: "Stile & Tema", en: "Style & Theme")
         case 5: return localizationManager.text(it: "Panoramica & Guida", en: "Overview & Guide")
@@ -154,7 +163,24 @@ public struct OnboardingWizardView: View {
                 
                 Spacer()
                 
-                if currentStep < totalSteps {
+                if currentStep == 2 && isCalculatedMinor {
+                    Button {
+                        triggerMinorLockout()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "lock.shield.fill")
+                                .font(.system(size: 11))
+                            Text(localizationManager.text(it: "Blocca App (Minorenne)", en: "Lock App (Underage)"))
+                        }
+                        .font(UniFont.headline())
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 8)
+                        .background(Color.red)
+                        .foregroundStyle(.white)
+                        .overlay(Rectangle().stroke(Color.red, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                } else if currentStep < totalSteps {
                     Button {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             currentStep += 1
@@ -205,6 +231,9 @@ public struct OnboardingWizardView: View {
             universityName = dataManager.universityName
             universityPortalURL = dataManager.universityPortalURL
             calendarURL = dataManager.calendarFeedURL
+            if let savedBirth = dataManager.userBirthDate {
+                birthDate = savedBirth
+            }
             if calendarURL.isEmpty, let webcal = dataManager.calendarSources.first(where: { $0.sourceType == .webcal }) {
                 calendarURL = webcal.url
             }
@@ -354,6 +383,109 @@ public struct OnboardingWizardView: View {
                     .padding(8)
                     .background(Color.primary.opacity(0.04))
                     .overlay(Rectangle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                }
+                
+                // Data di Nascita & Requisito Maggiore Età (18+)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(localizationManager.text(it: "DATA DI NASCITA (REQUISITO 18+):", en: "DATE OF BIRTH (18+ REQUIREMENT):"))
+                            .font(UniFont.sectionLabel())
+                            .foregroundStyle(.secondary)
+                            .tracking(1.4)
+                        Spacer()
+                        Text(localizationManager.text(it: "Obbligo di legge", en: "Legal requirement"))
+                            .font(UniFont.caption())
+                            .foregroundStyle(isCalculatedMinor ? .red : themeManager.accentColor)
+                            .fontWeight(.semibold)
+                    }
+                    
+                    HStack(spacing: 12) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                        
+                        DatePicker(
+                            "",
+                            selection: $birthDate,
+                            in: ...Date(),
+                            displayedComponents: .date
+                        )
+                        .labelsHidden()
+                        .datePickerStyle(.compact)
+                        
+                        Spacer()
+                        
+                        if isCalculatedMinor {
+                            HStack(spacing: 5) {
+                                Image(systemName: "exclamationmark.octagon.fill")
+                                    .foregroundStyle(.red)
+                                Text(localizationManager.text(
+                                    it: "\(calculatedAge) anni • ACCESSO NEGATO",
+                                    en: "\(calculatedAge) yrs • ACCESS DENIED"
+                                ))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.red)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.red.opacity(0.12))
+                            .overlay(Rectangle().stroke(Color.red.opacity(0.4), lineWidth: 1))
+                        } else {
+                            HStack(spacing: 5) {
+                                Image(systemName: "checkmark.shield.fill")
+                                    .foregroundStyle(.green)
+                                Text(localizationManager.text(
+                                    it: "\(calculatedAge) anni • 18+ VERIFICATO",
+                                    en: "\(calculatedAge) yrs • 18+ VERIFIED"
+                                ))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.green)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.green.opacity(0.12))
+                            .overlay(Rectangle().stroke(Color.green.opacity(0.3), lineWidth: 1))
+                        }
+                    }
+                    .padding(8)
+                    .background(Color.primary.opacity(0.04))
+                    .overlay(Rectangle().stroke(isCalculatedMinor ? Color.red.opacity(0.6) : Color.primary.opacity(0.1), lineWidth: 1))
+                    
+                    if isCalculatedMinor {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(localizationManager.text(
+                                it: "⚠️ ACCESSO VIETATO: L'app uni è riservata a studenti maggiorenni (18+). In base alla data inserita risulti minorenne (\(calculatedAge) anni). Per tutela legale e conformità normativa, proseguendo l'app verrà bloccata immediatamente.",
+                                en: "⚠️ ACCESS DENIED: uni is strictly restricted to adult students (18+). Based on the selected date, you are a minor (\(calculatedAge) yrs). For legal compliance and protection, continuing will immediately lock the app."
+                            ))
+                            .font(UniFont.caption())
+                            .foregroundStyle(.red)
+                            .lineSpacing(2)
+                            
+                            #if canImport(AppKit)
+                            Button {
+                                NSApplication.shared.terminate(nil)
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "xmark.circle.fill")
+                                    Text(localizationManager.text(it: "Esci subito dall'applicazione", en: "Quit application now"))
+                                }
+                                .font(UniFont.caption())
+                                .foregroundStyle(.red)
+                                .padding(.top, 2)
+                            }
+                            .buttonStyle(.plain)
+                            #endif
+                        }
+                        .padding(8)
+                        .background(Color.red.opacity(0.08))
+                    } else {
+                        Text(localizationManager.text(
+                            it: "La data di nascita viene memorizzata esclusivamente in locale sul tuo Mac per verificare la conformità al vincolo di maggiore età.",
+                            en: "Your date of birth is stored strictly locally on your Mac to ensure compliance with the legal majority age requirement."
+                        ))
+                        .font(UniFont.caption())
+                        .foregroundStyle(.secondary)
+                    }
                 }
                 
                 // Nome Università
@@ -740,8 +872,27 @@ public struct OnboardingWizardView: View {
         }
     }
     
+    // MARK: - Minor Lockout Trigger
+    private func triggerMinorLockout() {
+        dataManager.userBirthDate = birthDate
+        dataManager.isAgeVerified = false
+        dataManager.isMinorBlocked = true
+        dataManager.saveData()
+        dismiss()
+    }
+    
     // MARK: - Complete Onboarding
     private func completeOnboarding() {
+        dataManager.userBirthDate = birthDate
+        
+        // Se minorenne, blocca immediatamente l'applicazione per ragioni legali
+        if isCalculatedMinor {
+            triggerMinorLockout()
+            return
+        }
+        
+        dataManager.isAgeVerified = true
+        dataManager.isMinorBlocked = false
         dataManager.studentName = studentName.trimmingCharacters(in: .whitespacesAndNewlines)
         dataManager.universityName = universityName.trimmingCharacters(in: .whitespacesAndNewlines)
         dataManager.universityPortalURL = universityPortalURL.trimmingCharacters(in: .whitespacesAndNewlines)

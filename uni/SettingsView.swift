@@ -91,10 +91,12 @@ struct SettingsView: View {
                 if selectedTab == .general || selectedTab == .all {
                     Group {
                         profileSection
+                        academicCareerSection
                         navbarShortcutsSection
                         languageSection
                     }
                 }
+
                 
                 // Categoria 2: ASPETTO & STILE
                 if selectedTab == .appearance || selectedTab == .all {
@@ -214,11 +216,235 @@ struct SettingsView: View {
                                         }
                                     }
                                 }
+                                
+                                GridRow {
+                                    Text(localizationManager.currentLanguage == .italian ? "Data di Nascita:" : "Date of Birth:")
+                                        .font(UniFont.subheadline())
+                                        .foregroundStyle(.secondary)
+                                        .gridColumnAlignment(.trailing)
+                                    HStack(spacing: 12) {
+                                        DatePicker(
+                                            "",
+                                            selection: Binding(
+                                                get: { dataManager.userBirthDate ?? Calendar.current.date(byAdding: .year, value: -20, to: Date())! },
+                                                set: { newDate in
+                                                    dataManager.userBirthDate = newDate
+                                                    let age = Calendar.current.dateComponents([.year], from: newDate, to: Date()).year ?? 0
+                                                    if age < 18 {
+                                                        dataManager.isAgeVerified = false
+                                                        dataManager.isMinorBlocked = true
+                                                    } else {
+                                                        dataManager.isAgeVerified = true
+                                                        dataManager.isMinorBlocked = false
+                                                    }
+                                                    dataManager.saveData()
+                                                }
+                                            ),
+                                            in: ...Date(),
+                                            displayedComponents: .date
+                                        )
+                                        .labelsHidden()
+                                        .datePickerStyle(.compact)
+                                        
+                                        if let age = dataManager.userAge {
+                                            if age >= 18 {
+                                                HStack(spacing: 5) {
+                                                    Image(systemName: "checkmark.shield.fill")
+                                                        .foregroundStyle(.green)
+                                                    Text(localizationManager.currentLanguage == .italian ? "\(age) anni (18+ Verificato)" : "\(age) yrs (18+ Verified)")
+                                                        .font(UniFont.caption())
+                                                        .foregroundStyle(.green)
+                                                        .fontWeight(.semibold)
+                                                }
+                                            } else {
+                                                HStack(spacing: 5) {
+                                                    Image(systemName: "exclamationmark.triangle.fill")
+                                                        .foregroundStyle(.red)
+                                                    Text(localizationManager.currentLanguage == .italian ? "\(age) anni (Accesso Negato)" : "\(age) yrs (Access Denied)")
+                                                        .font(UniFont.caption())
+                                                        .foregroundStyle(.red)
+                                                        .fontWeight(.bold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
 
         }
+    }
+
+    @ViewBuilder
+    private var academicCareerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsSectionHeader(
+                icon: "graduationcap.fill",
+                title: localizationManager.text(it: "Carriera Accademica & Voto di Laurea", en: "Academic Career & Graduation Grade"),
+                subtitle: localizationManager.text(it: "Configura il corso di studi, CFU target, punti tesi previsti e criteri di calcolo della media.", en: "Configure degree type, target CFUs, expected thesis points and GPA calculation criteria.")
+            )
+            
+            UniCard(padding: 18) {
+                VStack(alignment: .leading, spacing: 18) {
+                    // 1. Tipo di Corso di Laurea
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(localizationManager.text(it: "Ordinamento e Tipo di Laurea", en: "Degree Program & System"))
+                            .font(UniFont.headline())
+                        
+                        Picker("", selection: $dataManager.degreeType) {
+                            ForEach(DegreeType.allCases, id: \.self) { dt in
+                                Text(dt.localizedTitle(using: localizationManager)).tag(dt)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: dataManager.degreeType) { _, newType in
+                            if newType != .custom {
+                                dataManager.customTargetCfu = newType.defaultTargetCFU
+                            }
+                            dataManager.saveData()
+                        }
+                        
+                        if dataManager.degreeType == .custom {
+                            HStack(spacing: 12) {
+                                Text(localizationManager.text(it: "CFU Target Personalizzati:", en: "Custom Target CFUs:"))
+                                    .font(UniFont.subheadline())
+                                    .foregroundStyle(.secondary)
+                                
+                                TextField("180", value: $dataManager.customTargetCfu, format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 90)
+                                    .onChange(of: dataManager.customTargetCfu) { _, _ in
+                                        dataManager.saveData()
+                                    }
+                            }
+                            .padding(.top, 4)
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // 2. Parametri di Calcolo Voto di Laurea & Lode
+                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 12) {
+                        GridRow {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(localizationManager.text(it: "Punti Tesi Previsti:", en: "Expected Thesis Points:"))
+                                    .font(UniFont.subheadline())
+                                    .foregroundStyle(.secondary)
+                                Text(localizationManager.text(it: "Bonus discussione finale", en: "Defense discussion bonus"))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary.opacity(0.7))
+                            }
+                            .gridColumnAlignment(.trailing)
+                            
+                            HStack(spacing: 8) {
+                                TextField("0.0", value: $dataManager.thesisPoints, format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 75)
+                                    .onChange(of: dataManager.thesisPoints) { _, _ in dataManager.saveData() }
+                                
+                                Stepper("", value: $dataManager.thesisPoints, in: 0...15, step: 0.5)
+                                    .labelsHidden()
+                                    .onChange(of: dataManager.thesisPoints) { _, _ in dataManager.saveData() }
+                                
+                                Text("punti")
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        GridRow {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(localizationManager.text(it: "Bonus Carriera:", en: "Career Bonus Points:"))
+                                    .font(UniFont.subheadline())
+                                    .foregroundStyle(.secondary)
+                                Text(localizationManager.text(it: "Laurea in corso, Erasmus, etc.", en: "On-time graduation, Erasmus, etc."))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary.opacity(0.7))
+                            }
+                            
+                            HStack(spacing: 8) {
+                                TextField("0.0", value: $dataManager.careerBonusPoints, format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 75)
+                                    .onChange(of: dataManager.careerBonusPoints) { _, _ in dataManager.saveData() }
+                                
+                                Stepper("", value: $dataManager.careerBonusPoints, in: 0...10, step: 0.5)
+                                    .labelsHidden()
+                                    .onChange(of: dataManager.careerBonusPoints) { _, _ in dataManager.saveData() }
+                                
+                                Text("punti")
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        GridRow {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(localizationManager.text(it: "Valore della Lode (30L):", en: "Honors Value (30L):"))
+                                    .font(UniFont.subheadline())
+                                    .foregroundStyle(.secondary)
+                                Text(localizationManager.text(it: "Impatto sulla media ponderata", en: "Impact on weighted GPA"))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary.opacity(0.7))
+                            }
+                            
+                            Picker("", selection: $dataManager.honorsValue) {
+                                Text(localizationManager.text(it: "30 (Neutro, nessun punto in più)", en: "30 (Neutral, no extra points)")).tag(30.0)
+                                Text(localizationManager.text(it: "30.5 (Incremento moderato)", en: "30.5 (Moderate boost)")).tag(30.5)
+                                Text(localizationManager.text(it: "31 (Convenzione Esse3 / Polimi)", en: "31 (Esse3 / Standard boost)")).tag(31.0)
+                            }
+                            .pickerStyle(.menu)
+                            .onChange(of: dataManager.honorsValue) { _, _ in dataManager.saveData() }
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // 3. Mini Dashboard di Riepilogo Istantaneo
+                    HStack(spacing: 12) {
+                        statMiniBadge(
+                            title: localizationManager.text(it: "CFU Obiettivo", en: "Target CFUs"),
+                            value: "\(dataManager.totalCfuAcquired)/\(dataManager.totalCfuTarget)",
+                            color: themeManager.accentColor
+                        )
+                        
+                        statMiniBadge(
+                            title: localizationManager.text(it: "Media Ponderata", en: "Weighted GPA"),
+                            value: dataManager.weightedAverage > 0 ? String(format: "%.2f", dataManager.weightedAverage) : "--",
+                            color: .blue
+                        )
+                        
+                        statMiniBadge(
+                            title: localizationManager.text(it: "Base di Laurea", en: "Base Grade"),
+                            value: dataManager.baseGraduationGrade > 0 ? String(format: "%.2f", dataManager.baseGraduationGrade) : "--",
+                            color: .purple
+                        )
+                        
+                        statMiniBadge(
+                            title: localizationManager.text(it: "Stima Finale", en: "Estimated Final"),
+                            value: dataManager.estimatedGraduationGrade > 0 ? String(format: "%.1f/110", dataManager.estimatedGraduationGrade) : "--",
+                            color: .green
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    private func statMiniBadge(title: String, value: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(color)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 6)
+        .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     @ViewBuilder

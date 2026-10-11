@@ -7,17 +7,115 @@
 
 import SwiftUI
 
+// MARK: - Unified Timeline Item
+enum UnifiedTimelineItem: Identifiable {
+    case deadline(Deadline)
+    case assignment(Assignment)
+    
+    var id: String {
+        switch self {
+        case .deadline(let d): return "d-\(d.id.uuidString)"
+        case .assignment(let a): return "a-\(a.id.uuidString)"
+        }
+    }
+    
+    var rawUUID: UUID {
+        switch self {
+        case .deadline(let d): return d.id
+        case .assignment(let a): return a.id
+        }
+    }
+    
+    var dueDate: Date {
+        switch self {
+        case .deadline(let d): return d.dueDate
+        case .assignment(let a): return a.dueDate
+        }
+    }
+    
+    var isCompleted: Bool {
+        switch self {
+        case .deadline(let d): return d.isCompleted
+        case .assignment(let a): return a.isCompleted
+        }
+    }
+    
+    var courseId: UUID? {
+        switch self {
+        case .deadline(let d): return d.courseId
+        case .assignment(let a): return a.courseId
+        }
+    }
+    
+    var isUrgent: Bool {
+        switch self {
+        case .deadline(let d):
+            return !d.isCompleted && (d.priority == .high || (d.dueDate.timeIntervalSinceNow < 86400 * 3 && d.dueDate.timeIntervalSinceNow > -86400))
+        case .assignment(let a):
+            return !a.isCompleted && (a.dueDate.timeIntervalSinceNow < 86400 * 3 && a.dueDate.timeIntervalSinceNow > -86400)
+        }
+    }
+}
+
+// MARK: - Filter Enums
+enum DeadlineFilter: String, CaseIterable {
+    case pending = "pending"
+    case urgent = "urgent"
+    case completed = "completed"
+    case all = "all"
+    
+    func title(with lm: LocalizationManager) -> String {
+        switch self {
+        case .pending: return lm.t(.filterPending)
+        case .urgent: return lm.t(.filterUrgent)
+        case .completed: return lm.t(.filterCompleted)
+        case .all: return lm.t(.filterAll)
+        }
+    }
+}
+
+enum TimelineTypeFilter: String, CaseIterable {
+    case all = "all"
+    case deadlines = "deadlines"
+    case assignments = "assignments"
+    
+    func title(with lm: LocalizationManager) -> String {
+        switch self {
+        case .all: return lm.text(it: "Tutti i tipi", en: "All types")
+        case .deadlines: return lm.text(it: "Solo Scadenze", en: "Deadlines only")
+        case .assignments: return lm.text(it: "Solo Consegne / Progetti", en: "Assignments only")
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .all: return "square.grid.2x2"
+        case .deadlines: return "clock"
+        case .assignments: return "doc.text"
+        }
+    }
+}
+
 struct DeadlinesView: View {
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var themeManager: ThemeManager
     @EnvironmentObject var localizationManager: LocalizationManager
     
     @State private var filterMode: DeadlineFilter = .pending
+    @State private var typeFilter: TimelineTypeFilter = .all
     @State private var selectedCourseId: UUID? = nil
     @State private var searchText = ""
+    @State private var isShowingFilterPopover = false
+    
+    // Sheets per Scadenze
     @State private var isPresentingNewDeadline = false
     @State private var deadlineToEdit: Deadline? = nil
     @State private var deadlineToDelete: Deadline? = nil
+    
+    // Sheets per Assignments / Progetti
+    @State private var isPresentingNewAssignment = false
+    @State private var assignmentToEdit: Assignment? = nil
+    @State private var assignmentToDelete: Assignment? = nil
     
     fileprivate static let dueDateFormatterIT: DateFormatter = {
         let f = DateFormatter()
@@ -57,22 +155,6 @@ struct DeadlinesView: View {
         return f
     }()
     
-    enum DeadlineFilter: String, CaseIterable {
-        case pending = "pending"
-        case urgent = "urgent"
-        case completed = "completed"
-        case all = "all"
-        
-        func title(with lm: LocalizationManager) -> String {
-            switch self {
-            case .pending: return lm.t(.filterPending)
-            case .urgent: return lm.t(.filterUrgent)
-            case .completed: return lm.t(.filterCompleted)
-            case .all: return lm.t(.filterAll)
-            }
-        }
-    }
-    
     private var selectedCourseName: String {
         if let id = selectedCourseId, let course = dataManager.courses.first(where: { $0.id == id }) {
             return course.name
@@ -80,137 +162,232 @@ struct DeadlinesView: View {
         return localizationManager.text(it: "Tutti i Corsi", en: "All Courses")
     }
     
-    var filteredDeadlines: [Deadline] {
-        var base: [Deadline]
+    // MARK: - Unified Sorted Timeline Items (i più imminenti sopra)
+    var filteredItems: [UnifiedTimelineItem] {
+        var items: [UnifiedTimelineItem] = []
+        
+        if typeFilter == .all || typeFilter == .deadlines {
+            items.append(contentsOf: dataManager.deadlines.map { UnifiedTimelineItem.deadline($0) })
+        }
+        if typeFilter == .all || typeFilter == .assignments {
+            items.append(contentsOf: dataManager.assignments.map { UnifiedTimelineItem.assignment($0) })
+        }
+        
         switch filterMode {
         case .pending:
-            base = dataManager.deadlines.filter { !$0.isCompleted }.sorted { $0.dueDate < $1.dueDate }
+            items = items.filter { !$0.isCompleted }
         case .urgent:
-            base = dataManager.deadlines.filter { !$0.isCompleted && $0.priority == .high }.sorted { $0.dueDate < $1.dueDate }
+            items = items.filter { $0.isUrgent }
         case .completed:
-            base = dataManager.deadlines.filter { $0.isCompleted }.sorted { $0.dueDate > $1.dueDate }
+            items = items.filter { $0.isCompleted }
         case .all:
-            base = dataManager.deadlines.sorted { $0.dueDate < $1.dueDate }
+            break
         }
         
         if let courseId = selectedCourseId {
-            base = base.filter { $0.courseId == courseId }
+            items = items.filter { $0.courseId == courseId }
         }
         
         let clean = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if clean.isEmpty {
-            return base
+        if !clean.isEmpty {
+            items = items.filter { item in
+                let courseName = dataManager.courses.first(where: { $0.id == item.courseId })?.name ?? ""
+                switch item {
+                case .deadline(let d):
+                    return d.title.localizedCaseInsensitiveContains(clean) ||
+                           d.notes.localizedCaseInsensitiveContains(clean) ||
+                           courseName.localizedCaseInsensitiveContains(clean) ||
+                           d.priority.localizedName.localizedCaseInsensitiveContains(clean)
+                case .assignment(let a):
+                    return a.title.localizedCaseInsensitiveContains(clean) ||
+                           a.details.localizedCaseInsensitiveContains(clean) ||
+                           courseName.localizedCaseInsensitiveContains(clean)
+                }
+            }
         }
-        return base.filter { deadline in
-            let courseName = dataManager.courses.first(where: { $0.id == deadline.courseId })?.name ?? ""
-            return deadline.title.localizedCaseInsensitiveContains(clean) ||
-                   deadline.notes.localizedCaseInsensitiveContains(clean) ||
-                   courseName.localizedCaseInsensitiveContains(clean) ||
-                   deadline.priority.localizedName.localizedCaseInsensitiveContains(clean) ||
-                   deadline.priority.rawValue.localizedCaseInsensitiveContains(clean)
+        
+        // SEMPRE in ordine di scadenza: i più imminenti sopra!
+        if filterMode == .completed {
+            return items.sorted { $0.dueDate > $1.dueDate }
+        } else {
+            return items.sorted { $0.dueDate < $1.dueDate }
         }
+    }
+    
+    private var activeDeadlinesCount: Int {
+        dataManager.deadlines.filter { !$0.isCompleted }.count
+    }
+    
+    private var pendingAssignmentsCount: Int {
+        dataManager.assignments.filter { !$0.isCompleted }.count
+    }
+    
+    private var isAnyFilterActive: Bool {
+        filterMode != .pending || typeFilter != .all || selectedCourseId != nil
+    }
+    
+    private var activeFiltersCount: Int {
+        var count = 0
+        if filterMode != .pending { count += 1 }
+        if typeFilter != .all { count += 1 }
+        if selectedCourseId != nil { count += 1 }
+        return count
+    }
+    
+    private var filterSummaryText: String {
+        if !isAnyFilterActive {
+            return localizationManager.text(it: "Filtri: In sospeso", en: "Filters: Pending")
+        }
+        var parts: [String] = []
+        if filterMode != .pending {
+            parts.append(filterMode.title(with: localizationManager))
+        }
+        if typeFilter != .all {
+            parts.append(typeFilter.title(with: localizationManager))
+        }
+        if let id = selectedCourseId, let c = dataManager.courses.first(where: { $0.id == id }) {
+            parts.append(c.name)
+        }
+        return parts.joined(separator: " • ")
     }
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                // Header con pulsante per nuova scadenza
+                // Header con pulsante per nuova scadenza o nuova consegna
                 HStack(alignment: .top) {
                     UniHeader(
                         localizationManager.t(.deadlinesTitle),
-                        subtitle: localizationManager.t(.deadlinesSubtitle(dataManager.deadlines.filter { !$0.isCompleted }.count))
+                        subtitle: localizationManager.text(
+                            it: "\(activeDeadlinesCount) scadenze • \(pendingAssignmentsCount) consegne in sospeso",
+                            en: "\(activeDeadlinesCount) deadlines • \(pendingAssignmentsCount) assignments pending"
+                        )
                     )
                     
                     Spacer()
                     
-                    Button {
-                        isPresentingNewDeadline = true
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 11, weight: .bold))
-                            Text(localizationManager.t(.createDeadlineAction))
-                                .font(UniFont.subheadline())
-                                .fontWeight(.semibold)
-                        }
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 7)
-                        .background(themeManager.accentColor)
-                        .foregroundStyle(themeManager.accentTextColor)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        .shadow(color: themeManager.accentColor.opacity(0.25), radius: 4, y: 2)
-                    }
-                    .buttonStyle(.plain)
-                }
-                
-                // Filtri e Barra di Ricerca
-                if !dataManager.deadlines.isEmpty {
-                    HStack(spacing: 12) {
-                        HStack(spacing: 8) {
-                            ForEach(DeadlineFilter.allCases, id: \.self) { filter in
-                                Button {
-                                    filterMode = filter
-                                } label: {
-                                    Text(filter.title(with: localizationManager))
-                                        .font(UniFont.subheadline())
-                                        .fontWeight(filterMode == filter ? .semibold : .regular)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 5)
-                                        .background(filterMode == filter ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
-                                        .foregroundStyle(filterMode == filter ? themeManager.accentColor : .primary)
-                                        .overlay(Rectangle().stroke(filterMode == filter ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1))
-                                        .clipShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        
-                        // Menu a tendina per filtrare per Corso
-                        Menu {
-                            Button {
-                                selectedCourseId = nil
-                            } label: {
-                                HStack {
-                                    Text(localizationManager.text(it: "Tutti i Corsi", en: "All Courses"))
-                                    if selectedCourseId == nil {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                            
-                            if !dataManager.courses.isEmpty {
-                                Divider()
-                                ForEach(dataManager.courses) { course in
-                                    Button {
-                                        selectedCourseId = course.id
-                                    } label: {
-                                        HStack {
-                                            Text(course.name)
-                                            if selectedCourseId == course.id {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                    HStack(spacing: 8) {
+                        // Pulsante Condividi / Esporta PDF in stile nativo Apple
+                        Button {
+                            DeadlinesExportManager.shared.exportPDF(
+                                items: filteredItems,
+                                filterDescription: filterSummaryText,
+                                dataManager: dataManager,
+                                localizationManager: localizationManager
+                            )
                         } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: selectedCourseId == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                                    .font(.system(size: 11, weight: .medium))
-                                Text(selectedCourseName)
-                                    .font(UniFont.subheadline())
-                                    .lineLimit(1)
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 9))
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(selectedCourseId != nil ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
-                            .foregroundStyle(selectedCourseId != nil ? themeManager.accentColor : .primary)
-                            .overlay(Rectangle().stroke(selectedCourseId != nil ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1))
-                            .clipShape(Rectangle())
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 13, weight: .regular))
+                                .foregroundStyle(.primary)
+                                .frame(width: 30, height: 30)
+                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         }
                         .buttonStyle(.plain)
+                        .focusable(false)
+                        .focusEffectDisabled()
+                        .help(localizationManager.text(it: "Condividi ed esporta scadenze in PDF", en: "Share and export deadlines as PDF"))
+                        
+                        // Pulsante Rapido Aggiungi (apre lo stesso modal del + nella navbar)
+                        Button {
+                            dataManager.isShowingProgressiveNewItem = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 11, weight: .bold))
+                                Text(localizationManager.text(it: "Aggiungi...", en: "Add New..."))
+                                    .font(UniFont.subheadline())
+                                    .fontWeight(.semibold)
+                            }
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 7)
+                            .background(themeManager.accentColor)
+                            .foregroundStyle(themeManager.accentTextColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .shadow(color: themeManager.accentColor.opacity(0.25), radius: 4, y: 2)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                
+                // Filtri Dropdown Popover & Barra di Ricerca
+                if !dataManager.deadlines.isEmpty || !dataManager.assignments.isEmpty {
+                    HStack(spacing: 10) {
+                        // Bottone Filtri Dropdown Popover (Larghezza stabile: evita lo spostamento dell'ancora popover!)
+                        Button {
+                            isShowingFilterPopover.toggle()
+                        } label: {
+                            HStack(spacing: 7) {
+                                Image(systemName: isAnyFilterActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(isAnyFilterActive ? themeManager.accentColor : .secondary)
+                                
+                                Text(localizationManager.text(it: "Filtri", en: "Filters"))
+                                    .font(UniFont.subheadline())
+                                    .fontWeight(isAnyFilterActive ? .semibold : .medium)
+                                    .foregroundStyle(isAnyFilterActive ? themeManager.accentColor : .primary)
+                                
+                                if isAnyFilterActive {
+                                    Text("\(activeFiltersCount)")
+                                        .font(.system(size: 9.5, weight: .bold))
+                                        .foregroundStyle(themeManager.accentTextColor)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1.5)
+                                        .background(themeManager.accentColor, in: Capsule())
+                                }
+                                
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(isAnyFilterActive ? themeManager.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(isAnyFilterActive ? themeManager.accentColor.opacity(0.4) : Color.primary.opacity(0.10), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .focusable(false)
+                        .focusEffectDisabled()
+                        .popover(isPresented: $isShowingFilterPopover, arrowEdge: .bottom) {
+                            DeadlinesFilterPopoverView(
+                                filterMode: $filterMode,
+                                typeFilter: $typeFilter,
+                                selectedCourseId: $selectedCourseId,
+                                isPresented: $isShowingFilterPopover
+                            )
+                            .focusEffectDisabled()
+                            .environmentObject(dataManager)
+                            .environmentObject(themeManager)
+                            .environmentObject(localizationManager)
+                        }
+                        
+                        // Chip riassuntivo filtri attivi (posto all'esterno per non alterare la larghezza del popover)
+                        if isAnyFilterActive {
+                            HStack(spacing: 6) {
+                                Text(filterSummaryText)
+                                    .font(UniFont.caption())
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                
+                                Button {
+                                    filterMode = .pending
+                                    typeFilter = .all
+                                    selectedCourseId = nil
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .help(localizationManager.text(it: "Azzera filtri", en: "Clear filters"))
+                            }
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Color.primary.opacity(0.04), in: Capsule())
+                        }
                         
                         Spacer()
                         
@@ -219,10 +396,10 @@ struct DeadlinesView: View {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(.secondary)
-                            TextField(localizationManager.text(it: "Cerca scadenze...", en: "Search deadlines..."), text: $searchText)
+                            TextField(localizationManager.text(it: "Cerca scadenze o consegne...", en: "Search deadlines or assignments..."), text: $searchText)
                                 .textFieldStyle(.plain)
                                 .font(UniFont.subheadline())
-                                .frame(width: 180)
+                                .frame(width: 190)
                             
                             if !searchText.isEmpty {
                                 Button {
@@ -245,59 +422,68 @@ struct DeadlinesView: View {
                     }
                 }
                 
+                // Lista Cronologica Unificata
                 ScrollViewReader { scrollProxy in
                     Group {
-                        if dataManager.deadlines.isEmpty {
+                        if dataManager.deadlines.isEmpty && dataManager.assignments.isEmpty {
                             UniEmptyStateView(
-                                icon: "checkmark.seal",
-                                title: localizationManager.t(.noDeadlinesEmptyTitle),
-                                subtitle: localizationManager.t(.noDeadlinesEmptyDesc),
-                                buttonTitle: localizationManager.t(.createDeadlineAction)
+                                icon: "checklist",
+                                title: localizationManager.text(it: "Nessuna attività registrata", en: "No activities recorded"),
+                                subtitle: localizationManager.text(it: "Aggiungi scadenze amministrative, tasse o progetti didattici.", en: "Add administrative deadlines, tuition fees or coursework projects."),
+                                buttonTitle: localizationManager.text(it: "Aggiungi Attività", en: "Add Activity")
                             ) {
-                                isPresentingNewDeadline = true
+                                dataManager.isShowingProgressiveNewItem = true
                             }
-                        } else if filteredDeadlines.isEmpty {
+                        } else if filteredItems.isEmpty {
                             UniEmptyStateView(
                                 icon: "checkmark.circle",
-                                title: localizationManager.t(.noMatchingDeadlines),
+                                title: localizationManager.text(it: "Nessun elemento trovato", en: "No matching items"),
                                 subtitle: localizationManager.t(.upToDate)
                             )
                         } else {
                             LazyVStack(spacing: 10) {
-                                ForEach(filteredDeadlines) { deadline in
-                                    DeadlineCardView(
-                                        deadline: deadline,
-                                        onToggleComplete: { toggleComplete(deadline) },
-                                        onEdit: { deadlineToEdit = deadline },
-                                        onDelete: { deadlineToDelete = deadline }
-                                    )
-                                    .id(deadline.id)
+                                ForEach(filteredItems) { item in
+                                    switch item {
+                                    case .deadline(let deadline):
+                                        DeadlineCardView(
+                                            deadline: deadline,
+                                            onToggleComplete: { toggleCompleteDeadline(deadline) },
+                                            onEdit: { deadlineToEdit = deadline },
+                                            onDelete: { deadlineToDelete = deadline }
+                                        )
+                                        .id(item.id)
+                                        
+                                    case .assignment(let assignment):
+                                        AssignmentCardView(
+                                            assignment: assignment,
+                                            onToggleComplete: { toggleCompleteAssignment(assignment) },
+                                            onUpdateStatus: { newStatus in updateAssignmentStatus(newStatus, for: assignment) },
+                                            onEdit: { assignmentToEdit = assignment },
+                                            onDelete: { assignmentToDelete = assignment },
+                                            onPickFile: { pickLocalFile(for: assignment) },
+                                            onRemoveFile: { removeLocalFile(for: assignment) },
+                                            onAttachFileURL: { url in attachFile(url, to: assignment) }
+                                        )
+                                        .id(item.id)
+                                    }
                                 }
                             }
                         }
                     }
                     .onAppear {
-                        if let expId = dataManager.expandedDeadlineId {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                    scrollProxy.scrollTo(expId, anchor: .center)
-                                }
-                            }
-                        }
+                        handleTargetScroll(scrollProxy: scrollProxy)
                     }
-                    .onChange(of: dataManager.expandedDeadlineId) { _, newId in
-                        if let newId = newId {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                    scrollProxy.scrollTo(newId, anchor: .center)
-                                }
-                            }
-                        }
+                    .onChange(of: dataManager.expandedDeadlineId) { _, _ in
+                        handleTargetScroll(scrollProxy: scrollProxy)
+                    }
+                    .onChange(of: dataManager.expandedAssignmentId) { _, _ in
+                        handleTargetScroll(scrollProxy: scrollProxy)
                     }
                 }
             }
             .padding(24)
         }
+        // Sheets Scadenza
         .sheet(isPresented: $isPresentingNewDeadline) {
             DeadlineEditorSheet(deadlineToEdit: nil) { newOne in
                 dataManager.deadlines.append(newOne)
@@ -333,6 +519,42 @@ struct DeadlinesView: View {
                 }
             }
         }
+        // Sheets Assignment
+        .sheet(isPresented: $isPresentingNewAssignment) {
+            AssignmentEditorSheet(assignmentToEdit: nil) { newOne in
+                dataManager.assignments.append(newOne)
+                dataManager.saveData()
+                
+                let courseName = dataManager.courses.first(where: { $0.id == newOne.courseId })?.name
+                Task { await AppleCalendarManager.shared.sync(assignment: newOne, courseName: courseName) }
+                
+                NotificationManager.shared.notify(
+                    title: localizationManager.text(it: "Progetto / Consegna creata", en: "Assignment created"),
+                    message: newOne.title,
+                    type: .success,
+                    icon: "doc.badge.plus"
+                )
+            }
+        }
+        .sheet(item: $assignmentToEdit) { assignment in
+            AssignmentEditorSheet(assignmentToEdit: assignment) { updated in
+                if let idx = dataManager.assignments.firstIndex(where: { $0.id == updated.id }) {
+                    dataManager.assignments[idx] = updated
+                    dataManager.saveData()
+                    
+                    let courseName = dataManager.courses.first(where: { $0.id == updated.courseId })?.name
+                    Task { await AppleCalendarManager.shared.sync(assignment: updated, courseName: courseName) }
+                    
+                    NotificationManager.shared.notify(
+                        title: localizationManager.text(it: "Progetto aggiornato", en: "Assignment updated"),
+                        message: updated.title,
+                        type: .info,
+                        icon: "doc.text"
+                    )
+                }
+            }
+        }
+        // Alerts Eliminazione
         .alert(
             localizationManager.text(it: "Elimina Scadenza", en: "Delete Deadline"),
             isPresented: Binding(get: { deadlineToDelete != nil }, set: { if !$0 { deadlineToDelete = nil } }),
@@ -351,32 +573,72 @@ struct DeadlinesView: View {
                 en: "Are you sure you want to delete the deadline \"\(dl.title)\"? This action cannot be undone."
             ))
         }
+        .alert(
+            localizationManager.text(it: "Elimina Progetto / Consegna", en: "Delete Assignment"),
+            isPresented: Binding(get: { assignmentToDelete != nil }, set: { if !$0 { assignmentToDelete = nil } }),
+            presenting: assignmentToDelete
+        ) { asg in
+            Button(localizationManager.t(.cancel), role: .cancel) {
+                assignmentToDelete = nil
+            }
+            Button(localizationManager.t(.delete), role: .destructive) {
+                deleteAssignment(asg)
+                assignmentToDelete = nil
+            }
+        } message: { asg in
+            Text(localizationManager.text(
+                it: "Sei sicuro di voler eliminare \"\(asg.title)\"? L'operazione non può essere annullata.",
+                en: "Are you sure you want to delete \"\(asg.title)\"? This action cannot be undone."
+            ))
+        }
         .onAppear {
-            handleSelectedOrExpandedDeadline()
+            handleNavigationTargets()
         }
-        .onChange(of: dataManager.selectedDeadlineId) { _, _ in
-            handleSelectedOrExpandedDeadline()
-        }
-        .onChange(of: dataManager.expandedDeadlineId) { _, _ in
-            handleSelectedOrExpandedDeadline()
-        }
+        .onChange(of: dataManager.selectedDeadlineId) { _, _ in handleNavigationTargets() }
+        .onChange(of: dataManager.selectedAssignmentId) { _, _ in handleNavigationTargets() }
     }
     
-    private func handleSelectedOrExpandedDeadline() {
-        if let expId = dataManager.expandedDeadlineId {
-            if let found = dataManager.deadlines.first(where: { $0.id == expId }) {
-                searchText = ""
-                selectedCourseId = nil
-                filterMode = found.isCompleted ? .completed : .pending
-            }
-        } else if let targetId = dataManager.selectedDeadlineId,
-                  let found = dataManager.deadlines.first(where: { $0.id == targetId }) {
+    // MARK: - Navigation Target Handlers
+    private func handleNavigationTargets() {
+        if let targetId = dataManager.selectedDeadlineId,
+           let found = dataManager.deadlines.first(where: { $0.id == targetId }) {
             deadlineToEdit = found
             dataManager.selectedDeadlineId = nil
+        } else if let targetAsgId = dataManager.selectedAssignmentId,
+                  let found = dataManager.assignments.first(where: { $0.id == targetAsgId }) {
+            assignmentToEdit = found
+            dataManager.selectedAssignmentId = nil
         }
     }
     
-    private func toggleComplete(_ deadline: Deadline) {
+    private func handleTargetScroll(scrollProxy: ScrollViewProxy) {
+        if let expId = dataManager.expandedDeadlineId {
+            dataManager.expandedDeadlineId = nil
+            let targetKey = "d-\(expId.uuidString)"
+            if let deadline = dataManager.deadlines.first(where: { $0.id == expId }), deadline.isCompleted && filterMode == .pending {
+                filterMode = .all
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    scrollProxy.scrollTo(targetKey, anchor: .center)
+                }
+            }
+        } else if let expAsgId = dataManager.expandedAssignmentId {
+            dataManager.expandedAssignmentId = nil
+            let targetKey = "a-\(expAsgId.uuidString)"
+            if let assignment = dataManager.assignments.first(where: { $0.id == expAsgId }), assignment.isCompleted && filterMode == .pending {
+                filterMode = .all
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    scrollProxy.scrollTo(targetKey, anchor: .center)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Deadline Actions
+    private func toggleCompleteDeadline(_ deadline: Deadline) {
         if let idx = dataManager.deadlines.firstIndex(where: { $0.id == deadline.id }) {
             dataManager.deadlines[idx].isCompleted.toggle()
             let isNowCompleted = dataManager.deadlines[idx].isCompleted
@@ -386,11 +648,7 @@ struct DeadlinesView: View {
             let courseName = dataManager.courses.first(where: { $0.id == updatedDeadline.courseId })?.name
             Task { await AppleCalendarManager.shared.sync(deadline: updatedDeadline, courseName: courseName) }
             
-            if isNowCompleted {
-                SoundManager.shared.play(.success)
-            } else {
-                SoundManager.shared.play(.pop)
-            }
+            SoundManager.shared.play(isNowCompleted ? .success : .pop)
             
             NotificationManager.shared.notify(
                 title: isNowCompleted ? localizationManager.text(it: "Scadenza completata! 🎉", en: "Deadline completed! 🎉") : localizationManager.text(it: "Scadenza riattivata", en: "Deadline reactivated"),
@@ -419,21 +677,126 @@ struct DeadlinesView: View {
         NotificationManager.shared.scheduleAllReminders(deadlines: dataManager.deadlines, exams: dataManager.exams, courses: dataManager.courses)
     }
     
+    // MARK: - Assignment Actions
+    private func toggleCompleteAssignment(_ assignment: Assignment) {
+        if let idx = dataManager.assignments.firstIndex(where: { $0.id == assignment.id }) {
+            dataManager.assignments[idx].isCompleted.toggle()
+            let completed = dataManager.assignments[idx].isCompleted
+            dataManager.assignments[idx].status = completed ? .completed : .inProgress
+            let updated = dataManager.assignments[idx]
+            dataManager.saveData()
+            
+            let courseName = dataManager.courses.first(where: { $0.id == updated.courseId })?.name
+            Task { await AppleCalendarManager.shared.sync(assignment: updated, courseName: courseName) }
+            
+            SoundManager.shared.play(completed ? .success : .pop)
+            
+            NotificationManager.shared.notify(
+                title: completed ? localizationManager.text(it: "Progetto completato! 🎉", en: "Assignment completed! 🎉") : localizationManager.text(it: "Progetto riaperto", en: "Assignment reopened"),
+                message: assignment.title,
+                type: completed ? .success : .info,
+                icon: completed ? "checkmark.circle.fill" : "circle",
+                postToSystem: true
+            )
+        }
+    }
+    
+    private func updateAssignmentStatus(_ status: AssignmentStatus, for assignment: Assignment) {
+        if let idx = dataManager.assignments.firstIndex(where: { $0.id == assignment.id }) {
+            dataManager.assignments[idx].status = status
+            dataManager.assignments[idx].isCompleted = (status == .completed)
+            let updated = dataManager.assignments[idx]
+            dataManager.saveData()
+            
+            let courseName = dataManager.courses.first(where: { $0.id == updated.courseId })?.name
+            Task { await AppleCalendarManager.shared.sync(assignment: updated, courseName: courseName) }
+            
+            SoundManager.shared.play(status == .completed ? .success : .pop)
+            
+            NotificationManager.shared.notify(
+                title: status.localized(with: localizationManager),
+                message: assignment.title,
+                type: status == .completed ? .success : .info,
+                icon: status.iconName
+            )
+        }
+    }
+    
+    private func deleteAssignment(_ assignment: Assignment) {
+        SoundManager.shared.play(.remove)
+        dataManager.assignments.removeAll { $0.id == assignment.id }
+        dataManager.saveData()
+        
+        Task { await AppleCalendarManager.shared.remove(assignmentId: assignment.id) }
+        
+        NotificationManager.shared.notify(
+            title: localizationManager.text(it: "Progetto eliminato", en: "Assignment removed"),
+            message: assignment.title,
+            type: .warning,
+            icon: "trash"
+        )
+    }
+    
+    private func attachFile(_ url: URL, to assignment: Assignment) {
+        SoundManager.shared.play(.pop)
+        let path = url.path
+        let name = url.lastPathComponent
+        let size = AppSystemHelper.formatFileSize(atPath: path)
+        
+        if let idx = dataManager.assignments.firstIndex(where: { $0.id == assignment.id }) {
+            dataManager.assignments[idx].localFilePath = path
+            dataManager.assignments[idx].localFileName = name
+            dataManager.assignments[idx].localFileSize = size.isEmpty ? nil : size
+            dataManager.saveData()
+            
+            NotificationManager.shared.notify(
+                title: localizationManager.text(it: "File collegato con successo! 📎", en: "File attached! 📎"),
+                message: "\(name) associato a '\(assignment.title)'",
+                type: .success,
+                icon: "paperclip",
+                postToSystem: true
+            )
+        }
+    }
+    
+    private func pickLocalFile(for assignment: Assignment) {
+        #if canImport(AppKit)
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = localizationManager.text(it: "Collega File", en: "Attach File")
+        panel.message = localizationManager.text(it: "Seleziona il file o la cartella del progetto dal tuo Mac", en: "Select file or folder for assignment")
+        
+        if panel.runModal() == .OK, let url = panel.url {
+            attachFile(url, to: assignment)
+        }
+        #endif
+    }
+    
+    private func removeLocalFile(for assignment: Assignment) {
+        if let idx = dataManager.assignments.firstIndex(where: { $0.id == assignment.id }) {
+            let oldName = dataManager.assignments[idx].localFileName ?? "file"
+            dataManager.assignments[idx].localFilePath = nil
+            dataManager.assignments[idx].localFileName = nil
+            dataManager.assignments[idx].localFileSize = nil
+            dataManager.saveData()
+            
+            NotificationManager.shared.notify(
+                title: localizationManager.text(it: "File scollegato", en: "File removed"),
+                message: "\(oldName) rimosso da '\(assignment.title)'",
+                type: .info,
+                icon: "xmark.bin"
+            )
+        }
+    }
+    
     private func formatDueDate(_ date: Date) -> String {
         let f = localizationManager.currentLanguage == .english ? Self.dueDateFormatterEN : Self.dueDateFormatterIT
         return f.string(from: date).capitalized
     }
-    
-    private func formatDueTime(_ date: Date) -> String {
-        let timeStr = localizationManager.formatTime(date)
-        return localizationManager.text(it: "Ore \(timeStr)", en: "At \(timeStr)")
-    }
-
-    
-    private func isUrgent(_ date: Date) -> Bool {
-        date.timeIntervalSinceNow < 86400 * 2 && date.timeIntervalSinceNow > 0
-    }
 }
+
 
 // MARK: - Deadline Card View
 struct DeadlineCardView: View {
@@ -551,6 +914,20 @@ struct DeadlineCardView: View {
                     
                     // Priorità
                     UniBadge(deadline.priority.localizedName, color: deadline.priority.color)
+                    
+                    // Importo / Tassa (se presente)
+                    if let amount = deadline.amount {
+                        HStack(spacing: 3) {
+                            Image(systemName: "eurosign.circle.fill")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text(String(format: "%.2f €", amount))
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                        }
+                        .foregroundStyle(deadline.isCompleted ? .secondary : themeManager.accentColor)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background((deadline.isCompleted ? Color.secondary : themeManager.accentColor).opacity(0.12), in: Capsule())
+                    }
                     
                     Spacer(minLength: 8)
                     
@@ -809,17 +1186,23 @@ struct DeadlineEditorSheet: View {
     @State private var linkURLs: [String] = [""]
     @State private var localFilePath: String? = nil
     @State private var localFileName: String? = nil
+    @State private var amountString: String = ""
     
-    init(deadlineToEdit: Deadline?, initialDate: Date = Date(), onSave: @escaping (Deadline) -> Void) {
+    init(deadlineToEdit: Deadline?, initialDate: Date = Date(), initialCourseId: UUID? = nil, onSave: @escaping (Deadline) -> Void) {
         self.deadlineToEdit = deadlineToEdit
         self.onSave = onSave
         _title = State(initialValue: deadlineToEdit?.title ?? "")
-        _courseId = State(initialValue: deadlineToEdit?.courseId)
+        _courseId = State(initialValue: deadlineToEdit?.courseId ?? initialCourseId)
         _dueDate = State(initialValue: deadlineToEdit?.dueDate ?? initialDate)
         _priority = State(initialValue: deadlineToEdit?.priority ?? .medium)
         _notes = State(initialValue: deadlineToEdit?.notes ?? "")
         _localFilePath = State(initialValue: deadlineToEdit?.localFilePath)
         _localFileName = State(initialValue: deadlineToEdit?.localFileName)
+        if let a = deadlineToEdit?.amount {
+            _amountString = State(initialValue: String(format: "%.2f", a))
+        } else {
+            _amountString = State(initialValue: "")
+        }
         let existing = deadlineToEdit?.allLinks ?? []
         _linkURLs = State(initialValue: existing.isEmpty ? [""] : existing)
     }
@@ -840,7 +1223,7 @@ struct DeadlineEditorSheet: View {
                     Text(deadlineToEdit == nil ? localizationManager.text(it: "Nuova Scadenza", en: "New Deadline") : localizationManager.text(it: "Modifica Scadenza", en: "Edit Deadline"))
                         .font(UniFont.title())
                         .fontWeight(.semibold)
-                    Text(localizationManager.text(it: "Imposta data, ora e priorità per non dimenticare la consegna", en: "Set date, time and priority to stay ahead of deadlines"))
+                    Text(localizationManager.text(it: "Adempimento amministrativo, tasse, ISEE, piano di studi o promemoria", en: "Administrative task, tuition fees, study plan, or calendar reminder"))
                         .font(UniFont.caption())
                         .foregroundStyle(.secondary)
                 }
@@ -852,7 +1235,7 @@ struct DeadlineEditorSheet: View {
             
             Form {
                 Section(localizationManager.text(it: "Dettagli", en: "Details")) {
-                    TextField(localizationManager.text(it: "Descrizione scadenza", en: "Deadline title"), text: $title)
+                    TextField(localizationManager.text(it: "Es. Seconda rata tasse, ISEE, Domanda di laurea...", en: "e.g. Tuition fee, Study plan, Degree application..."), text: $title)
                     
                     if !dataManager.courses.isEmpty {
                         Picker(localizationManager.text(it: "Materia Associata", en: "Associated Course"), selection: $courseId) {
@@ -869,6 +1252,12 @@ struct DeadlineEditorSheet: View {
                         ForEach(Deadline.Priority.allCases, id: \.self) { p in
                             Text(p.localizedName).tag(p)
                         }
+                    }
+                    
+                    HStack {
+                        Image(systemName: "eurosign.circle")
+                            .foregroundStyle(themeManager.accentColor)
+                        TextField(localizationManager.text(it: "Importo / Tassa (€, opzionale)", en: "Fee / Amount (€, optional)"), text: $amountString)
                     }
                 }
                 
@@ -948,6 +1337,7 @@ struct DeadlineEditorSheet: View {
                 Spacer()
                 Button(localizationManager.text(it: "Salva", en: "Save")) {
                     let cleanLinks = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                    let parsedAmount = Double(amountString.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespacesAndNewlines))
                     let updated = Deadline(
                         id: deadlineToEdit?.id ?? UUID(),
                         title: title.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -959,7 +1349,8 @@ struct DeadlineEditorSheet: View {
                         linkURL: cleanLinks.first,
                         linkURLs: cleanLinks,
                         localFilePath: localFilePath,
-                        localFileName: localFileName
+                        localFileName: localFileName,
+                        amount: parsedAmount
                     )
                     onSave(updated)
                     dismiss()
@@ -974,3 +1365,185 @@ struct DeadlineEditorSheet: View {
         .frame(width: 480, height: 560)
     }
 }
+
+// MARK: - Deadlines Filter Popover View
+struct DeadlinesFilterPopoverView: View {
+    @Binding var filterMode: DeadlineFilter
+    @Binding var typeFilter: TimelineTypeFilter
+    @Binding var selectedCourseId: UUID?
+    @Binding var isPresented: Bool
+    
+    @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var localizationManager: LocalizationManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Header del Popover
+            HStack {
+                Text(localizationManager.text(it: "Filtra Attività", en: "Filter Activities"))
+                    .font(UniFont.headline())
+                Spacer()
+                if filterMode != .pending || typeFilter != .all || selectedCourseId != nil {
+                    Button(localizationManager.text(it: "Reimposta", en: "Reset")) {
+                        filterMode = .pending
+                        typeFilter = .all
+                        selectedCourseId = nil
+                    }
+                    .font(UniFont.caption())
+                    .buttonStyle(.plain)
+                    .foregroundStyle(themeManager.accentColor)
+                }
+            }
+            
+            Divider()
+            
+            // 1. STATO
+            VStack(alignment: .leading, spacing: 4) {
+                Text(localizationManager.text(it: "STATO", en: "STATUS"))
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
+                
+                ForEach(DeadlineFilter.allCases, id: \.self) { f in
+                    DeadlinesFilterPopoverRow(
+                        title: f.title(with: localizationManager),
+                        isSelected: filterMode == f,
+                        action: {
+                            filterMode = f
+                        }
+                    )
+                }
+            }
+            
+            Divider()
+            
+            // 2. TIPOLOGIA
+            VStack(alignment: .leading, spacing: 4) {
+                Text(localizationManager.text(it: "TIPOLOGIA", en: "TYPE"))
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
+                
+                ForEach(TimelineTypeFilter.allCases, id: \.self) { t in
+                    DeadlinesFilterPopoverRow(
+                        title: t.title(with: localizationManager),
+                        iconName: t.iconName,
+                        isSelected: typeFilter == t,
+                        action: {
+                            typeFilter = t
+                        }
+                    )
+                }
+            }
+            
+            if !dataManager.courses.isEmpty {
+                Divider()
+                
+                // 3. MATERIA
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(localizationManager.text(it: "MATERIA", en: "COURSE"))
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                    
+                    Menu {
+                        Button {
+                            selectedCourseId = nil
+                        } label: {
+                            HStack {
+                                Text(localizationManager.text(it: "Tutte le Materie", en: "All Courses"))
+                                if selectedCourseId == nil { Image(systemName: "checkmark") }
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        ForEach(dataManager.courses) { course in
+                            Button {
+                                selectedCourseId = course.id
+                            } label: {
+                                HStack {
+                                    Text(course.name)
+                                    if selectedCourseId == course.id { Image(systemName: "checkmark") }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(selectedCourseId == nil ? localizationManager.text(it: "Tutte le Materie", en: "All Courses") : (dataManager.courses.first(where: { $0.id == selectedCourseId })?.name ?? ""))
+                                .font(UniFont.subheadline())
+                                .lineLimit(1)
+                            Spacer()
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .contentShape(Rectangle())
+                    }
+                    .menuStyle(.borderlessButton)
+                    .focusable(false)
+                    .focusEffectDisabled()
+                }
+            }
+        }
+        .padding(14)
+        .frame(width: 255)
+    }
+}
+
+// MARK: - Riga Interattiva Popover con Area Click Estesa al Riquadro
+struct DeadlinesFilterPopoverRow: View {
+    let title: String
+    var iconName: String? = nil
+    let isSelected: Bool
+    let action: () -> Void
+    
+    @EnvironmentObject var themeManager: ThemeManager
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if let iconName = iconName {
+                    Image(systemName: iconName)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(isSelected ? themeManager.accentColor : .secondary)
+                        .frame(width: 14)
+                }
+                
+                Text(title)
+                    .font(UniFont.subheadline())
+                    .fontWeight(isSelected ? .semibold : .regular)
+                    .foregroundStyle(isSelected ? themeManager.accentColor : .primary)
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(themeManager.accentColor)
+                }
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(isSelected ? themeManager.accentColor.opacity(0.12) : (isHovered ? Color.primary.opacity(0.06) : Color.clear))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .focusEffectDisabled()
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
+

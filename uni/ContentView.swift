@@ -69,7 +69,14 @@ struct ContentView: View {
         ZStack {
             UniBackgroundGradientView(isDarkMode: isDarkMode)
             
-            if isLoading {
+            if dataManager.isMinorBlocked || (dataManager.userBirthDate != nil && dataManager.isUnderage) {
+                MinorLockoutView()
+                    .environmentObject(dataManager)
+                    .environmentObject(themeManager)
+                    .environmentObject(localizationManager)
+                    .transition(.opacity)
+                    .zIndex(1000)
+            } else if isLoading {
                 UniSplashScreenView(dataManager: dataManager, isDarkMode: isDarkMode)
                     .environmentObject(themeManager)
                     .environmentObject(localizationManager)
@@ -135,13 +142,15 @@ struct ContentView: View {
                                     }
                                     
                                     let activeDeadlines = dataManager.deadlines.filter { !$0.isCompleted }.count
+                                    let pendingAssignments = dataManager.assignments.filter { !$0.isCompleted }.count
+                                    let totalPendingActivities = activeDeadlines + pendingAssignments
                                     SidebarButtonLiquidUni(
                                         title: localizationManager.t(.navDeadlines),
-                                        icon: "clock",
-                                        count: activeDeadlines,
+                                        icon: "checklist",
+                                        count: totalPendingActivities,
                                         shortcutHint: "⌘4",
                                         isCollapsed: !isSidebarHovered,
-                                        isSelected: selectedTab == "deadlines" && !isShowingInlineSearch && !isShowingProgressiveNewItem,
+                                        isSelected: (selectedTab == "deadlines" || selectedTab == "assignments") && !isShowingInlineSearch && !isShowingProgressiveNewItem,
                                         isDark: isDarkMode
                                     ) {
                                         selectedTab = "deadlines"
@@ -162,20 +171,6 @@ struct ContentView: View {
                                         dismissAllOverlays()
                                     }
                                     
-                                    let pendingAssignments = dataManager.assignments.filter { !$0.isCompleted }.count
-                                    SidebarButtonLiquidUni(
-                                        title: localizationManager.t(.navAssignments),
-                                        icon: "doc.text",
-                                        count: pendingAssignments,
-                                        shortcutHint: "⌘6",
-                                        isCollapsed: !isSidebarHovered,
-                                        isSelected: selectedTab == "assignments" && !isShowingInlineSearch && !isShowingProgressiveNewItem,
-                                        isDark: isDarkMode
-                                    ) {
-                                        selectedTab = "assignments"
-                                        dismissAllOverlays()
-                                    }
-                                    
                                     // The + button as a single dedicated identity in the navbar below assignments ("a little more away")
                                     SidebarButtonLiquidUni(
                                         title: localizationManager.text(it: "Aggiungi...", en: "Add New..."),
@@ -193,7 +188,7 @@ struct ContentView: View {
                                     }
                                     .padding(.top, 14)
                                 }
-                                .frame(width: 245, alignment: .leading)
+                                .frame(width: isSidebarHovered ? 245 : 64, alignment: .leading)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             
@@ -217,6 +212,7 @@ struct ContentView: View {
                     )
                     .clipped()
                     .contentShape(Rectangle())
+                    .focusEffectDisabled()
                     .onHover { hovering in
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
                             isSidebarHovered = hovering
@@ -397,6 +393,16 @@ struct ContentView: View {
                 dataManager.navigationTab = nil
             }
         }
+        .onChange(of: dataManager.isShowingProgressiveNewItem) { _, shouldShow in
+            if shouldShow {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                    isShowingInlineSearch = false
+                    isShowingOverviewNewItemModal = false
+                    isShowingProgressiveNewItem = true
+                }
+                dataManager.isShowingProgressiveNewItem = false
+            }
+        }
         .sheet(isPresented: $isShowingOnboarding) {
             OnboardingWizardView()
         }
@@ -422,8 +428,29 @@ struct ContentView: View {
                 .environmentObject(themeManager)
                 .environmentObject(localizationManager)
         }
+        .onChange(of: dataManager.isMinorBlocked) { _, blocked in
+            if blocked {
+                isShowingOnboarding = false
+                isShowingWhatsNew = false
+                isShowingSupportModal = false
+                isShowingQuickSearch = false
+                isShowingInlineSearch = false
+                isShowingFocusTimer = false
+                isShowingProgressiveNewItem = false
+                isShowingOverviewNewItemModal = false
+                isPresentingNewDeadlineSheet = false
+                isPresentingNewExamSheet = false
+                isPresentingNewAssignmentSheet = false
+                isPresentingNewCourseSheet = false
+            }
+        }
         .onAppear {
-            let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.2"
+            if dataManager.isMinorBlocked || (dataManager.userBirthDate != nil && dataManager.isUnderage) {
+                isShowingOnboarding = false
+                isShowingWhatsNew = false
+                return
+            }
+            let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.3"
             let lastSeen = UserDefaults.standard.string(forKey: "uni_last_seen_release_notes")
             
             if !dataManager.hasCompletedOnboarding {
@@ -499,12 +526,10 @@ struct ContentView: View {
                 CalendarView(selectedTab: $selectedTab)
             case "courses":
                 CoursesView()
-            case "deadlines":
+            case "deadlines", "assignments":
                 DeadlinesView()
             case "exams":
                 ExamsView()
-            case "assignments":
-                AssignmentsView()
             case "settings":
                 SettingsView()
             default:
@@ -556,7 +581,7 @@ struct ContentView: View {
                     .opacity(isSidebarHovered ? 1 : 0)
                     .clipped()
             }
-            .frame(width: 245, height: 36, alignment: .leading)
+            .frame(width: isSidebarHovered ? 245 : 64, height: 36, alignment: .leading)
             .padding(.top, 4)
             .padding(.bottom, 6)
             
@@ -568,7 +593,7 @@ struct ContentView: View {
                 .padding(.horizontal, 10)
                 .padding(.bottom, 4)
         }
-        .frame(width: 245, alignment: .leading)
+        .frame(width: isSidebarHovered ? 245 : 64, alignment: .leading)
     }
 
     private var sidebarSearchButton: some View {
@@ -613,7 +638,7 @@ struct ContentView: View {
                     .opacity(isSidebarHovered ? 1 : 0)
                     .clipped()
                 }
-                .frame(width: 245, height: 40, alignment: .leading)
+                .frame(width: isSidebarHovered ? 245 : 64, height: 40, alignment: .leading)
                 .contentShape(Rectangle())
                 .opacity(isSearchHovered ? 0.50 : 1.0)
                 
@@ -626,13 +651,15 @@ struct ContentView: View {
             }
         }
         .buttonStyle(.plain)
+        .focusable(false)
+        .focusEffectDisabled()
         .help(localizationManager.text(it: "Cerca in tutto uni (⌘F)", en: "Search throughout uni (⌘F)"))
         .onHover { hover in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isSearchHovered = hover
             }
         }
-        .frame(width: 245, alignment: .leading)
+        .frame(width: isSidebarHovered ? 245 : 64, alignment: .leading)
     }
 
     private var sidebarStatsFooter: some View {
@@ -657,10 +684,12 @@ struct ContentView: View {
                         .opacity(isSidebarHovered ? 1 : 0)
                         .clipped()
                 }
-                .frame(width: 245, height: 30, alignment: .leading)
+                .frame(width: isSidebarHovered ? 245 : 64, height: 30, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .focusable(false)
+            .focusEffectDisabled()
             .help(localizationManager.text(it: "Supporto & Suggerisci nuove funzionalità", en: "Support & Suggest new features"))
             
             // GPA & CFU Stats (visibili solo quando la navbar è allargata)
@@ -699,7 +728,7 @@ struct ContentView: View {
                 .transition(.opacity)
             }
         }
-        .frame(width: 245, alignment: .leading)
+        .frame(width: isSidebarHovered ? 245 : 64, alignment: .leading)
         .padding(.bottom, 4)
     }
 
@@ -733,6 +762,8 @@ struct ContentView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .focusable(false)
+                    .focusEffectDisabled()
                     .help(localizationManager.text(it: "Impostazioni Generali (⌘,)", en: "General Settings (⌘,)"))
                 }
                 .frame(width: 64, height: 32, alignment: .center)
@@ -768,10 +799,10 @@ struct ContentView: View {
                 .opacity(isSidebarHovered ? 1 : 0)
                 .clipped()
             }
-            .frame(width: 245, height: 32, alignment: .leading)
+            .frame(width: isSidebarHovered ? 245 : 64, height: 32, alignment: .leading)
             .padding(.bottom, 6)
         }
-        .frame(width: 245, alignment: .leading)
+        .frame(width: isSidebarHovered ? 245 : 64, alignment: .leading)
     }
     
     private func dismissAddModals() {
@@ -888,6 +919,8 @@ struct NavbarQuickActionButton: View {
             )
         }
         .buttonStyle(.plain)
+        .focusable(false)
+        .focusEffectDisabled()
         .help(buttonTooltip)
     }
     
@@ -963,7 +996,7 @@ struct UniSplashScreenView: View {
     @EnvironmentObject var themeManager: ThemeManager
     
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.2"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.3"
     }
     
     #if canImport(AppKit)

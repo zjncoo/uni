@@ -12,6 +12,35 @@ import AppKit
 #endif
 
 // MARK: - Course (Materia)
+// MARK: - Degree Type & Academic Track
+public enum DegreeType: String, Codable, CaseIterable {
+    case bachelor = "bachelor"
+    case master = "master"
+    case singleCycle5 = "singleCycle5"
+    case singleCycle6 = "singleCycle6"
+    case custom = "custom"
+    
+    public var defaultTargetCFU: Int {
+        switch self {
+        case .bachelor: return 180
+        case .master: return 120
+        case .singleCycle5: return 300
+        case .singleCycle6: return 360
+        case .custom: return 180
+        }
+    }
+    
+    public func localizedTitle(using lm: LocalizationManager) -> String {
+        switch self {
+        case .bachelor: return lm.text(it: "Laurea Triennale (180 CFU)", en: "Bachelor's Degree (180 CFU)")
+        case .master: return lm.text(it: "Laurea Magistrale (120 CFU)", en: "Master's Degree (120 CFU)")
+        case .singleCycle5: return lm.text(it: "Ciclo Unico 5 anni (300 CFU)", en: "Single-Cycle 5 Years (300 CFU)")
+        case .singleCycle6: return lm.text(it: "Ciclo Unico 6 anni (360 CFU)", en: "Single-Cycle 6 Years (360 CFU)")
+        case .custom: return lm.text(it: "Personalizzato (CFU a scelta)", en: "Custom Target CFU")
+        }
+    }
+}
+
 // MARK: - Course Linked File / Folder (File o cartella locale collegata via percorso, senza duplicazione)
 public struct CourseLinkedFile: Identifiable, Codable, Hashable {
     public var id: UUID
@@ -21,10 +50,11 @@ public struct CourseLinkedFile: Identifiable, Codable, Hashable {
     public var dateAdded: Date
     public var fileTypeExtension: String
     public var isDirectory: Bool
+    public var bookmarkData: Data?
     public var title: String { name }
     
     enum CodingKeys: String, CodingKey {
-        case id, name, filePath, fileSize, dateAdded, fileTypeExtension, isDirectory
+        case id, name, filePath, fileSize, dateAdded, fileTypeExtension, isDirectory, bookmarkData
     }
     
     public init(
@@ -34,7 +64,8 @@ public struct CourseLinkedFile: Identifiable, Codable, Hashable {
         fileSize: String = "",
         dateAdded: Date = Date(),
         fileTypeExtension: String = "",
-        isDirectory: Bool? = nil
+        isDirectory: Bool? = nil,
+        bookmarkData: Data? = nil
     ) {
         self.id = id
         self.name = name
@@ -42,6 +73,7 @@ public struct CourseLinkedFile: Identifiable, Codable, Hashable {
         self.fileSize = fileSize
         self.dateAdded = dateAdded
         self.fileTypeExtension = fileTypeExtension.isEmpty ? (URL(fileURLWithPath: filePath).pathExtension.lowercased()) : fileTypeExtension
+        self.bookmarkData = bookmarkData
         
         if let explicit = isDirectory {
             self.isDirectory = explicit
@@ -60,6 +92,7 @@ public struct CourseLinkedFile: Identifiable, Codable, Hashable {
         fileSize = try container.decodeIfPresent(String.self, forKey: .fileSize) ?? ""
         dateAdded = try container.decodeIfPresent(Date.self, forKey: .dateAdded) ?? Date()
         fileTypeExtension = try container.decodeIfPresent(String.self, forKey: .fileTypeExtension) ?? ""
+        bookmarkData = try container.decodeIfPresent(Data.self, forKey: .bookmarkData)
         
         if let dir = try container.decodeIfPresent(Bool.self, forKey: .isDirectory) {
             isDirectory = dir
@@ -68,6 +101,18 @@ public struct CourseLinkedFile: Identifiable, Codable, Hashable {
             FileManager.default.fileExists(atPath: filePath, isDirectory: &isDir)
             isDirectory = isDir.boolValue
         }
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(filePath, forKey: .filePath)
+        try container.encode(fileSize, forKey: .fileSize)
+        try container.encode(dateAdded, forKey: .dateAdded)
+        try container.encode(fileTypeExtension, forKey: .fileTypeExtension)
+        try container.encode(isDirectory, forKey: .isDirectory)
+        try container.encodeIfPresent(bookmarkData, forKey: .bookmarkData)
     }
 }
 
@@ -78,14 +123,43 @@ public struct Course: Identifiable, Codable, Hashable {
     public var cfu: Int
     public var professor: String
     public var professorEmail: String
+    public var professorEmails: [String] = []
     public var room: String
     public var semester: Int // 1 o 2
+    public var academicYear: Int // 1 = 1° Anno, 2 = 2° Anno, 3 = 3° Anno, ecc.
+    public var isAttendanceMandatory: Bool
+    public var targetAttendancePercentage: Int
+    public var attendedLectures: Int
+    public var totalLecturesCount: Int
     public var notionURL: String // Link alla pagina / workspace Notion
     public var links: [CourseLink]
     public var schedule: [CourseSchedule]
     public var colorHex: String
     public var notes: String
     public var linkedFiles: [CourseLinkedFile]
+    public var quickNotes: String
+    
+    /// Restituisce tutte le email valide e uniche associate al corso
+    public var allProfessorEmails: [String] {
+        var list: [String] = []
+        let primary = professorEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !primary.isEmpty {
+            list.append(primary)
+        }
+        for email in professorEmails {
+            let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty && !list.contains(trimmed) {
+                list.append(trimmed)
+            }
+        }
+        return list
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, code, cfu, professor, professorEmail, professorEmails, room, semester
+        case academicYear, isAttendanceMandatory, targetAttendancePercentage, attendedLectures, totalLecturesCount
+        case notionURL, links, schedule, colorHex, notes, linkedFiles, quickNotes
+    }
     
     public init(
         id: UUID = UUID(),
@@ -94,14 +168,21 @@ public struct Course: Identifiable, Codable, Hashable {
         cfu: Int = 6,
         professor: String = "",
         professorEmail: String = "",
+        professorEmails: [String] = [],
         room: String = "",
         semester: Int = 1,
+        academicYear: Int = 1,
+        isAttendanceMandatory: Bool = false,
+        targetAttendancePercentage: Int = 75,
+        attendedLectures: Int = 0,
+        totalLecturesCount: Int = 0,
         notionURL: String = "",
         links: [CourseLink] = [],
         schedule: [CourseSchedule] = [],
         colorHex: String = "#007AFF",
         notes: String = "",
-        linkedFiles: [CourseLinkedFile] = []
+        linkedFiles: [CourseLinkedFile] = [],
+        quickNotes: String = ""
     ) {
         self.id = id
         self.name = name
@@ -109,14 +190,21 @@ public struct Course: Identifiable, Codable, Hashable {
         self.cfu = cfu
         self.professor = professor
         self.professorEmail = professorEmail
+        self.professorEmails = professorEmails
         self.room = room
         self.semester = semester
+        self.academicYear = academicYear
+        self.isAttendanceMandatory = isAttendanceMandatory
+        self.targetAttendancePercentage = targetAttendancePercentage
+        self.attendedLectures = attendedLectures
+        self.totalLecturesCount = totalLecturesCount
         self.notionURL = notionURL
         self.links = links
         self.schedule = schedule
         self.colorHex = colorHex
         self.notes = notes
         self.linkedFiles = linkedFiles
+        self.quickNotes = quickNotes
     }
     
     // Decodifica tollerante per retrocompatibilità con i dati salvati
@@ -128,14 +216,46 @@ public struct Course: Identifiable, Codable, Hashable {
         cfu = try container.decodeIfPresent(Int.self, forKey: .cfu) ?? 6
         professor = try container.decodeIfPresent(String.self, forKey: .professor) ?? ""
         professorEmail = try container.decodeIfPresent(String.self, forKey: .professorEmail) ?? ""
+        professorEmails = try container.decodeIfPresent([String].self, forKey: .professorEmails) ?? []
         room = try container.decodeIfPresent(String.self, forKey: .room) ?? ""
         semester = try container.decodeIfPresent(Int.self, forKey: .semester) ?? 1
+        academicYear = try container.decodeIfPresent(Int.self, forKey: .academicYear) ?? 1
+        isAttendanceMandatory = try container.decodeIfPresent(Bool.self, forKey: .isAttendanceMandatory) ?? false
+        targetAttendancePercentage = try container.decodeIfPresent(Int.self, forKey: .targetAttendancePercentage) ?? 75
+        attendedLectures = try container.decodeIfPresent(Int.self, forKey: .attendedLectures) ?? 0
+        totalLecturesCount = try container.decodeIfPresent(Int.self, forKey: .totalLecturesCount) ?? 0
         notionURL = try container.decodeIfPresent(String.self, forKey: .notionURL) ?? ""
         links = try container.decodeIfPresent([CourseLink].self, forKey: .links) ?? []
         schedule = try container.decodeIfPresent([CourseSchedule].self, forKey: .schedule) ?? []
         colorHex = try container.decodeIfPresent(String.self, forKey: .colorHex) ?? "#007AFF"
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         linkedFiles = try container.decodeIfPresent([CourseLinkedFile].self, forKey: .linkedFiles) ?? []
+        quickNotes = try container.decodeIfPresent(String.self, forKey: .quickNotes) ?? ""
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(code, forKey: .code)
+        try container.encode(cfu, forKey: .cfu)
+        try container.encode(professor, forKey: .professor)
+        try container.encode(professorEmail, forKey: .professorEmail)
+        try container.encode(professorEmails, forKey: .professorEmails)
+        try container.encode(room, forKey: .room)
+        try container.encode(semester, forKey: .semester)
+        try container.encode(academicYear, forKey: .academicYear)
+        try container.encode(isAttendanceMandatory, forKey: .isAttendanceMandatory)
+        try container.encode(targetAttendancePercentage, forKey: .targetAttendancePercentage)
+        try container.encode(attendedLectures, forKey: .attendedLectures)
+        try container.encode(totalLecturesCount, forKey: .totalLecturesCount)
+        try container.encode(notionURL, forKey: .notionURL)
+        try container.encode(links, forKey: .links)
+        try container.encode(schedule, forKey: .schedule)
+        try container.encode(colorHex, forKey: .colorHex)
+        try container.encode(notes, forKey: .notes)
+        try container.encode(linkedFiles, forKey: .linkedFiles)
+        try container.encode(quickNotes, forKey: .quickNotes)
     }
 }
 
@@ -217,6 +337,7 @@ public struct Deadline: Identifiable, Codable, Hashable {
     public var linkURLs: [String] = []
     public var localFilePath: String?
     public var localFileName: String?
+    public var amount: Double?
     
     public var allLinks: [String] {
         var result = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
@@ -253,7 +374,8 @@ public struct Deadline: Identifiable, Codable, Hashable {
         linkURL: String? = nil,
         linkURLs: [String] = [],
         localFilePath: String? = nil,
-        localFileName: String? = nil
+        localFileName: String? = nil,
+        amount: Double? = nil
     ) {
         self.id = id
         self.title = title
@@ -264,6 +386,7 @@ public struct Deadline: Identifiable, Codable, Hashable {
         self.notes = notes
         self.localFilePath = localFilePath
         self.localFileName = localFileName
+        self.amount = amount
         let cleaned = linkURLs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         let singleClean = linkURL?.trimmingCharacters(in: .whitespacesAndNewlines)
         if !cleaned.isEmpty {
@@ -279,7 +402,7 @@ public struct Deadline: Identifiable, Codable, Hashable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, title, courseId, dueDate, priority, isCompleted, notes, linkURL, linkURLs, localFilePath, localFileName
+        case id, title, courseId, dueDate, priority, isCompleted, notes, linkURL, linkURLs, localFilePath, localFileName, amount
     }
     
     public init(from decoder: Decoder) throws {
@@ -294,6 +417,7 @@ public struct Deadline: Identifiable, Codable, Hashable {
         linkURL = try container.decodeIfPresent(String.self, forKey: .linkURL)
         localFilePath = try container.decodeIfPresent(String.self, forKey: .localFilePath)
         localFileName = try container.decodeIfPresent(String.self, forKey: .localFileName)
+        amount = try container.decodeIfPresent(Double.self, forKey: .amount)
         let decodedURLs = try container.decodeIfPresent([String].self, forKey: .linkURLs) ?? []
         if !decodedURLs.isEmpty {
             linkURLs = decodedURLs
@@ -317,6 +441,7 @@ public struct Deadline: Identifiable, Codable, Hashable {
         try container.encode(linkURLs, forKey: .linkURLs)
         try container.encodeIfPresent(localFilePath, forKey: .localFilePath)
         try container.encodeIfPresent(localFileName, forKey: .localFileName)
+        try container.encodeIfPresent(amount, forKey: .amount)
     }
 }
 
@@ -333,6 +458,8 @@ public struct Exam: Identifiable, Codable, Hashable {
     public var honors: Bool // Lode
     public var targetGrade: Int?
     public var notes: String
+    public var isPassFail: Bool // Idoneità / Senza voto (Pass/Fail)
+    public var registrationDeadline: Date? // Scadenza iscrizione Esse3/Portale
     
     public enum ExamType: String, Codable, CaseIterable {
         case written = "Scritto"
@@ -344,6 +471,7 @@ public struct Exam: Identifiable, Codable, Hashable {
     public enum ExamStatus: String, Codable, CaseIterable {
         case planned = "In programma"
         case studying = "In preparazione"
+        case awaitingResult = "In attesa esito"
         case passed = "Superato"
         case rejected = "Da ripetere"
         
@@ -351,10 +479,16 @@ public struct Exam: Identifiable, Codable, Hashable {
             switch self {
             case .planned: return .secondary
             case .studying: return .orange
+            case .awaitingResult: return .purple
             case .passed: return .green
             case .rejected: return .red
             }
         }
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, courseId, title, examDate, type, room, status, grade, honors, targetGrade, notes
+        case isPassFail, registrationDeadline
     }
     
     public init(
@@ -368,7 +502,9 @@ public struct Exam: Identifiable, Codable, Hashable {
         grade: Int? = nil,
         honors: Bool = false,
         targetGrade: Int? = nil,
-        notes: String = ""
+        notes: String = "",
+        isPassFail: Bool = false,
+        registrationDeadline: Date? = nil
     ) {
         self.id = id
         self.courseId = courseId
@@ -381,6 +517,42 @@ public struct Exam: Identifiable, Codable, Hashable {
         self.honors = honors
         self.targetGrade = targetGrade
         self.notes = notes
+        self.isPassFail = isPassFail
+        self.registrationDeadline = registrationDeadline
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        courseId = try container.decodeIfPresent(UUID.self, forKey: .courseId) ?? UUID()
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        examDate = try container.decodeIfPresent(Date.self, forKey: .examDate) ?? Date()
+        type = try container.decodeIfPresent(ExamType.self, forKey: .type) ?? .writtenOral
+        room = try container.decodeIfPresent(String.self, forKey: .room) ?? ""
+        status = try container.decodeIfPresent(ExamStatus.self, forKey: .status) ?? .planned
+        grade = try container.decodeIfPresent(Int.self, forKey: .grade)
+        honors = try container.decodeIfPresent(Bool.self, forKey: .honors) ?? false
+        targetGrade = try container.decodeIfPresent(Int.self, forKey: .targetGrade)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        isPassFail = try container.decodeIfPresent(Bool.self, forKey: .isPassFail) ?? false
+        registrationDeadline = try container.decodeIfPresent(Date.self, forKey: .registrationDeadline)
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(courseId, forKey: .courseId)
+        try container.encode(title, forKey: .title)
+        try container.encode(examDate, forKey: .examDate)
+        try container.encode(type, forKey: .type)
+        try container.encode(room, forKey: .room)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(grade, forKey: .grade)
+        try container.encode(honors, forKey: .honors)
+        try container.encodeIfPresent(targetGrade, forKey: .targetGrade)
+        try container.encode(notes, forKey: .notes)
+        try container.encode(isPassFail, forKey: .isPassFail)
+        try container.encodeIfPresent(registrationDeadline, forKey: .registrationDeadline)
     }
 }
 
@@ -892,10 +1064,24 @@ public enum AppSystemHelper {
     }
     
     /// Apre qualsiasi file o cartella locale sul Mac con l'applicazione di default di sistema
-    public static func openLocalFile(path: String) {
+    public static func openLocalFile(path: String, bookmarkData: Data? = nil) {
+        #if canImport(AppKit)
+        if let data = bookmarkData {
+            var isStale = false
+            if let resolvedURL = try? URL(resolvingBookmarkData: data, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale) {
+                let didStart = resolvedURL.startAccessingSecurityScopedResource()
+                defer {
+                    if didStart { resolvedURL.stopAccessingSecurityScopedResource() }
+                }
+                if FileManager.default.fileExists(atPath: resolvedURL.path) {
+                    NSWorkspace.shared.open(resolvedURL)
+                    return
+                }
+            }
+        }
+        
         guard !path.isEmpty else { return }
         let url = URL(fileURLWithPath: path)
-        #if canImport(AppKit)
         if FileManager.default.fileExists(atPath: url.path) {
             NSWorkspace.shared.open(url)
         } else {
@@ -928,6 +1114,55 @@ public enum AppSystemHelper {
             NSWorkspace.shared.open(url)
             #endif
         }
+    }
+    
+    /// Invia un'email aprendo l'app nativa Apple Mail
+    public static func openInAppleMail(email: String, subject: String = "") {
+        #if canImport(AppKit)
+        var comp = URLComponents()
+        comp.scheme = "mailto"
+        comp.path = email
+        if !subject.isEmpty {
+            comp.queryItems = [URLQueryItem(name: "subject", value: subject)]
+        }
+        if let mailtoURL = comp.url {
+            if let mailAppURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.mail") {
+                let config = NSWorkspace.OpenConfiguration()
+                NSWorkspace.shared.open([mailtoURL], withApplicationAt: mailAppURL, configuration: config, completionHandler: nil)
+            } else {
+                NSWorkspace.shared.open(mailtoURL)
+            }
+        }
+        #endif
+    }
+    
+    /// Invia un'email aprendo Microsoft Outlook (app nativa oppure Outlook Web se non presente)
+    public static func openInOutlook(email: String, subject: String = "") {
+        #if canImport(AppKit)
+        var comp = URLComponents()
+        comp.scheme = "mailto"
+        comp.path = email
+        if !subject.isEmpty {
+            comp.queryItems = [URLQueryItem(name: "subject", value: subject)]
+        }
+        if let outlookAppURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.Outlook"),
+           let mailtoURL = comp.url {
+            let config = NSWorkspace.OpenConfiguration()
+            NSWorkspace.shared.open([mailtoURL], withApplicationAt: outlookAppURL, configuration: config, completionHandler: nil)
+        } else {
+            let encodedEmail = email.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? email
+            let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            var urlString = "https://outlook.office.com/mail/deeplink/compose?to=\(encodedEmail)"
+            if !encodedSubject.isEmpty {
+                urlString += "&subject=\(encodedSubject)"
+            }
+            if let webURL = URL(string: urlString) {
+                NSWorkspace.shared.open(webURL)
+            } else if let mailtoURL = comp.url {
+                NSWorkspace.shared.open(mailtoURL)
+            }
+        }
+        #endif
     }
     
     /// Formatta la dimensione del file in bytes o il numero di elementi per le cartelle
@@ -1014,6 +1249,7 @@ extension Exam.ExamStatus {
         switch self {
         case .planned: return isEn ? "Scheduled" : "In programma"
         case .studying: return isEn ? "Preparing" : "In preparazione"
+        case .awaitingResult: return isEn ? "Awaiting Result" : "In attesa esito"
         case .passed: return isEn ? "Passed" : "Superato"
         case .rejected: return isEn ? "To Retake" : "Da ripetere"
         }

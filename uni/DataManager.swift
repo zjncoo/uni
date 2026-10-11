@@ -33,6 +33,14 @@ public struct AppDataPayload: nonisolated Codable, Sendable {
     public var dashboardSectionsOrder: [String]? = nil
     public var navbarShortcutItems: [NavbarShortcutItem]? = nil
     public var calendarSources: [CalendarSource]? = nil
+    public var degreeType: String? = nil
+    public var customTargetCfu: Int? = nil
+    public var thesisPoints: Double? = nil
+    public var careerBonusPoints: Double? = nil
+    public var honorsValue: Double? = nil
+    public var userBirthDate: Date? = nil
+    public var isAgeVerified: Bool? = nil
+    public var isMinorBlocked: Bool? = nil
 }
 
 // MARK: - University Data Manager
@@ -48,11 +56,34 @@ public class DataManager: ObservableObject {
     @Published public var calendarFeedURL: String = ""
     @Published public var lastSyncDate: Date? = nil
     
-    // Profilo Studente & Link Portale Ateneo
+    // Profilo Studente, Data di Nascita & Verifica Età Legale (18+)
     @Published public var studentName: String = ""
     @Published public var universityName: String = ""
     @Published public var universityPortalURL: String = ""
     @Published public var hasCompletedOnboarding: Bool = false
+    @Published public var userBirthDate: Date? = nil
+    @Published public var isAgeVerified: Bool = false
+    @Published public var isMinorBlocked: Bool = false
+    
+    public var userAge: Int? {
+        guard let birthDate = userBirthDate else { return nil }
+        let ageComponents = Calendar.current.dateComponents([.year], from: birthDate, to: Date())
+        return ageComponents.year
+    }
+    
+    public var isUnderage: Bool {
+        guard let birthDate = userBirthDate else { return false }
+        let ageComponents = Calendar.current.dateComponents([.year], from: birthDate, to: Date())
+        let age = ageComponents.year ?? 0
+        return age < 18
+    }
+    
+    // Carriera Accademica & Obiettivi di Laurea
+    @Published public var degreeType: DegreeType = .bachelor
+    @Published public var customTargetCfu: Int = 180
+    @Published public var thesisPoints: Double = 0.0
+    @Published public var careerBonusPoints: Double = 0.0
+    @Published public var honorsValue: Double = 30.0
     
     // Scorciatoie Home & Scelta Azione Rapida Barra di Navigazione
     @Published public var quickShortcuts: [QuickShortcutLink] = []
@@ -86,6 +117,7 @@ public class DataManager: ObservableObject {
     @Published public var expandedDeadlineId: UUID? = nil
     @Published public var expandedAssignmentId: UUID? = nil
     @Published public var navigationTab: String? = nil
+    @Published public var isShowingProgressiveNewItem: Bool = false
     
     public func navigateTo(tab: String, deadlineId: UUID? = nil, assignmentId: UUID? = nil, expand: Bool = true) {
         if let dId = deadlineId {
@@ -194,7 +226,15 @@ public class DataManager: ObservableObject {
             navbarQuickActionCustomId: navbarShortcutItems.first?.customShortcutId ?? navbarQuickActionCustomId,
             dashboardSectionsOrder: dashboardSectionsOrder,
             navbarShortcutItems: navbarShortcutItems,
-            calendarSources: calendarSources
+            calendarSources: calendarSources,
+            degreeType: degreeType.rawValue,
+            customTargetCfu: customTargetCfu,
+            thesisPoints: thesisPoints,
+            careerBonusPoints: careerBonusPoints,
+            honorsValue: honorsValue,
+            userBirthDate: userBirthDate,
+            isAgeVerified: isAgeVerified,
+            isMinorBlocked: isMinorBlocked
         )
         
         let targetURL = self.fileURL
@@ -265,10 +305,29 @@ public class DataManager: ObservableObject {
                 self.universityName = payload.universityName ?? ""
                 self.universityPortalURL = payload.universityPortalURL ?? ""
                 self.hasCompletedOnboarding = payload.hasCompletedOnboarding ?? false
+                self.userBirthDate = payload.userBirthDate
+                self.isAgeVerified = payload.isAgeVerified ?? false
+                self.isMinorBlocked = payload.isMinorBlocked ?? false
+                if let b = self.userBirthDate {
+                    let age = Calendar.current.dateComponents([.year], from: b, to: Date()).year ?? 0
+                    if age < 18 {
+                        self.isMinorBlocked = true
+                    }
+                }
                 self.quickShortcuts = payload.quickShortcuts ?? []
                 self.navbarQuickActionType = payload.navbarQuickActionType ?? NavbarQuickActionOption.outlook.rawValue
                 self.navbarQuickActionCustomId = payload.navbarQuickActionCustomId
                 self.dashboardSectionsOrder = payload.dashboardSectionsOrder ?? []
+                
+                if let savedDegree = payload.degreeType, let dt = DegreeType(rawValue: savedDegree) {
+                    self.degreeType = dt
+                } else {
+                    self.degreeType = .bachelor
+                }
+                self.customTargetCfu = payload.customTargetCfu ?? 180
+                self.thesisPoints = payload.thesisPoints ?? 0.0
+                self.careerBonusPoints = payload.careerBonusPoints ?? 0.0
+                self.honorsValue = payload.honorsValue ?? 30.0
                 
                 if let savedShortcuts = payload.navbarShortcutItems, !savedShortcuts.isEmpty {
                     self.navbarShortcutItems = Array(savedShortcuts.prefix(3))
@@ -320,6 +379,9 @@ public class DataManager: ObservableObject {
         self.universityName = ""
         self.universityPortalURL = ""
         self.hasCompletedOnboarding = false
+        self.userBirthDate = nil
+        self.isAgeVerified = false
+        self.isMinorBlocked = false
         self.quickShortcuts = []
         self.navbarQuickActionType = NavbarQuickActionOption.outlook.rawValue
         self.navbarQuickActionCustomId = nil
@@ -688,38 +750,73 @@ public class DataManager: ObservableObject {
     
     // MARK: - Computed University Statistics
     public var totalCfuAcquired: Int {
+        var countedCourses = Set<UUID>()
         var total = 0
         for exam in exams where exam.status == .passed {
-            if let course = courses.first(where: { $0.id == exam.courseId }) {
-                total += course.cfu
+            if countedCourses.insert(exam.courseId).inserted {
+                if let course = courses.first(where: { $0.id == exam.courseId }) {
+                    total += course.cfu
+                }
             }
         }
         return total
     }
     
     public var totalCfuTarget: Int {
-        courses.reduce(0) { $0 + $1.cfu }
+        if degreeType == .custom {
+            return max(customTargetCfu, 1)
+        }
+        return degreeType.defaultTargetCFU
     }
     
     public var weightedAverage: Double {
-        var totalPoints = 0
-        var totalCfu = 0
+        // Raggruppa esami superati per materia per evitare che prove parziali moltiplichino indebitamente i CFU del corso
+        var courseGrades: [UUID: [Double]] = [:]
         
         for exam in exams where exam.status == .passed {
-            if let grade = exam.grade, let course = courses.first(where: { $0.id == exam.courseId }) {
-                totalPoints += grade * course.cfu
-                totalCfu += course.cfu
+            // Idoneità / tirocini senza voto (isPassFail) esclusi dalla media
+            if exam.isPassFail { continue }
+            
+            if let grade = exam.grade {
+                let gradeVal: Double = (exam.honors && honorsValue > 30.0) ? honorsValue : Double(grade)
+                courseGrades[exam.courseId, default: []].append(gradeVal)
             }
         }
         
-        guard totalCfu > 0 else { return 0.0 }
-        return Double(totalPoints) / Double(totalCfu)
+        var totalPoints: Double = 0.0
+        var totalCfuWithGrade: Int = 0
+        
+        for (courseId, grades) in courseGrades {
+            guard !grades.isEmpty, let course = courses.first(where: { $0.id == courseId }) else { continue }
+            let courseAvgGrade = grades.reduce(0.0, +) / Double(grades.count)
+            totalPoints += courseAvgGrade * Double(course.cfu)
+            totalCfuWithGrade += course.cfu
+        }
+        
+        guard totalCfuWithGrade > 0 else { return 0.0 }
+        return totalPoints / Double(totalCfuWithGrade)
     }
     
-    public var estimatedGraduationGrade: Double {
+    public var baseGraduationGrade: Double {
         let avg = weightedAverage
         guard avg > 0 else { return 0.0 }
         return (avg / 30.0) * 110.0
+    }
+    
+    public var estimatedGraduationGrade: Double {
+        let base = baseGraduationGrade
+        guard base > 0 else { return 0.0 }
+        return min(110.0, base + thesisPoints + careerBonusPoints)
+    }
+    
+    public var arithmeticAverage: Double {
+        let gradedExams = exams.filter { $0.status == .passed && !$0.isPassFail && $0.grade != nil }
+        guard !gradedExams.isEmpty else { return 0.0 }
+        let total = gradedExams.reduce(0.0) { sum, ex in
+            let val = (ex.honors && honorsValue > 30.0) ? honorsValue : Double(ex.grade ?? 0)
+            return sum + val
+        }
+        return total / Double(gradedExams.count)
     }
     
     // MARK: - Calendar Feed & Multi-Calendar Sync
@@ -1616,5 +1713,38 @@ public class DataManager: ObservableObject {
         }
         
         saveData()
+    }
+    
+    // MARK: - Lezioni e Orari di Oggi
+    public func todayLectures() -> [(course: Course, schedule: CourseSchedule)] {
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: Date())
+        let todayDayOfWeek = weekday == 1 ? 7 : (weekday - 1)
+        
+        var list: [(course: Course, schedule: CourseSchedule)] = []
+        for course in courses {
+            for slot in course.schedule where slot.dayOfWeek == todayDayOfWeek {
+                list.append((course: course, schedule: slot))
+            }
+        }
+        list.sort { $0.schedule.startTime < $1.schedule.startTime }
+        return list
+    }
+    
+    public func nextLectureToday() -> (course: Course, schedule: CourseSchedule, isNow: Bool)? {
+        let lectures = todayLectures()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        let nowStr = formatter.string(from: Date())
+        
+        // 1. In corso
+        if let current = lectures.first(where: { $0.schedule.startTime <= nowStr && nowStr <= $0.schedule.endTime }) {
+            return (course: current.course, schedule: current.schedule, isNow: true)
+        }
+        // 2. Prossima successiva
+        if let upcoming = lectures.first(where: { $0.schedule.startTime > nowStr }) {
+            return (course: upcoming.course, schedule: upcoming.schedule, isNow: false)
+        }
+        return nil
     }
 }

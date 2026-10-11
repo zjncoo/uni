@@ -1022,11 +1022,11 @@ struct AssignmentEditorSheet: View {
     @State private var localFilePath: String? = nil
     @State private var localFileName: String? = nil
     
-    init(assignmentToEdit: Assignment?, onSave: @escaping (Assignment) -> Void) {
+    init(assignmentToEdit: Assignment?, initialCourseId: UUID? = nil, onSave: @escaping (Assignment) -> Void) {
         self.assignmentToEdit = assignmentToEdit
         self.onSave = onSave
         _title = State(initialValue: assignmentToEdit?.title ?? "")
-        _courseId = State(initialValue: assignmentToEdit?.courseId ?? UUID())
+        _courseId = State(initialValue: assignmentToEdit?.courseId ?? initialCourseId ?? UUID())
         _dueDate = State(initialValue: assignmentToEdit?.dueDate ?? Date().addingTimeInterval(86400 * 7))
         _details = State(initialValue: assignmentToEdit?.details ?? "")
         _weightPercent = State(initialValue: assignmentToEdit?.weightPercent ?? 0)
@@ -1051,10 +1051,10 @@ struct AssignmentEditorSheet: View {
                         .foregroundStyle(themeManager.accentColor)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(assignmentToEdit == nil ? localizationManager.text(it: "Nuovo Assignment", en: "New Assignment") : localizationManager.text(it: "Modifica Assignment", en: "Edit Assignment"))
+                    Text(assignmentToEdit == nil ? localizationManager.text(it: "Nuova Consegna / Progetto", en: "New Assignment / Project") : localizationManager.text(it: "Modifica Consegna / Progetto", en: "Edit Assignment / Project"))
                         .font(UniFont.title())
                         .fontWeight(.semibold)
-                    Text(localizationManager.text(it: "Definisci la scadenza e le specifiche di consegna", en: "Set deadline and submission specifications"))
+                    Text(localizationManager.text(it: "Elaborato didattico, tesina o lavoro con peso sul voto finale", en: "Academic paper, project or coursework with grading weight"))
                         .font(UniFont.caption())
                         .foregroundStyle(.secondary)
                 }
@@ -1067,7 +1067,7 @@ struct AssignmentEditorSheet: View {
             // Form
             Form {
                 Section(localizationManager.text(it: "Dettagli", en: "Details")) {
-                    TextField(localizationManager.text(it: "Titolo Assignment", en: "Assignment Title"), text: $title)
+                    TextField(localizationManager.text(it: "Es. Relazione di laboratorio, Tesina di gruppo, Progetto...", en: "e.g. Lab report, Group project, Term paper..."), text: $title)
                     
                     if !dataManager.courses.isEmpty {
                         Picker(localizationManager.text(it: "Materia", en: "Course"), selection: $courseId) {

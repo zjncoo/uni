@@ -15,7 +15,7 @@ public struct WhatsNewModalView: View {
     public init() {}
     
     private var currentVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.2"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.5.3"
     }
     
     public var body: some View {

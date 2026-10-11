@@ -381,6 +381,59 @@ public class NotificationManager: NSObject, ObservableObject, UNUserNotification
                 )
             }
         }
+        
+        // 4. Programma notifiche ricorrenti per le lezioni (15 min prima dell'inizio)
+        scheduleLectureReminders(courses: courses)
+    }
+    
+    // MARK: - Promemoria Ricorrenti Lezioni Universitarie
+    public func scheduleLectureReminders(courses: [Course]) {
+        guard systemNotificationsEnabled else { return }
+        let isEn = LocalizationManager.shared.currentLanguage == .english
+        
+        for course in courses {
+            for slot in course.schedule {
+                let parts = slot.startTime.split(separator: ":").compactMap { Int($0) }
+                guard parts.count == 2 else { continue }
+                let startHour = parts[0]
+                let startMinute = parts[1]
+                
+                // 15 minuti prima
+                var remindHour = startHour
+                var remindMinute = startMinute - 15
+                if remindMinute < 0 {
+                    remindMinute += 60
+                    remindHour -= 1
+                    if remindHour < 0 { remindHour = 23 }
+                }
+                
+                // Mappa slot.dayOfWeek (1=Lun...7=Dom) al weekday di UNCalendarNotificationTrigger (1=Dom, 2=Lun...7=Sab)
+                let calendarWeekday = slot.dayOfWeek == 7 ? 1 : (slot.dayOfWeek + 1)
+                
+                var dateComponents = DateComponents()
+                dateComponents.weekday = calendarWeekday
+                dateComponents.hour = remindHour
+                dateComponents.minute = remindMinute
+                
+                let content = UNMutableNotificationContent()
+                content.title = isEn ? "Upcoming lecture in 15 min: \(course.name)" : "Lezione tra 15 min: \(course.name)"
+                let roomDesc = slot.room.isEmpty ? (course.room.isEmpty ? "" : " • Aula \(course.room)") : " • Aula \(slot.room)"
+                content.body = "\(slot.startTime) - \(slot.endTime)\(roomDesc)"
+                if soundEnabled {
+                    content.sound = .default
+                }
+                
+                let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+                let reqId = "lecture-\(course.id.uuidString)-\(slot.dayOfWeek)-\(slot.startTime)"
+                let request = UNNotificationRequest(identifier: reqId, content: content, trigger: trigger)
+                
+                UNUserNotificationCenter.current().add(request) { error in
+                    if let error = error {
+                        print("Errore promemoria lezione: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
     }
     
     private func scheduleSingleReminder(id: String, title: String, body: String, date: Date) {

@@ -599,7 +599,7 @@ public struct SidebarButtonLiquidUni: View {
                     .opacity(isCollapsed ? 0 : 1)
                     .clipped()
                 }
-                .frame(width: 245, height: 40, alignment: .leading)
+                .frame(width: isCollapsed ? 64 : 245, height: 40, alignment: .leading)
                 .contentShape(Rectangle())
                 .opacity(isHovered ? 0.50 : 1.0)
                 
@@ -612,12 +612,15 @@ public struct SidebarButtonLiquidUni: View {
             }
         }
         .buttonStyle(.plain)
+        .focusable(false)
+        .focusEffectDisabled()
         .help(title)
         .onHover { hover in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hover
             }
         }
+        .frame(width: isCollapsed ? 64 : 245, alignment: .leading)
     }
 }
 
